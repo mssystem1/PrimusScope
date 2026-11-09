@@ -93,5 +93,8 @@ implementation interval or independent consensus.
 5. Configure the selected production services in one deployment batch, deploy to
    Vercel and repeat API/UI/workflow/E2E checks against its actual HTTPS URL.
 
-No environment configuration was reapplied or published, and no GitHub push or
-Vercel deployment was performed during this implementation slice.
+The local milestones above preceded deployment. Source is now published in
+`mssystem1/PrimusScope`, and the recorded observation application is deployed at
+**https://primus-scope.vercel.app**. See [DEPLOYMENT.md](DEPLOYMENT.md) for project
+configuration and deployed-test procedures. Hosted continuous ingestion remains
+a separate launch gate. Managed cloud environment settings were not republished.

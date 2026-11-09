@@ -43,6 +43,13 @@ readiness; run the suite separately against the actual deployment URL. The
 fixture counts intentionally describe the current recorded snapshot, and should
 be reviewed if that snapshot changes.
 
+External tests honor the managed cloud's HTTP(S) proxy and `NO_PROXY` settings.
+Keep the runtime's supplied Node CA trust. Chromium must be able to use that
+existing environment CA in its NSS certificate store. If the filesystem sandbox
+prevents browser trust-store access, use the approved outer execution context
+for those tests. Neither `ignoreHTTPSErrors` nor certificate-error bypass flags are used. Proxy
+URLs containing embedded credentials are rejected to keep them out of reports.
+
 ## Local indexed mode
 
 The default command above retains the 25 recorded-mode checks. Run the separate

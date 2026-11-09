@@ -8,6 +8,19 @@ if (indexed && externalBaseUrl) {
 }
 const baseURL = indexed ? "http://127.0.0.1:3001" : externalBaseUrl || "http://127.0.0.1:3000";
 const artifacts = indexed ? ".local/test-results-indexed" : ".local/test-results";
+function externalProxy() {
+  if (!externalBaseUrl) return undefined;
+  const value = process.env.HTTPS_PROXY || process.env.https_proxy
+    || process.env.HTTP_PROXY || process.env.http_proxy;
+  if (!value) return undefined;
+  const url = new URL(value);
+  // Playwright serializes configuration into reports. Credential-bearing proxy
+  // URLs must never be copied there; managed cloud uses a local proxy bridge.
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password) {
+    throw new Error('External browser tests require a credential-free runtime proxy bridge.');
+  }
+  return { server: url.origin, bypass: process.env.NO_PROXY || process.env.no_proxy };
+}
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
   || (process.env.CI ? undefined : "/usr/bin/chromium");
 const chromium = {
@@ -38,6 +51,7 @@ export default defineConfig({
   ],
   use: {
     baseURL,
+    proxy: externalProxy(),
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
     video: "off",

@@ -1,5 +1,8 @@
 # Vercel observation release
 
+Public application: **https://primus-scope.vercel.app**. The Vercel project is
+`primus-scope`, connected to `mssystem1/PrimusScope`, production branch `main`.
+
 The first hosted release serves the bundled, sanitized recorded observations.
 Its UI identifies this mode and its exact coverage. The local SQLite worker is
 a separate tested component; this deployment does not run it continuously or
