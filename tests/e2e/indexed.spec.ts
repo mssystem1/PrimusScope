@@ -139,7 +139,7 @@ test.describe("isolated persistent indexed read model", () => {
   test("indexed source and failure disclosure remain accessible on desktop and mobile", async ({ page }, testInfo) => {
     test.setTimeout(90_000);
     await page.goto("/sources");
-    await expect(page.getByText("Local indexed data", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Indexed observations", { exact: true }).first()).toBeVisible();
     const indexer = page.getByRole("region", { name: "Indexer status", exact: true });
     await expect(indexer).toBeVisible();
     const finance = page.getByRole("region", { name: "Finance indexer status", exact: true });
@@ -154,7 +154,7 @@ test.describe("isolated persistent indexed read model", () => {
       for (const path of ["/", "/sources", knownTaskPath, knownFinanceBatchPath]) {
         await page.goto(path);
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-        await expect(page.getByText("Local indexed data", { exact: true }).first()).toBeVisible();
+        await expect(page.getByText("Indexed observations", { exact: true }).first()).toBeVisible();
         const dimensions = await page.evaluate(() => ({
           viewport: document.documentElement.clientWidth,
           content: document.documentElement.scrollWidth,

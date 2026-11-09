@@ -74,7 +74,7 @@ describe("public observations API routes", () => {
   });
 
   it("returns source-labelled, filtered CSV with download-safe headers", async () => {
-    const routeId = getObservationSet().finance.contracts[0].routeId;
+    const routeId = (await getObservationSet()).finance.contracts[0].routeId;
     const response = await get("exports/metrics.csv", `?domain=finance&routeId=${encodeURIComponent(routeId)}`);
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("text/csv");

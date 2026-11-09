@@ -1,0 +1,6 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs", "installCommand": "npm ci --include=dev --workspaces --include-workspace-root",
+  "buildCommand": "npm run build", "outputDirectory": ".next",
+  "crons": [{"path": "/api/collect", "schedule": "*/15 * * * *"}]
+}

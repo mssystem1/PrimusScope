@@ -10,7 +10,7 @@ import {
 } from './index';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
-const snapshot = getObservationSet();
+const snapshot = await getObservationSet();
 const clock = () => new Date('2026-11-09T09:00:00Z');
 const repository = () => createRepository(snapshot, clock);
 const USDT = 'encrypted-usdt-confidential-vault';
@@ -309,10 +309,10 @@ describe('explicit snapshot import boundary', () => {
     expect(imported.network.events).toHaveLength(223);
   });
 
-  it('serves independent validated copies of the build artifact', () => {
-    const first = getObservationSet();
+  it('serves independent validated copies of the build artifact', async () => {
+    const first = await getObservationSet();
     first.finance.events.splice(0);
-    expect(getObservationSet().finance.events).toHaveLength(9);
+    expect((await getObservationSet()).finance.events).toHaveLength(9);
   });
 
   it('fails import rather than serving finance events from mismatched block windows', () => {

@@ -2,12 +2,14 @@ import { defineConfig, devices } from "@playwright/test";
 import { resolve } from "node:path";
 
 const indexed = process.env.E2E_DATA_MODE === "indexed";
+const hosted = process.env.E2E_DATA_MODE === "hosted";
 const externalBaseUrl = process.env.E2E_BASE_URL;
+if (hosted && !externalBaseUrl) throw new Error('Hosted validation requires E2E_BASE_URL.');
 if (indexed && externalBaseUrl) {
   throw new Error("Indexed fixture tests use their isolated local database and server; unset E2E_BASE_URL.");
 }
 const baseURL = indexed ? "http://127.0.0.1:3001" : externalBaseUrl || "http://127.0.0.1:3000";
-const artifacts = indexed ? ".local/test-results-indexed" : ".local/test-results";
+const artifacts = indexed ? ".local/test-results-indexed" : hosted ? ".local/test-results-hosted" : ".local/test-results";
 function externalProxy() {
   if (!externalBaseUrl) return undefined;
   const value = process.env.HTTPS_PROXY || process.env.https_proxy
@@ -47,7 +49,7 @@ export default defineConfig({
   reporter: [
     ["list"],
     ["json", { outputFile: `${artifacts}/results.json` }],
-    ["html", { outputFolder: indexed ? ".local/playwright-report-indexed" : ".local/playwright-report", open: "never" }],
+    ["html", { outputFolder: indexed ? ".local/playwright-report-indexed" : hosted ? ".local/playwright-report-hosted" : ".local/playwright-report", open: "never" }],
   ],
   use: {
     baseURL,
@@ -59,7 +61,7 @@ export default defineConfig({
   projects: indexed ? [
     { name: "indexed-chromium", testMatch: "indexed.spec.ts", use: chromium },
   ] : [
-    { name: "api", testMatch: "api.spec.ts" },
+    { name: "api", testMatch: hosted ? "hosted-api.spec.ts" : "api.spec.ts" },
     {
       name: "chromium",
       testMatch: "app.spec.ts",

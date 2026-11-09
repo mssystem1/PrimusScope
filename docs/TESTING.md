@@ -75,3 +75,24 @@ handoff; they do not establish live-chain indexing or remote database support.
 
 Indexed results are kept separately in `.local/test-results-indexed/` and
 `.local/playwright-report-indexed/`, preserving the recorded-mode reports.
+
+## Hosted deployment
+
+After deploying hosted serving, run:
+
+```sh
+E2E_DATA_MODE=hosted E2E_BASE_URL=https://primus-scope.vercel.app npm run test:e2e
+```
+
+This uses the same desktop/mobile workflows with indexed-mode disclosures and
+coverage-aware API assertions, plus actual hosted database status and CSV checks.
+It never writes to the production database or receives collector credentials.
+Reports use `.local/test-results-hosted/` and `.local/playwright-report-hosted/`.
+The collector must have completed an authorized invocation before this suite:
+the status checks require measured attempts and head comparisons.
+
+Unit integration tests execute real PostgreSQL SQL in PGlite for fenced writes,
+database role permissions and durable job handoff. Native transport tests cover
+response budgets and safe errors; route tests refuse unauthorized work before
+database/RPC setup. These local tests supplement actual Neon/Vercel validation.
+Build both projects with `npm run build` and `npm run build:collector`.

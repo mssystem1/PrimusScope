@@ -1,5 +1,7 @@
 import { resolve } from 'node:path';
 import { SQLiteStore } from '@primusscope/storage';
+import { neonClient, PostgresPublicationStore, type PublishedState } from '@primusscope/storage/postgres';
+import type { HostedPublication } from '@primusscope/storage/publication';
 import { z } from 'zod';
 import {
   DecimalStringSchema, IsoTimestampSchema, ObservationSetSchema, Sha256Schema,
@@ -29,9 +31,12 @@ export const PublicIndexerDomainStatusSchema = z.object({
   retryAfterSeconds: z.number().int().min(0).max(86400).nullable(), nextRetryAt: nullableTime,
 }).strict();
 export const PublicIndexerStatusSchema = z.object({
-  mode: ServingModeSchema, storage: z.enum(['bundled_snapshot', 'local_sqlite']),
+  mode: ServingModeSchema, storage: z.enum(['bundled_snapshot', 'local_sqlite', 'hosted_postgres']),
   publication: z.enum(['available', 'quarantined', 'empty']), snapshotId: Sha256Schema.nullable(),
   continuousWorker: z.literal(false), domains: z.array(PublicIndexerDomainStatusSchema).max(2),
+  collectionMode: z.enum(['manual', 'scheduled']).optional(),
+  intervalMinutes: z.number().int().min(5).max(1440).nullable().optional(),
+  lastRunUrl: z.string().regex(/^https:\/\/github\.com\/mssystem1\/PrimusScope\/actions\/runs\/[0-9]+$/).nullable().optional(),
 }).strict();
 export type PublicIndexerStatus = z.infer<typeof PublicIndexerStatusSchema>;
 export type ServingContext = { mode: ServingMode; indexerStatus: PublicIndexerStatus | null };
@@ -46,13 +51,20 @@ const safeIssueCodes = new Set([
   'FINALIZED_BEHIND_CHECKPOINT', 'NON_CONTIGUOUS_RANGE', 'CHECKPOINT_MISMATCH', 'NO_FINALIZED_HEAD',
   'REQUEST_BUDGET_EXCEEDED', 'REORG_BELOW_CHECKPOINT', 'DECODE_ERROR', 'INCONSISTENT_RESPONSE',
   'INDEXING_FAILED', 'CAPACITY_EXCEEDED', 'REQUEST_LIMIT', 'PROVIDER_ERROR', 'RANGE_INCOMPLETE',
+  'REQUEST_TIMEOUT', 'RATE_LIMITED', 'RPC_ARCHIVE_UNAVAILABLE', 'RPC_RANGE_LIMIT', 'RPC_TRANSPORT_ERROR',
+  'HTTP_FORBIDDEN', 'HTTP_SERVER_ERROR', 'INVALID_RPC_RESPONSE', 'RESPONSE_TOO_LARGE',
+  'RUN_DEADLINE_EXHAUSTED', 'TLS_VERIFICATION_FAILED', 'COOLDOWN_ACTIVE',
+  'CHECKPOINT_HASH_CHANGED', 'CHECKPOINT_TIME_CHANGED', 'IMPLEMENTATION_CHANGED',
+  'RUNTIME_CODE_CHANGED', 'IMPLEMENTATION_CODE_CHANGED', 'IMPLEMENTATION_UPGRADE_IN_RANGE',
+  'RECEIPT_MISMATCH', 'BLOCK_HASH_MISMATCH', 'APPEND_PARENT_MISMATCH', 'WRONG_CHAIN',
+  'FINALIZED_HEAD_BEHIND_CHECKPOINT', 'SINGLE_BLOCK_EVENT_LIMIT', 'EVENT_DECODE_FAILED',
 ]);
 
 /** Configuration-only: no filesystem creation, SQLite open or provider access. */
 export function getServingMode(): ServingMode {
   const value = process.env.PRIMUSSCOPE_DATA_MODE ?? 'recorded';
   if (value === 'recorded') return 'recorded_observations';
-  if (value === 'indexed') return 'indexed_observations';
+  if (value === 'indexed' || value === 'hosted') return 'indexed_observations';
   throw new DataAccessError('UNSUPPORTED_CONFIGURATION', 'The configured observation serving mode is unsupported.', 503);
 }
 
@@ -100,7 +112,10 @@ function publicStatus(raw: ReturnType<SQLiteStore['getStatus']>): PublicIndexerS
 }
 
 /** Status remains readable when publication is quarantined. */
-export function getIndexerStatus(): PublicIndexerStatus {
+export async function getIndexerStatus(): Promise<PublicIndexerStatus> {
+  if (process.env.PRIMUSSCOPE_DATA_MODE === 'hosted') {
+    return hostedStatus((await hostedPublication()).publication);
+  }
   if (getServingMode() === 'recorded_observations') {
     return { mode: 'recorded_observations', storage: 'bundled_snapshot', publication: 'available',
       snapshotId: bundledSnapshot().snapshotId, continuousWorker: false, domains: [] };
@@ -111,9 +126,16 @@ export function getIndexerStatus(): PublicIndexerStatus {
   finally { store.close(); }
 }
 
-export function getServingState(): ServingState {
+export async function getServingState(): Promise<ServingState> {
   const mode = getServingMode();
   if (mode === 'recorded_observations') return { snapshot: bundledSnapshot(), mode, indexerStatus: null };
+  if (process.env.PRIMUSSCOPE_DATA_MODE === 'hosted') {
+    const { publication } = await hostedPublication();
+    const indexerStatus = hostedStatus(publication);
+    if (indexerStatus.publication !== 'available') throw new DataAccessError('PUBLICATION_QUARANTINED',
+      'Indexed observations are awaiting source reconciliation. Inspect indexer status.', 503);
+    return { snapshot: ObservationSetSchema.parse(publication.snapshot), mode, indexerStatus };
+  }
   const store = openReadOnlyStore();
   try {
     const { snapshot, status } = store.readServingState();
@@ -137,4 +159,27 @@ export function getServingState(): ServingState {
   } finally { store.close(); }
 }
 
-export function getObservationSet(): ObservationSet { return getServingState().snapshot; }
+let hostedCache: { connection: string; state: PublishedState } | undefined;
+async function hostedPublication() {
+  const connection = process.env.WEB_DATABASE_URL;
+  if (!connection) throw new DataAccessError('SOURCE_UNAVAILABLE', 'The hosted observation store is not configured.', 503);
+  try {
+    const store = new PostgresPublicationStore(neonClient(connection), true);
+    const cached = hostedCache?.connection === connection ? hostedCache.state : null;
+    if (cached && await store.revision() === cached.revision) return cached;
+    const state = await store.read();
+    if (!state) throw new Error();
+    hostedCache = { connection, state };
+    return state;
+  } catch { throw new DataAccessError('SOURCE_UNAVAILABLE', 'The hosted observation store is unavailable.', 503); }
+}
+
+function hostedStatus(publication: HostedPublication): PublicIndexerStatus {
+  const status = publicStatus({ storage: 'sqlite',
+    publication: publication.checkpoints.some(c => c.quarantined) ? 'quarantined' : 'available',
+    snapshotId: publication.snapshot.snapshotId, domains: publication.checkpoints });
+  return { ...status, storage: 'hosted_postgres', collectionMode: publication.collector.mode,
+    intervalMinutes: publication.collector.intervalMinutes, lastRunUrl: publication.collector.runUrl };
+}
+
+export async function getObservationSet(): Promise<ObservationSet> { return (await getServingState()).snapshot; }

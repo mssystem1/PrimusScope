@@ -92,38 +92,38 @@ export async function GET(request: NextRequest, context: Context) {
     const { segments: parts } = await context.params;
     const path = parts.join("/");
     const url = request.nextUrl;
-    if (path === "overview") { readQuery(url, emptyQuery); return jsonResponse(getOverview()); }
+    if (path === "overview") { readQuery(url, emptyQuery); return jsonResponse(await getOverview()); }
     if (path === "health") {
-      readQuery(url, emptyQuery); const {snapshot,mode} = getServingState();
+      readQuery(url, emptyQuery); const {snapshot,mode} = await getServingState();
       return jsonResponse({status:"snapshot_available",mode,snapshotId:snapshot.snapshotId});
     }
     if (path === "registry/contracts") {
-      readQuery(url, emptyQuery); const {snapshot,mode} = getServingState();
+      readQuery(url, emptyQuery); const {snapshot,mode} = await getServingState();
       return jsonResponse({snapshotId:snapshot.snapshotId,mode,finance:snapshot.finance.contracts,
         network:[{chainId:8453,address:snapshot.network.taskContract}],sources:snapshot.sources});
     }
-    if (path === "finance/vaults") { readQuery(url, emptyQuery); return jsonResponse(getFinanceVaults()); }
+    if (path === "finance/vaults") { readQuery(url, emptyQuery); return jsonResponse(await getFinanceVaults()); }
     if (parts[0] === "finance" && parts[1] === "vaults" && parts.length === 3) {
-      readQuery(url, emptyQuery); return jsonResponse(getFinanceVault(parts[2]));
+      readQuery(url, emptyQuery); return jsonResponse(await getFinanceVault(parts[2]));
     }
     if (parts[0] === "finance" && parts[1] === "vaults" && parts[3] === "batches" && parts.length === 4) {
-      return jsonResponse(getFinanceBatches({...readQuery(url, pageQuery),routeId:parts[2]}));
+      return jsonResponse(await getFinanceBatches({...readQuery(url, pageQuery),routeId:parts[2]}));
     }
     if (parts[0] === "finance" && parts[1] === "batches" && parts.length === 4) {
       readQuery(url, emptyQuery); AddressSchema.parse(parts[2]); DecimalStringSchema.parse(parts[3]);
-      return jsonResponse(getFinanceBatch(parts[2],parts[3]));
+      return jsonResponse(await getFinanceBatch(parts[2],parts[3]));
     }
     if (path === "network/summary") {
       const query = readQuery(url,z.object({chainId:positiveIntegerParameter.optional(),contractAddress:AddressSchema.optional()}).strict());
-      return jsonResponse(getNetworkSummary(query));
+      return jsonResponse(await getNetworkSummary(query));
     }
     if (parts[0] === "network" && parts[1] === "tasks" && parts.length === 5) {
       readQuery(url,emptyQuery);
       const chainId=positiveIntegerParameter.parse(parts[2]);AddressSchema.parse(parts[3]);HashSchema.parse(parts[4]);
-      return jsonResponse(getNetworkTask(chainId,parts[3],parts[4]));
+      return jsonResponse(await getNetworkTask(chainId,parts[3],parts[4]));
     }
-    if (path === "sources" || path === "status/sources") { readQuery(url,emptyQuery);return jsonResponse(getSources()); }
-    if (path === "status/indexer") { readQuery(url,emptyQuery);return jsonResponse(getIndexerStatus()); }
+    if (path === "sources" || path === "status/sources") { readQuery(url,emptyQuery);return jsonResponse(await getSources()); }
+    if (path === "status/indexer") { readQuery(url,emptyQuery);return jsonResponse(await getIndexerStatus()); }
     if (parts[0] === "metrics" && parts[2] === "definition" && parts.length === 3) {
       readQuery(url,emptyQuery);
       if (!Object.hasOwn(definitions,parts[1])) throw new HttpError("NOT_FOUND","No supported metric definition matches that key.",404);
@@ -132,7 +132,7 @@ export async function GET(request: NextRequest, context: Context) {
     }
     if (path === "exports/metrics.csv") {
       const query=readQuery(url,z.object({domain:z.enum(["finance","network"]).optional(),routeId:z.string().min(1).max(100).optional(),contractAddress:AddressSchema.optional()}).strict());
-      return new NextResponse(exportMetricsCsv(query),{headers:{"Content-Type":"text/csv; charset=utf-8",
+      return new NextResponse(await exportMetricsCsv(query),{headers:{"Content-Type":"text/csv; charset=utf-8",
         "Content-Disposition":`attachment; filename="primusscope-${query.domain??"finance"}-observations.csv"`,"Cache-Control":"no-store",
         "X-PrimusScope-Data-Mode":getServingMode().replaceAll("_","-")}});
     }
@@ -147,6 +147,6 @@ export async function POST(request: NextRequest, context: Context) {
     const {segments}=await context.params;
     if (segments.join("/")!=="explore/lookup") throw new HttpError("METHOD_NOT_ALLOWED","This resource accepts read-only GET requests.",405);
     readQuery(request.nextUrl,emptyQuery);
-    return jsonResponse(lookupIdentifier(lookupSchema.parse(await readJson(request))));
+    return jsonResponse(await lookupIdentifier(lookupSchema.parse(await readJson(request))));
   } catch (error) { return errorResponse(error); }
 }

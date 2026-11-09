@@ -3,12 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "workspaces": ["apps/*", "packages/*"],
-  "engines": {"node": ">=24.0.0 <25"},
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
   "packageManager": "npm@11.9.0",
   "scripts": {
     "dev": "npm run dev --workspace @primusscope/web",
     "build": "npm run build --workspace @primusscope/web",
+    "build:collector": "npm run build --workspace @primusscope/collector",
     "start": "npm run start --workspace @primusscope/web",
     "dev:indexed": "tsx scripts/run-indexed-web.ts dev",
     "start:indexed": "tsx scripts/run-indexed-web.ts start",
@@ -20,10 +26,12 @@
     "indexer:init": "tsx apps/worker/src/cli.ts init",
     "indexer:once": "tsx apps/worker/src/cli.ts once",
     "indexer:status": "tsx apps/worker/src/cli.ts status",
+    "indexer:hosted": "node --use-env-proxy --import tsx apps/worker/src/hosted-cli.ts",
     "data:import": "tsx scripts/import-observations.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
+    "@electric-sql/pglite": "0.5.16",
     "@playwright/test": "1.65.0",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",

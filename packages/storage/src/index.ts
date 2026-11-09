@@ -4,7 +4,10 @@ import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { ObservationSetSchema, type ObservationSet } from '@primusscope/api-schema';
 import type { Checkpoint, CompletedRange, Domain, DomainStatus, IndexerStatus, Lease, RunRecord, ServingState } from './types';
+import { StorageError } from './errors';
+import { validatePublication, type HostedPublication } from './publication';
 export type * from './types';
+export { StorageError } from './errors';
 
 const DOMAINS: Domain[] = ['finance', 'network'];
 const HASH = /^0x[0-9a-fA-F]{64}$/;
@@ -21,12 +24,6 @@ const ERROR_CODES = new Set(['RPC_TIMEOUT', 'RPC_RATE_LIMITED', 'REQUEST_BUDGET_
   'IMPLEMENTATION_CODE_CHANGED', 'IMPLEMENTATION_UPGRADE_IN_RANGE', 'EVENT_DECODE_FAILED', 'UNKNOWN_EVENT',
   'INVALID_LOG', 'LOG_OUTSIDE_RANGE', 'CONFLICTING_EVENT', 'DUPLICATE_LOG', 'RECEIPT_MISMATCH',
   'BLOCK_HASH_MISMATCH', 'APPEND_PARENT_MISMATCH', 'SOURCE_QUARANTINED', 'SINGLE_BLOCK_EVENT_LIMIT', 'INDEXER_FAILED']);
-
-export class StorageError extends Error {
-  constructor(public readonly code: string, message = 'The indexed observation store is unavailable.') {
-    super(message); this.name = 'StorageError';
-  }
-}
 
 type Row = Record<string, unknown>;
 export type StoreOptions = { readOnly?: boolean; clock?: () => Date };
@@ -373,5 +370,28 @@ export class SQLiteStore {
     return this.transaction(() => ({ snapshot: this.currentSnapshot(), status: this.status() }), false);
   }
   readSnapshot(): ObservationSet { return this.readServingState().snapshot; }
+
+  /** Worker-only transfer: includes the last validated facts during quarantine. */
+  exportPublication(collector: HostedPublication['collector'] = { mode: 'manual', intervalMinutes: null, runUrl: null }): HostedPublication {
+    return this.transaction(() => validatePublication({ schemaVersion: '1.0.0',
+      snapshot: this.currentSnapshot(true), checkpoints: this.status().domains, collector }), false);
+  }
+
+  /** Restore a published checkpoint into a fresh, private job-local database. */
+  restorePublication(input: HostedPublication): void {
+    const value = validatePublication(input);
+    if (this.getStatus().publication !== 'empty') throw new StorageError('ALREADY_INITIALIZED');
+    const byDomain = (domain: Domain) => value.checkpoints.find(c => c.domain === domain)!;
+    this.initialize(value.snapshot, { finance: byDomain('finance').blockHash, network: byDomain('network').blockHash });
+    this.transaction(() => {
+      for (const c of value.checkpoints) {
+        this.db.prepare(`UPDATE checkpoints SET quarantined=?,last_attempt_at=?,last_success_at=?,last_outcome=?,
+          last_error_code=?,target_finalized_block=?,source_as_of=?,as_observed_at=?,retry_after_seconds=?,next_retry_at=? WHERE domain=?`)
+          .run(c.quarantined ? 1 : 0, c.lastAttemptAt, c.lastSuccessAt, c.lastOutcome, c.lastErrorCode,
+            c.targetFinalizedBlock, c.sourceAsOf, c.asObservedAt, c.retryAfterSeconds, c.nextRetryAt, c.domain);
+      }
+      if (value.checkpoints.some(c => c.quarantined)) this.db.prepare('UPDATE snapshots SET valid=0').run();
+    });
+  }
   close(): void { this.db.close(); }
 }

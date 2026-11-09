@@ -4,8 +4,8 @@ Independent analytics for the Primus ecosystem: Confidential Finance, zkTLS
 Network, public task exploration, developer interfaces and a personal workspace.
 
 The application defaults to **recorded, source-traceable observations**. An
-optional local indexed mode reads a persistent SQLite store updated by bounded,
-incremental worker jobs. Finance covers four registered aggregators on BNB Smart
+optional indexed modes read local SQLite or a hosted PostgreSQL publication
+updated by bounded incremental jobs. Finance covers four registered aggregators on BNB Smart
 Chain (chain 56); the separate Network sample covers one task contract on Base
 (chain 8453). Every dataset carries its contract and block scope, observation time
 and source. Private balances, yield, TVL and cryptographic proof checks remain
@@ -51,6 +51,10 @@ managed cloud settings. A completed worker range becomes visible on the next
 request. The Sources page distinguishes validated coverage, collector attempts,
 provider-finalized targets, lag and retry timing.
 
+The hosted deployment uses read-only PostgreSQL serving and a separate scheduled
+collector. See [HOSTED_INDEXER.md](docs/HOSTED_INDEXER.md) for permissions,
+15-minute collection, failure behavior and capacity limits.
+
 ## Application and API
 
 - `/`: ecosystem overview with separate Finance and Network scopes.
@@ -70,7 +74,7 @@ CSV exports preserve event
 identity, filters and provenance. Unknown records are described within the
 recorded scope, without claiming a proof or transaction is invalid.
 
-The code is split into `apps/web`, `apps/worker`, `packages/api-schema`,
+The code is split into `apps/web`, `apps/worker`, `apps/collector`, `packages/api-schema`,
 `packages/data` and `packages/storage`.
 The shared strict schemas reject unsupported private fields. The data repository
 keeps source scope, native contract state and observed events separate. Local
@@ -87,8 +91,8 @@ The current implemented scope and verified results are recorded in
 [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md).
 
 The [planning package](docs/planning/README.md) defines the wider product and
-implementation sequence. Hosted persistent ingestion, official SDK verification,
-private wallet authorization and Vercel deployment remain later stages. SQLite
-indexed mode is local; Vercel needs an external durable serving adapter.
+implementation sequence. Official SDK verification, private wallet authorization,
+broader history and provider backup/restore drills remain later stages. SQLite
+indexed mode is local; Vercel uses the external PostgreSQL serving adapter.
 [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md) records configuration needs. Local
 validation does not replace tests against a deployed Vercel instance.

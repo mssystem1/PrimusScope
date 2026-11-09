@@ -4,7 +4,8 @@ The local application and a durable incremental indexing slice are implemented
 and validated. Default recorded mode uses retained observations; optional local
 indexed mode reads completed worker publications from SQLite without a rebuild.
 Both modes preserve explicit contract/block coverage and source times. A hosted
-continuous feed and production launch remain outstanding.
+PostgreSQL adapter and scheduled Vercel collector are now implemented, with
+deployment-specific validation tracked separately from local results.
 
 ## Working scope
 
@@ -31,7 +32,8 @@ continuous feed and production launch remain outstanding.
 ## Validation evidence
 
 The final production build and `npm run typecheck` pass. `npm test` passes
-**131 tests** across schema, data, HTTP-helper, API-route, SQLite and worker checks.
+**151 tests** across schema, data, HTTP-helper, API-route, SQLite, PostgreSQL role/
+lease/publication, hosted recovery, transport and worker checks.
 
 Production-server Playwright runs pass **30 of 30 tests**: the original 25
 recorded-mode checks plus five isolated indexed-mode workflows.
@@ -80,9 +82,10 @@ implementation interval or independent consensus.
 
 ## Remaining product work
 
-1. Provision hosted durable serving storage and a scheduled worker, with tested
-   backup/restore, capacity/retention and operational recovery. Local SQLite is
-   intentionally refused as a Vercel persistence configuration.
+1. Rehearse provider backup/restore, establish capacity/retention and expand
+   operational recovery for the hosted publication. The PostgreSQL adapter and
+   15-minute collector are implemented; local SQLite remains intentionally
+   refused as a Vercel persistence configuration.
 2. Establish deployment/history boundaries, production provider policies and
    independent reconciliation. Expand coverage only with validated sources.
 3. Build authentic official SDK verification/diagnostic workflows with explicit
@@ -90,11 +93,12 @@ implementation interval or independent consensus.
    executed integrations or telemetry.
 4. Add useful history, filters and saved-view changes based on the indexed data.
    Private positions and authoritative yield remain gated by their integrations.
-5. Configure the selected production services in one deployment batch, deploy to
-   Vercel and repeat API/UI/workflow/E2E checks against its actual HTTPS URL.
+5. Keep API/UI/workflow/E2E checks against the actual HTTPS deployment distinct
+   from local fixture results, including collection advancing without a rebuild.
 
 The local milestones above preceded deployment. Source is now published in
 `mssystem1/PrimusScope`, and the recorded observation application is deployed at
 **https://primus-scope.vercel.app**. See [DEPLOYMENT.md](DEPLOYMENT.md) for project
-configuration and deployed-test procedures. Hosted continuous ingestion remains
-a separate launch gate. Managed cloud environment settings were not republished.
+configuration and deployed-test procedures, and [HOSTED_INDEXER.md](HOSTED_INDEXER.md)
+for the scoped hosted implementation and its limits. Managed cloud environment
+settings were not republished.

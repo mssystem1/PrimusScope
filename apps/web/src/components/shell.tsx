@@ -71,7 +71,7 @@ export function AppShell({ children, mode = "recorded_observations" }: { childre
       <header className="topbar">
         <button ref={menuRef} className="mobile-menu icon-button" aria-label={open ? "Close navigation" : "Open navigation"} aria-expanded={open} aria-controls="main-navigation" onClick={() => setOpen(!open)}>{open ? <X size={20} /> : <Menu size={20} />}</button>
         <div className="breadcrumb"><span>Primus ecosystem</span><ChevronRight size={12} /><strong>{current?.label ?? "Explorer"}</strong></div>
-        <div className="topbar-actions"><Link className="global-search" href="/explore" aria-label="Search observations"><Search size={15} /><span>Search observations</span></Link><Link className="snapshot-pill" href="/sources"><span className="status-dot amber" /><span>{mode === "indexed_observations" ? "Local indexed data" : mode === "unavailable" ? "Data unavailable" : "Recorded observations"}</span></Link></div>
+        <div className="topbar-actions"><Link className="global-search" href="/explore" aria-label="Search observations"><Search size={15} /><span>Search observations</span></Link><Link className="snapshot-pill" href="/sources"><span className="status-dot amber" /><span>{mode === "indexed_observations" ? "Indexed observations" : mode === "unavailable" ? "Data unavailable" : "Recorded observations"}</span></Link></div>
       </header>
       <main id="main-content" tabIndex={-1}>{children}</main>
       <footer className="app-footer"><span>Independent analytics for the Primus ecosystem.</span><Link href="/sources">Every number has a source <ArrowUpRight size={12} /></Link></footer>

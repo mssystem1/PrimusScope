@@ -1,11 +1,14 @@
-import { getIndexerStatus, getServingState } from "@primusscope/data";
+import { DataAccessError, getIndexerStatus, getServingState } from "@primusscope/data";
 import { SourcesUnavailableView, SourcesView } from "../../components/data-ui";
 
 export default async function SourcesPage() {
-  const indexerStatus = await getIndexerStatus();
-  if (indexerStatus.mode === "indexed_observations" && indexerStatus.publication !== "available") {
-    return <SourcesUnavailableView status={indexerStatus} />;
+  try {
+    const { snapshot, mode, indexerStatus } = await getServingState();
+    return <SourcesView snapshot={snapshot} mode={mode} indexerStatus={indexerStatus ?? await getIndexerStatus()} />;
+  } catch (error) {
+    if (error instanceof DataAccessError && error.code === 'PUBLICATION_QUARANTINED') {
+      return <SourcesUnavailableView status={await getIndexerStatus()} />;
+    }
+    throw error;
   }
-  const { snapshot, mode } = await getServingState();
-  return <SourcesView snapshot={snapshot} mode={mode} indexerStatus={indexerStatus} />;
 }

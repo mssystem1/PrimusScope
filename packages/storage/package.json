@@ -1,1 +1,1 @@
-{"name":"@primusscope/storage","version":"0.1.0","private":true,"type":"module","exports":"./src/index.ts","dependencies":{"@primusscope/api-schema":"0.1.0"}}
+{"name":"@primusscope/storage","version":"0.1.0","private":true,"type":"module","exports":{".":"./src/index.ts","./postgres":"./src/postgres.ts","./publication":"./src/publication.ts","./roles":"./src/roles.ts"},"dependencies":{"@primusscope/api-schema":"0.1.0","@neondatabase/serverless":"1.2.0","zod":"4.6.7"}}

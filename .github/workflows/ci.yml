@@ -34,6 +34,7 @@ jobs:
       - run: npm test
       - run: npm run test:discovery
       - run: npm run build
+      - run: npm run build:collector
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - run: npm run test:e2e:indexed

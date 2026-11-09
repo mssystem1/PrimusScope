@@ -28,17 +28,17 @@ export type Freshness = {
   staleAfterSeconds: number;
 };
 
-export function getFreshness(coverage: Coverage, now = new Date(), mode: ServingMode = 'recorded_observations'): Freshness {
+export function getFreshness(coverage: Coverage, now = new Date(), mode: ServingMode = 'recorded_observations', staleAfterSeconds = FRESHNESS_SECONDS): Freshness {
   const seconds = (now.getTime() - new Date(coverage.observedAt).getTime()) / 1000;
   if (!Number.isFinite(seconds)) throw new DataAccessError('INVALID_TIME', 'A valid observation clock is required.');
   return {
     mode,
-    state: seconds < -30 ? 'clock_skew' : seconds > FRESHNESS_SECONDS ? 'stale'
+    state: seconds < -30 ? 'clock_skew' : seconds > staleAfterSeconds ? 'stale'
       : mode === 'indexed_observations' ? 'fresh' : 'recorded',
     observedAt: coverage.observedAt,
     sourceAsOf: coverage.toTime,
     ageSeconds: String(Math.max(0, Math.floor(seconds))),
-    staleAfterSeconds: FRESHNESS_SECONDS,
+    staleAfterSeconds,
   };
 }
 
@@ -219,11 +219,13 @@ export function createRepository(input: ObservationSet, clock: () => Date = () =
     snapshotId: snapshot.snapshotId, mode: context.mode, generatedAt: snapshot.generatedAt,
     ...(context.indexerStatus ? { indexerStatus: context.indexerStatus } : {}),
   });
+  const staleWindow = context.indexerStatus?.collectionMode === 'scheduled' && context.indexerStatus.intervalMinutes
+    ? context.indexerStatus.intervalMinutes * 120 + 120 : FRESHNESS_SECONDS;
   const financeMetadata = () => ({
-    coverage: snapshot.finance.coverage, freshness: getFreshness(snapshot.finance.coverage, clock(), context.mode),
+    coverage: snapshot.finance.coverage, freshness: getFreshness(snapshot.finance.coverage, clock(), context.mode, staleWindow),
   });
   const networkMetadata = () => ({
-    coverage: snapshot.network.coverage, freshness: getFreshness(snapshot.network.coverage, clock(), context.mode),
+    coverage: snapshot.network.coverage, freshness: getFreshness(snapshot.network.coverage, clock(), context.mode, staleWindow),
   });
 
   function financeSelection(options: Pick<FinanceBatchFilters, 'routeId' | 'contractAddress'> = {}) {
@@ -259,7 +261,7 @@ export function createRepository(input: ObservationSet, clock: () => Date = () =
           ...source,
           status: coverage.length ? context.mode === 'indexed_observations' ? 'indexed' : 'recorded' : 'reference',
           coverage,
-          observations: coverage.map(scope => ({ chainId: scope.chainId, ...getFreshness(scope, clock(), context.mode) })),
+          observations: coverage.map(scope => ({ chainId: scope.chainId, ...getFreshness(scope, clock(), context.mode, staleWindow) })),
         };
       }),
     };
@@ -480,17 +482,17 @@ export function createRepository(input: ObservationSet, clock: () => Date = () =
   };
 }
 
-const repository = () => {
-  const { snapshot, ...context } = getServingState();
+const repository = async () => {
+  const { snapshot, ...context } = await getServingState();
   return createRepository(snapshot, () => new Date(), context);
 };
-export const getOverview = () => repository().getOverview();
-export const getSources = () => repository().getSources();
-export const getFinanceVaults = () => repository().getFinanceVaults();
-export const getFinanceVault = (routeId: string) => repository().getFinanceVault(routeId);
-export const getFinanceBatches = (options: FinanceBatchFilters = {}) => repository().getFinanceBatches(options);
-export const getFinanceBatch = (contractAddress: string, batchId: string) => repository().getFinanceBatch(contractAddress, batchId);
-export const getNetworkSummary = (options: { chainId?: number; contractAddress?: string } = {}) => repository().getNetworkSummary(options);
-export const getNetworkTask = (chainId: number, contractAddress: string, taskId: string) => repository().getNetworkTask(chainId, contractAddress, taskId);
-export const lookupIdentifier = (input: LookupInput) => repository().lookupIdentifier(input);
-export const exportMetricsCsv = (options: { domain?: 'finance' | 'network'; routeId?: string; contractAddress?: string } = {}) => repository().exportMetricsCsv(options);
+export const getOverview = async () => (await repository()).getOverview();
+export const getSources = async () => (await repository()).getSources();
+export const getFinanceVaults = async () => (await repository()).getFinanceVaults();
+export const getFinanceVault = async (routeId: string) => (await repository()).getFinanceVault(routeId);
+export const getFinanceBatches = async (options: FinanceBatchFilters = {}) => (await repository()).getFinanceBatches(options);
+export const getFinanceBatch = async (contractAddress: string, batchId: string) => (await repository()).getFinanceBatch(contractAddress, batchId);
+export const getNetworkSummary = async (options: { chainId?: number; contractAddress?: string } = {}) => (await repository()).getNetworkSummary(options);
+export const getNetworkTask = async (chainId: number, contractAddress: string, taskId: string) => (await repository()).getNetworkTask(chainId, contractAddress, taskId);
+export const lookupIdentifier = async (input: LookupInput) => (await repository()).lookupIdentifier(input);
+export const exportMetricsCsv = async (options: { domain?: 'finance' | 'network'; routeId?: string; contractAddress?: string } = {}) => (await repository()).exportMetricsCsv(options);

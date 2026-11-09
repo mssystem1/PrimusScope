@@ -1,11 +1,13 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
 import { absentTaskId, financeRouteIds, knownTask, knownTaskPath } from "./fixtures";
+const hosted = process.env.E2E_DATA_MODE === 'hosted';
+const modeLabel = hosted ? 'Indexed observations' : 'Recorded observations';
 
 test("anonymous public pages show honest recorded scope and usable navigation", async ({ page }, testInfo) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Ecosystem overview", exact: true })).toBeVisible();
-  await expect(page.getByText("Recorded observations", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(modeLabel, { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible();
   await expect(page.getByRole("button", { name: /^connect wallet$/i })).toHaveCount(0);
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -23,7 +25,7 @@ test("anonymous public pages show honest recorded scope and usable navigation", 
   ]) {
     await page.goto(path);
     await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
-    await expect(page.getByText("Recorded observations", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText(modeLabel, { exact: true }).first()).toBeVisible();
     await expect(page.getByRole("button", { name: /^connect wallet$/i })).toHaveCount(0);
   }
 });
@@ -91,7 +93,8 @@ test("vault analytics opens a contract-scoped public batch and preserves export 
   const response = await request.get(`/api/v1${routePath}/batches`);
   expect(response.status()).toBe(200);
   const batches = await response.json();
-  expect(batches.items).toHaveLength(3);
+  if (hosted) expect(batches.items.length).toBeGreaterThanOrEqual(3);
+  else expect(batches.items).toHaveLength(3);
   const batch = batches.items[0];
 
   await page.goto("/finance");
@@ -162,10 +165,15 @@ test("developer playground runs the real anonymous snapshot API", async ({ page 
   await page.getByLabel("API endpoint").selectOption("/api/v1/overview");
   await page.getByRole("button", { name: "Run request", exact: true }).click();
   const response = page.getByLabel("API response");
-  await expect(response).toContainText('"mode": "recorded_observations"');
+  await expect(response).toContainText(`"mode": "${hosted ? 'indexed_observations' : 'recorded_observations'}"`);
   const body = JSON.parse(await response.innerText());
-  expect(body.finance.eventCount).toBe(9);
-  expect(body.network.requestCount).toBe(116);
+  if (hosted) {
+    expect(body.finance.eventCount).toBeGreaterThanOrEqual(9);
+    expect(body.network.requestCount).toBeGreaterThanOrEqual(116);
+  } else {
+    expect(body.finance.eventCount).toBe(9);
+    expect(body.network.requestCount).toBe(116);
+  }
   expect(body.network.verifiedProofCount).toBeNull();
   expect(await response.innerText()).not.toContain("ETHERSCAN_API_KEY");
 });
