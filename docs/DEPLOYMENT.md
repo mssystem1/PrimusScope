@@ -14,7 +14,8 @@ packages and the recorded artifact are required during the build.
 Use Node 24 and the settings in `apps/web/vercel.json`:
 
 - Framework: Next.js.
-- Install: `npm ci`, using the repository workspace lockfile.
+- Install: `npm ci --include=dev --workspaces --include-workspace-root`, using the
+  repository workspace lockfile and root TypeScript/build dependencies.
 - Build: `npm run build` in the web workspace.
 - Output: `.next`.
 - Serving mode: `PRIMUSSCOPE_DATA_MODE=recorded`.
