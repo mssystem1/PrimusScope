@@ -1,0 +1,113 @@
+{
+  "schemaVersion": "1.0.0",
+  "reviewStatus": "source_documented_runtime_unverified",
+  "reviewedAt": "2026-11-08",
+  "chainId": 8453,
+  "chainName": "Base mainnet",
+  "environment": "mainnet",
+  "contractRole": "primus_network_task",
+  "address": "0x151cb5eD5D10A42B607bB172B27BDF6F884b9707",
+  "deploymentBlock": null,
+  "proxyType": null,
+  "implementationAddress": null,
+  "runtimeBytecodeSha256": null,
+  "abiValidFromBlock": null,
+  "abiValidToBlock": null,
+  "upstream": {
+    "repository": "primus-labs/network-core-sdk",
+    "commit": "ec157e816d108a6fabdd42cb3a83375618c217e0",
+    "abiPath": "src/config/taskAbi.json",
+    "abiUrl": "https://github.com/primus-labs/network-core-sdk/blob/ec157e816d108a6fabdd42cb3a83375618c217e0/src/config/taskAbi.json",
+    "rawAbiUrl": "https://raw.githubusercontent.com/primus-labs/network-core-sdk/ec157e816d108a6fabdd42cb3a83375618c217e0/src/config/taskAbi.json",
+    "abiSha256": "08928fe658dcfeeb26c32a125deafd64d5edb4eb3e42bd0ae8bf824f52867382",
+    "addressSourceUrl": "https://github.com/primus-labs/network-core-sdk/blob/ec157e816d108a6fabdd42cb3a83375618c217e0/src/config/constants.ts#L53-L62",
+    "statusEnumSourceUrl": "https://github.com/primus-labs/network-core-sdk/blob/ec157e816d108a6fabdd42cb3a83375618c217e0/src/types/index.ts#L140-L145"
+  },
+  "selectedAbi": {
+    "path": "base-task-abi.json",
+    "sha256": "ae16dd8f4d7f3dd5ffed3b1c8208f6e1cf4ae44157edc6b3185b3f1440019ed8",
+    "selectionRule": "Exact upstream ABI entries for SubmitTask, ReportResult, WithdrawBalance, CallbackFailed, queryTask, taskTimeout; upstream entry order preserved; no example event or task-result payloads."
+  },
+  "hashAlgorithm": {
+    "eventTopicAndFunctionSelector": "Ethereum Keccak-256 (not FIPS SHA3-256)",
+    "artifactIntegrity": "SHA-256 over exact UTF-8 file bytes including trailing newline",
+    "generator": "ethereum-cryptography@3.2.0; verified empty Keccak-256 and transfer(address,uint256) selector vectors"
+  },
+  "taskIdentity": [
+    "chainId",
+    "taskContractAddress",
+    "taskId"
+  ],
+  "taskIdType": "bytes32",
+  "events": [
+    {
+      "name": "CallbackFailed",
+      "signature": "CallbackFailed(bytes32,address,string)",
+      "topic0": "0x58a5347ef2b6c6fcc342cf2326c32d04d662829bb952a924df81526f75ec629b",
+      "indexedInputs": []
+    },
+    {
+      "name": "ReportResult",
+      "signature": "ReportResult(address,bytes32,address,uint8,uint256,uint256)",
+      "topic0": "0x8e39e54c388e18cba72d2953a65d1da25bde1e84e73ae36ae0ac5f767a4dc75e",
+      "indexedInputs": [
+        "attestor"
+      ]
+    },
+    {
+      "name": "SubmitTask",
+      "signature": "SubmitTask(address,bytes32,string,address[],uint64)",
+      "topic0": "0xd79c94fb0dcc230bf7d69e707071ada28084c2fd199e45006d7176d6d0e601c5",
+      "indexedInputs": [
+        "submitter"
+      ]
+    },
+    {
+      "name": "WithdrawBalance",
+      "signature": "WithdrawBalance(address,uint8,uint256,bytes32[],uint8[])",
+      "topic0": "0x2c351a26560b62f2c3d0fd258267d84e764ef58e43fc706372233c77b04b1ba4",
+      "indexedInputs": [
+        "user"
+      ]
+    }
+  ],
+  "reads": [
+    {
+      "name": "queryTask",
+      "signature": "queryTask(bytes32)",
+      "selector": "0x8d3943ec",
+      "stateMutability": "view"
+    },
+    {
+      "name": "taskTimeout",
+      "signature": "taskTimeout()",
+      "selector": "0x9d5ef8a0",
+      "stateMutability": "view"
+    }
+  ],
+  "sourceDocumentedTaskStatuses": {
+    "0": "INIT",
+    "1": "SUCCESS",
+    "2": "PARTIAL_SUCCESS",
+    "3": "PARTIAL_SUCCESS_SETTLED",
+    "4": "FAILED"
+  },
+  "queryTaskStatusOutput": {
+    "outputTupleName": "taskInfo",
+    "componentName": "taskStatus",
+    "componentIndex": 7,
+    "type": "uint8",
+    "note": "Index is from this pinned ABI, not the SDK TypeScript interface member ordering. Do not log/store the full queryTask response or taskResults."
+  },
+  "limitations": [
+    "This registry is a discovery seed from official source, not runtime or deployment approval.",
+    "No live RPC, explorer, bytecode, proxy implementation, deployment block, finality, event activity, fee semantics or historical compatibility has been verified.",
+    "The Base address is a zkTLS network task contract, not a confidential-finance vault or FHE contract.",
+    "SubmitTask creates one task with potentially multiple attestors. ReportResult is per-attestor and has no task-success field.",
+    "CallbackFailed is callback execution failure, not proof or task failure. WithdrawBalance can settle multiple task IDs.",
+    "Native task status and cryptographic proof validity are different. Status interpretation requires runtime-supported ABI and validated semantics.",
+    "QueryTask ABI necessarily describes attestation output fields; this fixture includes schema only, no live taskResults or confidential example arguments. Discovery output must allowlist safe metadata and exclude request/header/body/data/attConditions/additionParams/templateId/callback reason and full taskResults.",
+    "Non-indexed dynamic fields must not be treated as safe analytics payloads merely because they are on-chain.",
+    "Selected ABI excludes every value-moving function. No transaction generation or signing is provided."
+  ]
+}

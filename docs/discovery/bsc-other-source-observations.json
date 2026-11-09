@@ -1,0 +1,285 @@
+{
+  "chainId": 56,
+  "provider": "Etherscan V2",
+  "capturedAtUtc": "2026-11-08T20:17:38.759155+00:00",
+  "scope": "remaining_three_finance_aggregators_source_metadata_only",
+  "productionReadiness": "not_established",
+  "contracts": [
+    {
+      "route": "united-stables-confidential-vault",
+      "role": "redeem",
+      "address": "0xbef1366512ffff33cdd6c48d66e48d33c6dbca22",
+      "proxySource": {
+        "address": "0xbef1366512ffff33cdd6c48d66e48d33c6dbca22",
+        "reportedContractName": "ERC1967Proxy",
+        "sourceCodeSha256": "6cbfa9b9eecd2e087701b4ebf5233680006a499297852b06de4e08fcd88e8347",
+        "abiSha256": "c2378803cfdf078d5a2786affbe40163e27d43d98be9149ba90c077ea028c0c6",
+        "abiEntryCount": 7,
+        "evidence": "explorer_verified_source_metadata; deployed bytecode not independently checked"
+      },
+      "implementationSource": {
+        "address": "0xa2652e6c1a825a18567fa670ff9b4416039aad46",
+        "reportedContractName": "UnitasRedeemAggregatorConfidential",
+        "sourceCodeSha256": "9f0559aa6cbabd4f2e738637d1f9d717b6cbcf54511be5c637077bc52d95805b",
+        "abiSha256": "0787c7edbc281b4ae19e9aac6813ce64b476c95e96ecd19cfb092ecbf15da889",
+        "abiEntryCount": 117,
+        "evidence": "explorer_verified_source_metadata; deployed bytecode not independently checked"
+      },
+      "matchedEvents": [
+        {
+          "name": "AggregateCanceled",
+          "signature": "AggregateCanceled(uint256)",
+          "topic0": "0xec99e80db77882837230ee3ce612e904757d54ec537eab1ce6caa1a4e2c4b5ed",
+          "batchIdLocation": {
+            "kind": "topic",
+            "index": 1
+          },
+          "topicCount": 2,
+          "dataWords": 0
+        },
+        {
+          "name": "AggregateDispatched",
+          "signature": "AggregateDispatched(uint256)",
+          "topic0": "0x658bd00a36f3e758d6ed0a952bc79f9f0ba11cfc5ffb2a6864a8bac34156c2d7",
+          "batchIdLocation": {
+            "kind": "topic",
+            "index": 1
+          },
+          "topicCount": 2,
+          "dataWords": 0
+        },
+        {
+          "name": "AggregateFinalized",
+          "signature": "AggregateFinalized(uint256,uint64)",
+          "topic0": "0x2927531db3dd6f4bd82feee5b3ea6cc8b9e5a0ebfb8c88460c3cde3e0979a6b5",
+          "batchIdLocation": {
+            "kind": "topic",
+            "index": 1
+          },
+          "topicCount": 2,
+          "dataWords": 1
+        },
+        {
+          "name": "Recovered",
+          "signature": "Recovered(uint256,bool)",
+          "topic0": "0x4ccb5df353b4ac26c0c5735489e945cfb5ef5d51b1c3d1bfa633b6724d7e0cec",
+          "batchIdLocation": {
+            "kind": "topic",
+            "index": 1
+          },
+          "topicCount": 2,
+          "dataWords": 1
+        },
+        {
+          "name": "StepAdvanced",
+          "signature": "StepAdvanced(uint256,uint8)",
+          "topic0": "0xcced224352951f7e6930bc3adcd8b5b33807e3421404493b05113068c7a074c8",
+          "batchIdLocation": {
+            "kind": "topic",
+            "index": 1
+          },
+          "topicCount": 2,
+          "dataWords": 1
+        }
+      ],
+      "status": "source_metadata_observed"
+    },
+    {
+      "route": "encrypted-usdt-confidential-vault",
+      "role": "deposit",
+      "address": "0xe76f5202ef8eeb462ec784fe51d69e9a8a0b56c1",
+      "proxySource": {
+        "address": "0xe76f5202ef8eeb462ec784fe51d69e9a8a0b56c1",
+        "reportedContractName": "ERC1967Proxy",
+        "sourceCodeSha256": "6cbfa9b9eecd2e087701b4ebf5233680006a499297852b06de4e08fcd88e8347",
+        "abiSha256": "c2378803cfdf078d5a2786affbe40163e27d43d98be9149ba90c077ea028c0c6",
+        "abiEntryCount": 7,
+        "evidence": "explorer_verified_source_metadata; deployed bytecode not independently checked"
+      },
+      "implementationSource": {
+        "address": "0x8b6213044534be95c7d889594cedaaee7757c29d",
+        "reportedContractName": "UnitasMintAggregatorConfidential",
+        "sourceCodeSha256": "e62d95a303aa2e4b39b9e28ec0c4265f5fc2f6d35f3d7affc689f225e5cf4073",
+        "abiSha256": "a0567f9b97132c77ec8938587cee8e3d5f5889220ca904c0b8a84f4a1f893169",
+        "abiEntryCount": 117,
+        "evidence": "explorer_verified_source_metadata; deployed bytecode not independently checked"
+      },
+      "matchedEvents": [
+        {
+          "name": "AggregateCanceled",
+          "signature": "AggregateCanceled(uint256)",
+          "topic0": "0xec99e80db77882837230ee3ce612e904757d54ec537eab1ce6caa1a4e2c4b5ed",
+          "batchIdLocation": {
+            "kind": "topic",
+            "index": 1
+          },
+          "topicCount": 2,
+          "dataWords": 0
+        },
+        {
+          "name": "AggregateDispatched",
+          "signature": "AggregateDispatched(uint256)",
+          "topic0": "0x658bd00a36f3e758d6ed0a952bc79f9f0ba11cfc5ffb2a6864a8bac34156c2d7",
+          "batchIdLocation": {
+            "kind": "topic",
+            "index": 1
+          },
+          "topicCount": 2,
+          "dataWords": 0
+        },
+        {
+          "name": "AggregateFinalized",
+          "signature": "AggregateFinalized(uint256,uint64)",
+          "topic0": "0x2927531db3dd6f4bd82feee5b3ea6cc8b9e5a0ebfb8c88460c3cde3e0979a6b5",
+          "batchIdLocation": {
+            "kind": "topic",
+            "index": 1
+          },
+          "topicCount": 2,
+          "dataWords": 1
+        },
+        {
+          "name": "Recovered",
+          "signature": "Recovered(uint256,bool)",
+          "topic0": "0x4ccb5df353b4ac26c0c5735489e945cfb5ef5d51b1c3d1bfa633b6724d7e0cec",
+          "batchIdLocation": {
+            "kind": "topic",
+            "index": 1
+          },
+          "topicCount": 2,
+          "dataWords": 1
+        },
+        {
+          "name": "StepAdvanced",
+          "signature": "StepAdvanced(uint256,uint8)",
+          "topic0": "0xcced224352951f7e6930bc3adcd8b5b33807e3421404493b05113068c7a074c8",
+          "batchIdLocation": {
+            "kind": "topic",
+            "index": 1
+          },
+          "topicCount": 2,
+          "dataWords": 1
+        }
+      ],
+      "status": "source_metadata_observed"
+    },
+    {
+      "route": "encrypted-usdt-confidential-vault",
+      "role": "redeem",
+      "address": "0x485dbfd90ddf92e009438ff49b1918c6636a8f89",
+      "proxySource": {
+        "address": "0x485dbfd90ddf92e009438ff49b1918c6636a8f89",
+        "reportedContractName": "ERC1967Proxy",
+        "sourceCodeSha256": "6cbfa9b9eecd2e087701b4ebf5233680006a499297852b06de4e08fcd88e8347",
+        "abiSha256": "c2378803cfdf078d5a2786affbe40163e27d43d98be9149ba90c077ea028c0c6",
+        "abiEntryCount": 7,
+        "evidence": "explorer_verified_source_metadata; deployed bytecode not independently checked"
+      },
+      "implementationSource": {
+        "address": "0xa2652e6c1a825a18567fa670ff9b4416039aad46",
+        "reportedContractName": "UnitasRedeemAggregatorConfidential",
+        "sourceCodeSha256": "9f0559aa6cbabd4f2e738637d1f9d717b6cbcf54511be5c637077bc52d95805b",
+        "abiSha256": "0787c7edbc281b4ae19e9aac6813ce64b476c95e96ecd19cfb092ecbf15da889",
+        "abiEntryCount": 117,
+        "evidence": "explorer_verified_source_metadata; deployed bytecode not independently checked"
+      },
+      "matchedEvents": [
+        {
+          "name": "AggregateCanceled",
+          "signature": "AggregateCanceled(uint256)",
+          "topic0": "0xec99e80db77882837230ee3ce612e904757d54ec537eab1ce6caa1a4e2c4b5ed",
+          "batchIdLocation": {
+            "kind": "topic",
+            "index": 1
+          },
+          "topicCount": 2,
+          "dataWords": 0
+        },
+        {
+          "name": "AggregateDispatched",
+          "signature": "AggregateDispatched(uint256)",
+          "topic0": "0x658bd00a36f3e758d6ed0a952bc79f9f0ba11cfc5ffb2a6864a8bac34156c2d7",
+          "batchIdLocation": {
+            "kind": "topic",
+            "index": 1
+          },
+          "topicCount": 2,
+          "dataWords": 0
+        },
+        {
+          "name": "AggregateFinalized",
+          "signature": "AggregateFinalized(uint256,uint64)",
+          "topic0": "0x2927531db3dd6f4bd82feee5b3ea6cc8b9e5a0ebfb8c88460c3cde3e0979a6b5",
+          "batchIdLocation": {
+            "kind": "topic",
+            "index": 1
+          },
+          "topicCount": 2,
+          "dataWords": 1
+        },
+        {
+          "name": "Recovered",
+          "signature": "Recovered(uint256,bool)",
+          "topic0": "0x4ccb5df353b4ac26c0c5735489e945cfb5ef5d51b1c3d1bfa633b6724d7e0cec",
+          "batchIdLocation": {
+            "kind": "topic",
+            "index": 1
+          },
+          "topicCount": 2,
+          "dataWords": 1
+        },
+        {
+          "name": "StepAdvanced",
+          "signature": "StepAdvanced(uint256,uint8)",
+          "topic0": "0xcced224352951f7e6930bc3adcd8b5b33807e3421404493b05113068c7a074c8",
+          "batchIdLocation": {
+            "kind": "topic",
+            "index": 1
+          },
+          "topicCount": 2,
+          "dataWords": 1
+        }
+      ],
+      "status": "source_metadata_observed"
+    }
+  ],
+  "requestCount": 6,
+  "requestLedger": [
+    {
+      "module": "contract",
+      "action": "getsourcecode",
+      "elapsedMs": 326.669,
+      "outcome": "ok"
+    },
+    {
+      "module": "contract",
+      "action": "getsourcecode",
+      "elapsedMs": 425.907,
+      "outcome": "ok"
+    },
+    {
+      "module": "contract",
+      "action": "getsourcecode",
+      "elapsedMs": 261.882,
+      "outcome": "ok"
+    },
+    {
+      "module": "contract",
+      "action": "getsourcecode",
+      "elapsedMs": 261.985,
+      "outcome": "ok"
+    },
+    {
+      "module": "contract",
+      "action": "getsourcecode",
+      "elapsedMs": 146.842,
+      "outcome": "ok"
+    },
+    {
+      "module": "contract",
+      "action": "getsourcecode",
+      "elapsedMs": 343.993,
+      "outcome": "ok"
+    }
+  ]
+}

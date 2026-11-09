@@ -1,0 +1,12 @@
+{
+  "name": "@primusscope/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {"indexer": "tsx src/cli.ts"},
+  "dependencies": {
+    "@primusscope/api-schema": "0.1.0",
+    "@primusscope/storage": "0.1.0",
+    "viem": "2.57.17"
+  }
+}

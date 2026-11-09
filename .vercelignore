@@ -1,0 +1,14 @@
+.git
+.local
+node_modules
+**/node_modules
+.next
+**/.next
+.env
+.env.*
+coverage
+playwright-report
+test-results
+**/__pycache__
+**/*.pyc
+**/*.tsbuildinfo

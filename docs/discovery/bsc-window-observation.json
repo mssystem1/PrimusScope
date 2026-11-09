@@ -1,0 +1,111 @@
+{
+  "chainId": 56,
+  "endpointHost": "bsc-rpc.publicnode.com",
+  "range": {
+    "fromBlock": 132495502,
+    "toBlock": 132545501
+  },
+  "contractCount": 4,
+  "status": "bounded_request_accepted",
+  "events": [
+    {
+      "address": "0x485dbfd90ddf92e009438ff49b1918c6636a8f89",
+      "blockNumber": 132509605,
+      "blockHash": "0x73e7aa545df2473cb6c9af54167394572ae0b0445a36ea6c53334c0647cc63c5",
+      "transactionHash": "0x949365258866badb2d99b4dc3b09c2e1c497725be4785fa441e454c40ac644ee",
+      "logIndex": 337,
+      "topic0": "0xcced224352951f7e6930bc3adcd8b5b33807e3421404493b05113068c7a074c8",
+      "event": "StepAdvanced"
+    },
+    {
+      "address": "0x485dbfd90ddf92e009438ff49b1918c6636a8f89",
+      "blockNumber": 132510406,
+      "blockHash": "0x68403ed781f77190c8fa3bf54a48f9b7a856ea41a4452e00cfbb042b2749491a",
+      "transactionHash": "0xb5b3098d37bd201c7c7e025bc957a283eeeb6f157a0207fd2846ab39b694a35e",
+      "logIndex": 345,
+      "topic0": "0x2927531db3dd6f4bd82feee5b3ea6cc8b9e5a0ebfb8c88460c3cde3e0979a6b5",
+      "event": "AggregateFinalized"
+    },
+    {
+      "address": "0x485dbfd90ddf92e009438ff49b1918c6636a8f89",
+      "blockNumber": 132511206,
+      "blockHash": "0x36b840fe91a5b435dd35f32462623a95ecf2718f7779656999171a1c6ec9d1e8",
+      "transactionHash": "0x7d828ee867f963b82a8d011adbf6e2af504a0e8ce15be075451a422611a07691",
+      "logIndex": 871,
+      "topic0": "0x658bd00a36f3e758d6ed0a952bc79f9f0ba11cfc5ffb2a6864a8bac34156c2d7",
+      "event": "AggregateDispatched"
+    },
+    {
+      "address": "0x485dbfd90ddf92e009438ff49b1918c6636a8f89",
+      "blockNumber": 132511737,
+      "blockHash": "0x5b31cb042b360f69470a7fc63166a77a1ff590344818537225adebf37ab5797b",
+      "transactionHash": "0x5d3437a003cd44e707eb9c89f9257258731c514195cf7586c5d6bf5a0509e056",
+      "logIndex": 1411,
+      "topic0": "0xcced224352951f7e6930bc3adcd8b5b33807e3421404493b05113068c7a074c8",
+      "event": "StepAdvanced"
+    },
+    {
+      "address": "0xe76f5202ef8eeb462ec784fe51d69e9a8a0b56c1",
+      "blockNumber": 132514308,
+      "blockHash": "0x36bb4ce1b6389bf3a260ee1f92b9c1027228367c377770a16d20cc6b09b86d0b",
+      "transactionHash": "0x136503ff46d957eed4cd7f85f64cc81f89d963c39b6f428fbc654c6ffb11adc4",
+      "logIndex": 623,
+      "topic0": "0x658bd00a36f3e758d6ed0a952bc79f9f0ba11cfc5ffb2a6864a8bac34156c2d7",
+      "event": "AggregateDispatched"
+    },
+    {
+      "address": "0xe76f5202ef8eeb462ec784fe51d69e9a8a0b56c1",
+      "blockNumber": 132514355,
+      "blockHash": "0x0ded80db4fdd368b27ca42ae649c7d8914dcef782d436c5ef9d096e266d4658f",
+      "transactionHash": "0x0bf6eaf83adb3c12acd91b5fa7b7083dc4d96ddfbe0a4dba45b0d30623244b42",
+      "logIndex": 1150,
+      "topic0": "0xcced224352951f7e6930bc3adcd8b5b33807e3421404493b05113068c7a074c8",
+      "event": "StepAdvanced"
+    },
+    {
+      "address": "0xe76f5202ef8eeb462ec784fe51d69e9a8a0b56c1",
+      "blockNumber": 132514431,
+      "blockHash": "0xe590226d406cdeb0a6395723311e617694323b04d2be86995d38035db623abfc",
+      "transactionHash": "0x64b72de306a775e67d04f81c35573126213bec35ed864a3a320a7250758f4a60",
+      "logIndex": 867,
+      "topic0": "0x2927531db3dd6f4bd82feee5b3ea6cc8b9e5a0ebfb8c88460c3cde3e0979a6b5",
+      "event": "AggregateFinalized"
+    },
+    {
+      "address": "0xedcdd426f7690c7da365f8e9be0c396353e5dd24",
+      "blockNumber": 132514667,
+      "blockHash": "0xe993a38ccfa26cb7cb49c0b68740fe739a96bd4dd11838aff4616d7522d42822",
+      "transactionHash": "0xaa409e1f40a272b9b40debb2d155042da785e67f79e2237117afca7a2a417a29",
+      "logIndex": 523,
+      "topic0": "0x658bd00a36f3e758d6ed0a952bc79f9f0ba11cfc5ffb2a6864a8bac34156c2d7",
+      "event": "AggregateDispatched"
+    },
+    {
+      "address": "0xedcdd426f7690c7da365f8e9be0c396353e5dd24",
+      "blockNumber": 132514699,
+      "blockHash": "0xfd57c0d0f47178fe4fcd79617a2d91c7b7de75bc9b719c147304a29612adb6f3",
+      "transactionHash": "0xeefbf9666889023ba8809dff6a9d9b72b713a3387f486c6eaf0f4cf5881a6c04",
+      "logIndex": 678,
+      "topic0": "0xec99e80db77882837230ee3ce612e904757d54ec537eab1ce6caa1a4e2c4b5ed",
+      "event": "AggregateCanceled"
+    }
+  ],
+  "fromTimestampUnix": "1794187218",
+  "toTimestampUnix": "1794209725",
+  "matchingEventCount": 9,
+  "requestCount": 2,
+  "requestLedger": [
+    {
+      "method": "eth_getBlockByNumber",
+      "elapsedMs": 247.13,
+      "outcome": "ok",
+      "httpStatus": 200
+    },
+    {
+      "method": "eth_getLogs",
+      "elapsedMs": 5249.075,
+      "outcome": "ok",
+      "httpStatus": 200
+    }
+  ]
+}

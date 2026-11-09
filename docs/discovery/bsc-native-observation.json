@@ -1,0 +1,359 @@
+{
+  "chainId": 56,
+  "endpointHost": "bsc-rpc.publicnode.com",
+  "capturedAtUtc": "2026-11-09T07:43:28.393181+00:00",
+  "range": {
+    "fromBlock": 132495502,
+    "toBlock": 132545501
+  },
+  "status": "bounded_batch_sample_reconciled",
+  "events": [
+    {
+      "chainId": 56,
+      "contractAddress": "0x485dbfd90ddf92e009438ff49b1918c6636a8f89",
+      "blockNumber": 132509605,
+      "blockHash": "0x73e7aa545df2473cb6c9af54167394572ae0b0445a36ea6c53334c0647cc63c5",
+      "transactionHash": "0x949365258866badb2d99b4dc3b09c2e1c497725be4785fa441e454c40ac644ee",
+      "logIndex": 337,
+      "topic0": "0xcced224352951f7e6930bc3adcd8b5b33807e3421404493b05113068c7a074c8",
+      "event": "StepAdvanced",
+      "finality": "provider_observed_unreviewed",
+      "batchId": "6",
+      "receiptIdentityMatch": true
+    },
+    {
+      "chainId": 56,
+      "contractAddress": "0x485dbfd90ddf92e009438ff49b1918c6636a8f89",
+      "blockNumber": 132510406,
+      "blockHash": "0x68403ed781f77190c8fa3bf54a48f9b7a856ea41a4452e00cfbb042b2749491a",
+      "transactionHash": "0xb5b3098d37bd201c7c7e025bc957a283eeeb6f157a0207fd2846ab39b694a35e",
+      "logIndex": 345,
+      "topic0": "0x2927531db3dd6f4bd82feee5b3ea6cc8b9e5a0ebfb8c88460c3cde3e0979a6b5",
+      "event": "AggregateFinalized",
+      "finality": "provider_observed_unreviewed",
+      "batchId": "6",
+      "receiptIdentityMatch": true
+    },
+    {
+      "chainId": 56,
+      "contractAddress": "0x485dbfd90ddf92e009438ff49b1918c6636a8f89",
+      "blockNumber": 132511206,
+      "blockHash": "0x36b840fe91a5b435dd35f32462623a95ecf2718f7779656999171a1c6ec9d1e8",
+      "transactionHash": "0x7d828ee867f963b82a8d011adbf6e2af504a0e8ce15be075451a422611a07691",
+      "logIndex": 871,
+      "topic0": "0x658bd00a36f3e758d6ed0a952bc79f9f0ba11cfc5ffb2a6864a8bac34156c2d7",
+      "event": "AggregateDispatched",
+      "finality": "provider_observed_unreviewed",
+      "batchId": "7",
+      "receiptIdentityMatch": true
+    },
+    {
+      "chainId": 56,
+      "contractAddress": "0x485dbfd90ddf92e009438ff49b1918c6636a8f89",
+      "blockNumber": 132511737,
+      "blockHash": "0x5b31cb042b360f69470a7fc63166a77a1ff590344818537225adebf37ab5797b",
+      "transactionHash": "0x5d3437a003cd44e707eb9c89f9257258731c514195cf7586c5d6bf5a0509e056",
+      "logIndex": 1411,
+      "topic0": "0xcced224352951f7e6930bc3adcd8b5b33807e3421404493b05113068c7a074c8",
+      "event": "StepAdvanced",
+      "finality": "provider_observed_unreviewed",
+      "batchId": "7",
+      "receiptIdentityMatch": true
+    },
+    {
+      "chainId": 56,
+      "contractAddress": "0xe76f5202ef8eeb462ec784fe51d69e9a8a0b56c1",
+      "blockNumber": 132514308,
+      "blockHash": "0x36bb4ce1b6389bf3a260ee1f92b9c1027228367c377770a16d20cc6b09b86d0b",
+      "transactionHash": "0x136503ff46d957eed4cd7f85f64cc81f89d963c39b6f428fbc654c6ffb11adc4",
+      "logIndex": 623,
+      "topic0": "0x658bd00a36f3e758d6ed0a952bc79f9f0ba11cfc5ffb2a6864a8bac34156c2d7",
+      "event": "AggregateDispatched",
+      "finality": "provider_observed_unreviewed",
+      "batchId": "146",
+      "receiptIdentityMatch": true
+    },
+    {
+      "chainId": 56,
+      "contractAddress": "0xe76f5202ef8eeb462ec784fe51d69e9a8a0b56c1",
+      "blockNumber": 132514355,
+      "blockHash": "0x0ded80db4fdd368b27ca42ae649c7d8914dcef782d436c5ef9d096e266d4658f",
+      "transactionHash": "0x0bf6eaf83adb3c12acd91b5fa7b7083dc4d96ddfbe0a4dba45b0d30623244b42",
+      "logIndex": 1150,
+      "topic0": "0xcced224352951f7e6930bc3adcd8b5b33807e3421404493b05113068c7a074c8",
+      "event": "StepAdvanced",
+      "finality": "provider_observed_unreviewed",
+      "batchId": "146",
+      "receiptIdentityMatch": true
+    },
+    {
+      "chainId": 56,
+      "contractAddress": "0xe76f5202ef8eeb462ec784fe51d69e9a8a0b56c1",
+      "blockNumber": 132514431,
+      "blockHash": "0xe590226d406cdeb0a6395723311e617694323b04d2be86995d38035db623abfc",
+      "transactionHash": "0x64b72de306a775e67d04f81c35573126213bec35ed864a3a320a7250758f4a60",
+      "logIndex": 867,
+      "topic0": "0x2927531db3dd6f4bd82feee5b3ea6cc8b9e5a0ebfb8c88460c3cde3e0979a6b5",
+      "event": "AggregateFinalized",
+      "finality": "provider_observed_unreviewed",
+      "batchId": "146",
+      "receiptIdentityMatch": true
+    },
+    {
+      "chainId": 56,
+      "contractAddress": "0xedcdd426f7690c7da365f8e9be0c396353e5dd24",
+      "blockNumber": 132514667,
+      "blockHash": "0xe993a38ccfa26cb7cb49c0b68740fe739a96bd4dd11838aff4616d7522d42822",
+      "transactionHash": "0xaa409e1f40a272b9b40debb2d155042da785e67f79e2237117afca7a2a417a29",
+      "logIndex": 523,
+      "topic0": "0x658bd00a36f3e758d6ed0a952bc79f9f0ba11cfc5ffb2a6864a8bac34156c2d7",
+      "event": "AggregateDispatched",
+      "finality": "provider_observed_unreviewed",
+      "batchId": "225",
+      "receiptIdentityMatch": true
+    },
+    {
+      "chainId": 56,
+      "contractAddress": "0xedcdd426f7690c7da365f8e9be0c396353e5dd24",
+      "blockNumber": 132514699,
+      "blockHash": "0xfd57c0d0f47178fe4fcd79617a2d91c7b7de75bc9b719c147304a29612adb6f3",
+      "transactionHash": "0xeefbf9666889023ba8809dff6a9d9b72b713a3387f486c6eaf0f4cf5881a6c04",
+      "logIndex": 678,
+      "topic0": "0xec99e80db77882837230ee3ce612e904757d54ec537eab1ce6caa1a4e2c4b5ed",
+      "event": "AggregateCanceled",
+      "finality": "provider_observed_unreviewed",
+      "batchId": "225",
+      "receiptIdentityMatch": true
+    }
+  ],
+  "implementationChecks": [
+    {
+      "contractAddress": "0xedcdd426f7690c7da365f8e9be0c396353e5dd24",
+      "observedImplementation": "0x8b6213044534be95c7d889594cedaaee7757c29d",
+      "expectedImplementation": "0x8b6213044534be95c7d889594cedaaee7757c29d",
+      "matches": true,
+      "asOfBlock": 132545501,
+      "abiSha256": "a0567f9b97132c77ec8938587cee8e3d5f5889220ca904c0b8a84f4a1f893169"
+    },
+    {
+      "contractAddress": "0xbef1366512ffff33cdd6c48d66e48d33c6dbca22",
+      "observedImplementation": "0xa2652e6c1a825a18567fa670ff9b4416039aad46",
+      "expectedImplementation": "0xa2652e6c1a825a18567fa670ff9b4416039aad46",
+      "matches": true,
+      "asOfBlock": 132545501,
+      "abiSha256": "0787c7edbc281b4ae19e9aac6813ce64b476c95e96ecd19cfb092ecbf15da889"
+    },
+    {
+      "contractAddress": "0xe76f5202ef8eeb462ec784fe51d69e9a8a0b56c1",
+      "observedImplementation": "0x8b6213044534be95c7d889594cedaaee7757c29d",
+      "expectedImplementation": "0x8b6213044534be95c7d889594cedaaee7757c29d",
+      "matches": true,
+      "asOfBlock": 132545501,
+      "abiSha256": "a0567f9b97132c77ec8938587cee8e3d5f5889220ca904c0b8a84f4a1f893169"
+    },
+    {
+      "contractAddress": "0x485dbfd90ddf92e009438ff49b1918c6636a8f89",
+      "observedImplementation": "0xa2652e6c1a825a18567fa670ff9b4416039aad46",
+      "expectedImplementation": "0xa2652e6c1a825a18567fa670ff9b4416039aad46",
+      "matches": true,
+      "asOfBlock": 132545501,
+      "abiSha256": "0787c7edbc281b4ae19e9aac6813ce64b476c95e96ecd19cfb092ecbf15da889"
+    }
+  ],
+  "currentAggregateIds": [
+    {
+      "contractAddress": "0xedcdd426f7690c7da365f8e9be0c396353e5dd24",
+      "currentAggregateId": "226",
+      "asOfBlock": 132545501,
+      "meaning": "open aggregate identifier, not total settled count"
+    },
+    {
+      "contractAddress": "0xbef1366512ffff33cdd6c48d66e48d33c6dbca22",
+      "currentAggregateId": "11",
+      "asOfBlock": 132545501,
+      "meaning": "open aggregate identifier, not total settled count"
+    },
+    {
+      "contractAddress": "0xe76f5202ef8eeb462ec784fe51d69e9a8a0b56c1",
+      "currentAggregateId": "147",
+      "asOfBlock": 132545501,
+      "meaning": "open aggregate identifier, not total settled count"
+    },
+    {
+      "contractAddress": "0x485dbfd90ddf92e009438ff49b1918c6636a8f89",
+      "currentAggregateId": "8",
+      "asOfBlock": 132545501,
+      "meaning": "open aggregate identifier, not total settled count"
+    }
+  ],
+  "stateSamples": [
+    {
+      "contractAddress": "0xe76f5202ef8eeb462ec784fe51d69e9a8a0b56c1",
+      "batchId": "146",
+      "nativeStateCode": 2,
+      "asOfBlock": 132545501
+    }
+  ],
+  "latencySamples": [
+    {
+      "contractAddress": "0xe76f5202ef8eeb462ec784fe51d69e9a8a0b56c1",
+      "batchId": "146",
+      "dispatchTimestampUnix": "1794195681",
+      "finalizedTimestampUnix": "1794195736",
+      "dispatchToFinalizedSeconds": 55,
+      "scope": "public dispatch to batch finalization; excludes private wait and user claim"
+    }
+  ],
+  "warnings": [
+    "Only public event identities and aggregate IDs; no amounts/exchange rates/participant fields retained.",
+    "Provider reported finalized scope and bounded sample only; full history independently unverified."
+  ],
+  "eventCounts": {
+    "StepAdvanced": 3,
+    "AggregateFinalized": 2,
+    "AggregateDispatched": 3,
+    "AggregateCanceled": 1
+  },
+  "batchCountInSample": 4,
+  "requestCount": 23,
+  "requestLedger": [
+    {
+      "method": "eth_getTransactionReceipt",
+      "elapsedMs": 221.304,
+      "outcome": "ok",
+      "httpStatus": 200
+    },
+    {
+      "method": "eth_getTransactionReceipt",
+      "elapsedMs": 248.047,
+      "outcome": "ok",
+      "httpStatus": 200
+    },
+    {
+      "method": "eth_getTransactionReceipt",
+      "elapsedMs": 207.954,
+      "outcome": "ok",
+      "httpStatus": 200
+    },
+    {
+      "method": "eth_getTransactionReceipt",
+      "elapsedMs": 197.517,
+      "outcome": "ok",
+      "httpStatus": 200
+    },
+    {
+      "method": "eth_getTransactionReceipt",
+      "elapsedMs": 170.75,
+      "outcome": "ok",
+      "httpStatus": 200
+    },
+    {
+      "method": "eth_getTransactionReceipt",
+      "elapsedMs": 198.29,
+      "outcome": "ok",
+      "httpStatus": 200
+    },
+    {
+      "method": "eth_getTransactionReceipt",
+      "elapsedMs": 261.241,
+      "outcome": "ok",
+      "httpStatus": 200
+    },
+    {
+      "method": "eth_getTransactionReceipt",
+      "elapsedMs": 182.225,
+      "outcome": "ok",
+      "httpStatus": 200
+    },
+    {
+      "method": "eth_getTransactionReceipt",
+      "elapsedMs": 163.772,
+      "outcome": "ok",
+      "httpStatus": 200
+    },
+    {
+      "method": "eth_getStorageAt",
+      "elapsedMs": 131.738,
+      "outcome": "ok",
+      "httpStatus": 200
+    },
+    {
+      "method": "eth_call",
+      "elapsedMs": 133.695,
+      "outcome": "ok",
+      "httpStatus": 200
+    },
+    {
+      "method": "eth_getStorageAt",
+      "elapsedMs": 140.913,
+      "outcome": "ok",
+      "httpStatus": 200
+    },
+    {
+      "method": "eth_call",
+      "elapsedMs": 126.247,
+      "outcome": "ok",
+      "httpStatus": 200
+    },
+    {
+      "method": "eth_getStorageAt",
+      "elapsedMs": 127.142,
+      "outcome": "ok",
+      "httpStatus": 200
+    },
+    {
+      "method": "eth_call",
+      "elapsedMs": 131.534,
+      "outcome": "ok",
+      "httpStatus": 200
+    },
+    {
+      "method": "eth_getStorageAt",
+      "elapsedMs": 127.688,
+      "outcome": "ok",
+      "httpStatus": 200
+    },
+    {
+      "method": "eth_call",
+      "elapsedMs": 136.51,
+      "outcome": "ok",
+      "httpStatus": 200
+    },
+    {
+      "method": "eth_call",
+      "elapsedMs": 130.038,
+      "outcome": "ok",
+      "httpStatus": 200
+    },
+    {
+      "method": "eth_getLogs",
+      "elapsedMs": 157.985,
+      "outcome": "ok",
+      "httpStatus": 200
+    },
+    {
+      "method": "eth_getBlockByNumber",
+      "elapsedMs": 144.208,
+      "outcome": "ok",
+      "httpStatus": 200
+    },
+    {
+      "method": "eth_getLogs",
+      "elapsedMs": 145.261,
+      "outcome": "ok",
+      "httpStatus": 200
+    },
+    {
+      "method": "eth_getBlockByNumber",
+      "elapsedMs": 124.65,
+      "outcome": "ok",
+      "httpStatus": 200
+    },
+    {
+      "method": "eth_getBlockByNumber",
+      "elapsedMs": 137.474,
+      "outcome": "ok",
+      "httpStatus": 200
+    }
+  ]
+}

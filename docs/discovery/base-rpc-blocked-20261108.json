@@ -1,0 +1,39 @@
+{
+  "elapsedSeconds": 0.017,
+  "endpointHost": "mainnet.base.org",
+  "feePlanEntitlement": "not_independently_verified",
+  "limits": {
+    "initialChunk": 100,
+    "maxBlocks": 10000,
+    "maxRequests": 30,
+    "maxResponseBytes": 2000000,
+    "maxRunSeconds": 90.0,
+    "requestTimeoutSeconds": 10.0
+  },
+  "productionReadiness": "not_established",
+  "requestCount": 1,
+  "requestLedger": [
+    {
+      "elapsedMs": 16.67,
+      "method": "eth_chainId",
+      "outcome": "PROXY_TUNNEL_DENIED",
+      "retryable": false
+    }
+  ],
+  "schemaVersion": "1.0.0",
+  "source": {
+    "abiSha256": "ae16dd8f4d7f3dd5ffed3b1c8208f6e1cf4ae44157edc6b3185b3f1440019ed8",
+    "address": "0x151cb5eD5D10A42B607bB172B27BDF6F884b9707",
+    "chainId": 8453,
+    "reviewStatus": "source_documented_runtime_unverified",
+    "upstreamCommit": "ec157e816d108a6fabdd42cb3a83375618c217e0"
+  },
+  "startedAtUtc": "2026-11-08T15:45:13.201922+00:00",
+  "status": "blocked",
+  "stopReason": "PROXY_TUNNEL_DENIED",
+  "warnings": [
+    "Discovery only; a returned log range is not independently proven complete.",
+    "No full history, current proxy approval or cryptographic proof check is established.",
+    "Raw event data, taskResults, templates and request/response subjects are not retained in this report."
+  ]
+}

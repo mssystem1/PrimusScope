@@ -1,0 +1,17 @@
+{
+  "chainId": 56,
+  "operation": "contract/getcontractcreation",
+  "status": "blocked",
+  "source": "https://docs.etherscan.io/api-reference/endpoint/getcontractcreation",
+  "stopReason": "FREE_PLAN_CHAIN_UNSUPPORTED",
+  "requestCount": 1,
+  "requestLedger": [
+    {
+      "module": "contract",
+      "action": "getcontractcreation",
+      "elapsedMs": 527.052,
+      "outcome": "FREE_PLAN_CHAIN_UNSUPPORTED",
+      "retryable": false
+    }
+  ]
+}

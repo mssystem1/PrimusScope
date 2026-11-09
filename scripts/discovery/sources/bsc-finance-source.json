@@ -1,0 +1,76 @@
+{
+  "schemaVersion": "1.0.0",
+  "chainId": 56,
+  "chainName": "BNB Smart Chain mainnet",
+  "product": "Primus Confidential Finance",
+  "reviewStatus": "official_frontend_config_runtime_unverified",
+  "reviewedAtClientDate": "2026-11-09",
+  "source": {
+    "documentationUrl": "https://docs.primuslabs.xyz/fhe/confidential-finance-product/",
+    "configurationUrl": "https://dapp.primuslabs.xyz/_next/static/chunks/4781-1070ecc68618aa01.js",
+    "configurationSha256": "c93d64c0e72a2282d32206ee6130462cb5ddf0b258608b40651ed664366baf1e",
+    "stateMappingUrl": "https://dapp.primuslabs.xyz/_next/static/chunks/4527-ba3058e1f0511770.js",
+    "stateMappingSha256": "526000f11d7c6a56a4f955fc0ae53bfcbbfd689d70249d5031da05b477ca9882",
+    "yieldAdapterUrl": "https://dapp.primuslabs.xyz/_next/static/chunks/1531-d4befecc0fcfd5aa.js",
+    "yieldAdapterSha256": "cd22c8aaf94a8812c9e5bcdd2f0aa0557d1c0c1b1b6e187f4ed7332470cafd9c"
+  },
+  "explorerApi": {
+    "provider": "Etherscan V2",
+    "baseUrl": "https://api.etherscan.io/v2/api",
+    "chainIdParameter": "56",
+    "credentialVariable": "ETHERSCAN_API_KEY",
+    "freePlanAccess": "user_confirmed_pending_live_request_validation"
+  },
+  "deploymentBlock": null,
+  "currentImplementation": null,
+  "abiValidityRange": null,
+  "sharedUnderlyingVault": "0xe9E8573Bb351da16c6EE7dDaC0cBC70b7f9784AE",
+  "routes": {
+    "u": {
+      "id": "united-stables-confidential-vault",
+      "label": "U / eU",
+      "visibleInCapturedConfig": true,
+      "enabledInCapturedConfig": true,
+      "standardToken": "0xcE24439F2D9C6a2289F741120FE202248B666666",
+      "confidentialToken": "0x3EcB7d91C98ca4B4924e0CC5Eca7472b21F06800",
+      "positionToken": "0x06776741b1f8bfF5ea51750E91edcf03ed8C6994",
+      "depositAggregator": "0xedcDd426f7690c7Da365f8E9BE0C396353e5dd24",
+      "redeemAggregator": "0xBef1366512ffFF33cdd6C48d66e48D33c6dbCa22",
+      "onchainDecimals": null
+    },
+    "usdt": {
+      "id": "encrypted-usdt-confidential-vault",
+      "label": "USDT / eUSDT",
+      "visibleInCapturedConfig": true,
+      "enabledInCapturedConfig": true,
+      "standardToken": "0x55d398326f99059fF775485246999027B3197955",
+      "confidentialToken": "0xc2CC9419DDEb3425876091a1eb79D5C59017838c",
+      "positionToken": "0x75787E2aBEE0ddaa747Eee5F0f4Ff58dB142354d",
+      "depositAggregator": "0xE76F5202EF8eEB462eC784Fe51D69E9a8a0b56c1",
+      "redeemAggregator": "0x485dBFD90DdF92E009438FF49b1918C6636a8f89",
+      "onchainDecimals": null
+    }
+  },
+  "candidateBatchStates": {
+    "0": "open",
+    "1": "dispatched",
+    "2": "finalized",
+    "3": "canceled"
+  },
+  "candidateEvents": [
+    {"name":"AggregateDispatched","signature":"AggregateDispatched(uint256)","topic0":"0x658bd00a36f3e758d6ed0a952bc79f9f0ba11cfc5ffb2a6864a8bac34156c2d7"},
+    {"name":"AggregateFinalized","signature":"AggregateFinalized(uint256,uint64)","topic0":"0x2927531db3dd6f4bd82feee5b3ea6cc8b9e5a0ebfb8c88460c3cde3e0979a6b5"},
+    {"name":"AggregateCanceled","signature":"AggregateCanceled(uint256)","topic0":"0xec99e80db77882837230ee3ce612e904757d54ec537eab1ce6caa1a4e2c4b5ed"},
+    {"name":"StepAdvanced","signature":"StepAdvanced(uint256,uint8)","topic0":"0xcced224352951f7e6930bc3adcd8b5b33807e3421404493b05113068c7a074c8"},
+    {"name":"Recovered","signature":"Recovered(uint256,bool)","topic0":"0x4ccb5df353b4ac26c0c5735489e945cfb5ef5d51b1c3d1bfa633b6724d7e0cec"}
+  ],
+  "topicHashProvenance": "Ethereum Keccak-256 via ethereum-cryptography@3.2.0; candidates must match the fetched verified ABI before projection",
+  "limitations": [
+    "The captured frontend mainnet configuration is not deployed-code/ABI or operability verification.",
+    "The frontend deployBlock=1 is an application default and is intentionally not copied as deployment evidence.",
+    "Shared strategy assets are not automatically Primus-attributable confidential TVL; do not double-count the shared vault across routes.",
+    "No user balances, wallet-linked confidential activity, permits, decryption material or inferred amounts belong in this registry or probe.",
+    "Candidate state labels are not approved semantics until real events, versioned ABI and deployed reads are reconciled.",
+    "Base is a separate zkTLS Network deployment; it is not the chain of this finance product."
+  ]
+}

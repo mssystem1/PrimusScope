@@ -1,0 +1,311 @@
+{
+  "chainIdExpected": 56,
+  "checkpointPath": "/workspace/PrimusScope/.local/discovery/checkpoints/bsc-132495502-132545501-952d796e958a7afd.json",
+  "contractChecks": [
+    {
+      "abiSha256": "a0567f9b97132c77ec8938587cee8e3d5f5889220ca904c0b8a84f4a1f893169",
+      "address": "0xedcdd426f7690c7da365f8e9be0c396353e5dd24",
+      "implementationCodeSha256": "34910bb1d076c0b04e15bf75d272dab6f37130a00b6079a22110f8149cd99d63",
+      "implementationMatchesSource": true,
+      "observedImplementation": "0x8b6213044534be95c7d889594cedaaee7757c29d",
+      "runtimeCodeSha256": "c85d18dc1e49769e01f9f88981176e213b2bc24d2f14d33a81d54bc06579f6db"
+    },
+    {
+      "abiSha256": "0787c7edbc281b4ae19e9aac6813ce64b476c95e96ecd19cfb092ecbf15da889",
+      "address": "0xbef1366512ffff33cdd6c48d66e48d33c6dbca22",
+      "implementationCodeSha256": "ee04306623a925f0862ed0cc9b3b9dd47deed75e059a2b78efd89a6ae1ff0269",
+      "implementationMatchesSource": true,
+      "observedImplementation": "0xa2652e6c1a825a18567fa670ff9b4416039aad46",
+      "runtimeCodeSha256": "c85d18dc1e49769e01f9f88981176e213b2bc24d2f14d33a81d54bc06579f6db"
+    },
+    {
+      "abiSha256": "a0567f9b97132c77ec8938587cee8e3d5f5889220ca904c0b8a84f4a1f893169",
+      "address": "0xe76f5202ef8eeb462ec784fe51d69e9a8a0b56c1",
+      "implementationCodeSha256": "34910bb1d076c0b04e15bf75d272dab6f37130a00b6079a22110f8149cd99d63",
+      "implementationMatchesSource": true,
+      "observedImplementation": "0x8b6213044534be95c7d889594cedaaee7757c29d",
+      "runtimeCodeSha256": "c85d18dc1e49769e01f9f88981176e213b2bc24d2f14d33a81d54bc06579f6db"
+    },
+    {
+      "abiSha256": "0787c7edbc281b4ae19e9aac6813ce64b476c95e96ecd19cfb092ecbf15da889",
+      "address": "0x485dbfd90ddf92e009438ff49b1918c6636a8f89",
+      "implementationCodeSha256": "ee04306623a925f0862ed0cc9b3b9dd47deed75e059a2b78efd89a6ae1ff0269",
+      "implementationMatchesSource": true,
+      "observedImplementation": "0xa2652e6c1a825a18567fa670ff9b4416039aad46",
+      "runtimeCodeSha256": "c85d18dc1e49769e01f9f88981176e213b2bc24d2f14d33a81d54bc06579f6db"
+    }
+  ],
+  "elapsedSeconds": 14.156,
+  "endpointHost": "bsc-rpc.publicnode.com",
+  "limits": {
+    "chunkSize": 10000,
+    "maxLookbackBlocks": 100000,
+    "maxRequests": 60,
+    "maxRunSeconds": 120,
+    "minRequestIntervalSeconds": 1,
+    "timeoutSeconds": 10
+  },
+  "observedChainId": 56,
+  "productionReadiness": "not_established",
+  "providerReportedFinalized": {
+    "hash": "0xaa2dda7a61c7775658e249cba2d7e9c29207abc07e6b74d105308ddf087d3847",
+    "number": 132547267,
+    "timestampUnix": "1794210520"
+  },
+  "receiptSamples": [],
+  "requestCount": 15,
+  "requestLedger": [
+    {
+      "elapsedMs": 143.737,
+      "httpStatus": 200,
+      "method": "eth_chainId",
+      "outcome": "ok"
+    },
+    {
+      "elapsedMs": 150.784,
+      "httpStatus": 200,
+      "method": "eth_getBlockByNumber",
+      "outcome": "ok"
+    },
+    {
+      "elapsedMs": 139.757,
+      "httpStatus": 200,
+      "method": "eth_getBlockByNumber",
+      "outcome": "ok"
+    },
+    {
+      "elapsedMs": 127.158,
+      "httpStatus": 200,
+      "method": "eth_getCode",
+      "outcome": "ok"
+    },
+    {
+      "elapsedMs": 131.582,
+      "httpStatus": 200,
+      "method": "eth_getStorageAt",
+      "outcome": "ok"
+    },
+    {
+      "elapsedMs": 228.207,
+      "httpStatus": 200,
+      "method": "eth_getCode",
+      "outcome": "ok"
+    },
+    {
+      "elapsedMs": 186.431,
+      "httpStatus": 200,
+      "method": "eth_getCode",
+      "outcome": "ok"
+    },
+    {
+      "elapsedMs": 155.654,
+      "httpStatus": 200,
+      "method": "eth_getStorageAt",
+      "outcome": "ok"
+    },
+    {
+      "elapsedMs": 183.77,
+      "httpStatus": 200,
+      "method": "eth_getCode",
+      "outcome": "ok"
+    },
+    {
+      "elapsedMs": 133.633,
+      "httpStatus": 200,
+      "method": "eth_getCode",
+      "outcome": "ok"
+    },
+    {
+      "elapsedMs": 128.709,
+      "httpStatus": 200,
+      "method": "eth_getStorageAt",
+      "outcome": "ok"
+    },
+    {
+      "elapsedMs": 129.643,
+      "httpStatus": 200,
+      "method": "eth_getCode",
+      "outcome": "ok"
+    },
+    {
+      "elapsedMs": 119.325,
+      "httpStatus": 200,
+      "method": "eth_getStorageAt",
+      "outcome": "ok"
+    },
+    {
+      "elapsedMs": 160.096,
+      "httpStatus": 200,
+      "method": "eth_getBlockByNumber",
+      "outcome": "ok"
+    },
+    {
+      "elapsedMs": 153.562,
+      "httpStatus": 200,
+      "method": "eth_getBlockByNumber",
+      "outcome": "ok"
+    }
+  ],
+  "requestedRange": {
+    "fromBlock": 132495502,
+    "targetHash": "0x6f33cf34fc0040f994fa1ceb3b01e76e2071125ec0dd11ff147cb7731278e1c5",
+    "toBlock": 132545501
+  },
+  "scan": {
+    "complete": true,
+    "coverageMeaning": "successful bounded RPC responses; omissions and full history not independently proven",
+    "events": [
+      {
+        "batchId": "6",
+        "blockHash": "0x73e7aa545df2473cb6c9af54167394572ae0b0445a36ea6c53334c0647cc63c5",
+        "blockNumber": 132509605,
+        "chainId": 56,
+        "contractAddress": "0x485dbfd90ddf92e009438ff49b1918c6636a8f89",
+        "event": "StepAdvanced",
+        "finality": "provider_observed_unreviewed",
+        "logIndex": 337,
+        "topic0": "0xcced224352951f7e6930bc3adcd8b5b33807e3421404493b05113068c7a074c8",
+        "transactionHash": "0x949365258866badb2d99b4dc3b09c2e1c497725be4785fa441e454c40ac644ee"
+      },
+      {
+        "batchId": "6",
+        "blockHash": "0x68403ed781f77190c8fa3bf54a48f9b7a856ea41a4452e00cfbb042b2749491a",
+        "blockNumber": 132510406,
+        "chainId": 56,
+        "contractAddress": "0x485dbfd90ddf92e009438ff49b1918c6636a8f89",
+        "event": "AggregateFinalized",
+        "finality": "provider_observed_unreviewed",
+        "logIndex": 345,
+        "topic0": "0x2927531db3dd6f4bd82feee5b3ea6cc8b9e5a0ebfb8c88460c3cde3e0979a6b5",
+        "transactionHash": "0xb5b3098d37bd201c7c7e025bc957a283eeeb6f157a0207fd2846ab39b694a35e"
+      },
+      {
+        "batchId": "7",
+        "blockHash": "0x36b840fe91a5b435dd35f32462623a95ecf2718f7779656999171a1c6ec9d1e8",
+        "blockNumber": 132511206,
+        "chainId": 56,
+        "contractAddress": "0x485dbfd90ddf92e009438ff49b1918c6636a8f89",
+        "event": "AggregateDispatched",
+        "finality": "provider_observed_unreviewed",
+        "logIndex": 871,
+        "topic0": "0x658bd00a36f3e758d6ed0a952bc79f9f0ba11cfc5ffb2a6864a8bac34156c2d7",
+        "transactionHash": "0x7d828ee867f963b82a8d011adbf6e2af504a0e8ce15be075451a422611a07691"
+      },
+      {
+        "batchId": "7",
+        "blockHash": "0x5b31cb042b360f69470a7fc63166a77a1ff590344818537225adebf37ab5797b",
+        "blockNumber": 132511737,
+        "chainId": 56,
+        "contractAddress": "0x485dbfd90ddf92e009438ff49b1918c6636a8f89",
+        "event": "StepAdvanced",
+        "finality": "provider_observed_unreviewed",
+        "logIndex": 1411,
+        "topic0": "0xcced224352951f7e6930bc3adcd8b5b33807e3421404493b05113068c7a074c8",
+        "transactionHash": "0x5d3437a003cd44e707eb9c89f9257258731c514195cf7586c5d6bf5a0509e056"
+      },
+      {
+        "batchId": "146",
+        "blockHash": "0x36bb4ce1b6389bf3a260ee1f92b9c1027228367c377770a16d20cc6b09b86d0b",
+        "blockNumber": 132514308,
+        "chainId": 56,
+        "contractAddress": "0xe76f5202ef8eeb462ec784fe51d69e9a8a0b56c1",
+        "event": "AggregateDispatched",
+        "finality": "provider_observed_unreviewed",
+        "logIndex": 623,
+        "topic0": "0x658bd00a36f3e758d6ed0a952bc79f9f0ba11cfc5ffb2a6864a8bac34156c2d7",
+        "transactionHash": "0x136503ff46d957eed4cd7f85f64cc81f89d963c39b6f428fbc654c6ffb11adc4"
+      },
+      {
+        "batchId": "146",
+        "blockHash": "0x0ded80db4fdd368b27ca42ae649c7d8914dcef782d436c5ef9d096e266d4658f",
+        "blockNumber": 132514355,
+        "chainId": 56,
+        "contractAddress": "0xe76f5202ef8eeb462ec784fe51d69e9a8a0b56c1",
+        "event": "StepAdvanced",
+        "finality": "provider_observed_unreviewed",
+        "logIndex": 1150,
+        "topic0": "0xcced224352951f7e6930bc3adcd8b5b33807e3421404493b05113068c7a074c8",
+        "transactionHash": "0x0bf6eaf83adb3c12acd91b5fa7b7083dc4d96ddfbe0a4dba45b0d30623244b42"
+      },
+      {
+        "batchId": "146",
+        "blockHash": "0xe590226d406cdeb0a6395723311e617694323b04d2be86995d38035db623abfc",
+        "blockNumber": 132514431,
+        "chainId": 56,
+        "contractAddress": "0xe76f5202ef8eeb462ec784fe51d69e9a8a0b56c1",
+        "event": "AggregateFinalized",
+        "finality": "provider_observed_unreviewed",
+        "logIndex": 867,
+        "topic0": "0x2927531db3dd6f4bd82feee5b3ea6cc8b9e5a0ebfb8c88460c3cde3e0979a6b5",
+        "transactionHash": "0x64b72de306a775e67d04f81c35573126213bec35ed864a3a320a7250758f4a60"
+      },
+      {
+        "batchId": "225",
+        "blockHash": "0xe993a38ccfa26cb7cb49c0b68740fe739a96bd4dd11838aff4616d7522d42822",
+        "blockNumber": 132514667,
+        "chainId": 56,
+        "contractAddress": "0xedcdd426f7690c7da365f8e9be0c396353e5dd24",
+        "event": "AggregateDispatched",
+        "finality": "provider_observed_unreviewed",
+        "logIndex": 523,
+        "topic0": "0x658bd00a36f3e758d6ed0a952bc79f9f0ba11cfc5ffb2a6864a8bac34156c2d7",
+        "transactionHash": "0xaa409e1f40a272b9b40debb2d155042da785e67f79e2237117afca7a2a417a29"
+      },
+      {
+        "batchId": "225",
+        "blockHash": "0xfd57c0d0f47178fe4fcd79617a2d91c7b7de75bc9b719c147304a29612adb6f3",
+        "blockNumber": 132514699,
+        "chainId": 56,
+        "contractAddress": "0xedcdd426f7690c7da365f8e9be0c396353e5dd24",
+        "event": "AggregateCanceled",
+        "finality": "provider_observed_unreviewed",
+        "logIndex": 678,
+        "topic0": "0xec99e80db77882837230ee3ce612e904757d54ec537eab1ce6caa1a4e2c4b5ed",
+        "transactionHash": "0xeefbf9666889023ba8809dff6a9d9b72b713a3387f486c6eaf0f4cf5881a6c04"
+      }
+    ],
+    "lastCompletedBlock": 132545501,
+    "ranges": [
+      {
+        "eventCount": 0,
+        "fromBlock": 132495502,
+        "toBlock": 132505501
+      },
+      {
+        "eventCount": 9,
+        "fromBlock": 132505502,
+        "toBlock": 132515501
+      },
+      {
+        "eventCount": 0,
+        "fromBlock": 132515502,
+        "toBlock": 132525501
+      },
+      {
+        "eventCount": 0,
+        "fromBlock": 132525502,
+        "toBlock": 132535501
+      },
+      {
+        "eventCount": 0,
+        "fromBlock": 132535502,
+        "toBlock": 132545501
+      }
+    ],
+    "stopReason": null
+  },
+  "schemaVersion": "1.0.0",
+  "sourceFiles": {
+    "docs/discovery/bsc-first-source-observation.json": "b9021980e318846579e44451d7ef754dad7c63046349325f3251a741a78aa962",
+    "docs/discovery/bsc-other-source-observations.json": "d67786155c4ae4096b0260241cc5af446edbc7d3674d176a54f611f78de82117",
+    "scripts/discovery/sources/bsc-finance-source.json": "60677a9e6fa3b8430e41b666625ac79f076ddb203cdef8deff296f23f1ba316a"
+  },
+  "startedAtUtc": "2026-11-09T07:48:40.604649+00:00",
+  "status": "bounded_batch_sample_observed",
+  "warnings": [
+    "Provider-reported finalized is not an independent finality proof.",
+    "Current explorer ABI evidence does not establish historical implementation validity.",
+    "No raw amounts, exchange rates, participant addresses or private wallet data are retained.",
+    "Receipt reconciliation skipped by explicit option."
+  ]
+}

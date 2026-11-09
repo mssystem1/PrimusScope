@@ -1,0 +1,121 @@
+{
+  "abiVersionHistory": "unverified; current explorer ABI may not describe historical logs",
+  "apy": "not_queried",
+  "batchEventCount": null,
+  "chainId": 56,
+  "contractAddress": "0xedcdd426f7690c7da365f8e9be0c396353e5dd24",
+  "contractMetadata": {
+    "abiEntryCount": 7,
+    "abiSha256": "c2378803cfdf078d5a2786affbe40163e27d43d98be9149ba90c077ea028c0c6",
+    "address": "0xedcdd426f7690c7da365f8e9be0c396353e5dd24",
+    "evidence": "explorer_verified_source_metadata; deployed bytecode not independently checked",
+    "reportedContractName": "ERC1967Proxy",
+    "sourceCodeSha256": "6cbfa9b9eecd2e087701b4ebf5233680006a499297852b06de4e08fcd88e8347"
+  },
+  "elapsedSeconds": 1.301,
+  "implementationMetadata": {
+    "abiEntryCount": 117,
+    "abiSha256": "a0567f9b97132c77ec8938587cee8e3d5f5889220ca904c0b8a84f4a1f893169",
+    "address": "0x8b6213044534be95c7d889594cedaaee7757c29d",
+    "evidence": "explorer_verified_source_metadata; deployed bytecode not independently checked",
+    "reportedContractName": "UnitasMintAggregatorConfidential",
+    "sourceCodeSha256": "e62d95a303aa2e4b39b9e28ec0c4265f5fc2f6d35f3d7affc689f225e5cf4073"
+  },
+  "limits": {
+    "maxBlocks": 10000,
+    "maxPages": 3,
+    "maxRequests": 10,
+    "minRequestIntervalSeconds": 1,
+    "pageSize": 1000,
+    "timeoutSeconds": 10
+  },
+  "matchedCandidateEvents": [
+    {
+      "batchIdLocation": {
+        "index": 1,
+        "kind": "topic"
+      },
+      "dataWords": 0,
+      "name": "AggregateCanceled",
+      "signature": "AggregateCanceled(uint256)",
+      "topic0": "0xec99e80db77882837230ee3ce612e904757d54ec537eab1ce6caa1a4e2c4b5ed",
+      "topicCount": 2
+    },
+    {
+      "batchIdLocation": {
+        "index": 1,
+        "kind": "topic"
+      },
+      "dataWords": 0,
+      "name": "AggregateDispatched",
+      "signature": "AggregateDispatched(uint256)",
+      "topic0": "0x658bd00a36f3e758d6ed0a952bc79f9f0ba11cfc5ffb2a6864a8bac34156c2d7",
+      "topicCount": 2
+    },
+    {
+      "batchIdLocation": {
+        "index": 1,
+        "kind": "topic"
+      },
+      "dataWords": 1,
+      "name": "AggregateFinalized",
+      "signature": "AggregateFinalized(uint256,uint64)",
+      "topic0": "0x2927531db3dd6f4bd82feee5b3ea6cc8b9e5a0ebfb8c88460c3cde3e0979a6b5",
+      "topicCount": 2
+    },
+    {
+      "batchIdLocation": {
+        "index": 1,
+        "kind": "topic"
+      },
+      "dataWords": 1,
+      "name": "Recovered",
+      "signature": "Recovered(uint256,bool)",
+      "topic0": "0x4ccb5df353b4ac26c0c5735489e945cfb5ef5d51b1c3d1bfa633b6724d7e0cec",
+      "topicCount": 2
+    },
+    {
+      "batchIdLocation": {
+        "index": 1,
+        "kind": "topic"
+      },
+      "dataWords": 1,
+      "name": "StepAdvanced",
+      "signature": "StepAdvanced(uint256,uint8)",
+      "topic0": "0xcced224352951f7e6930bc3adcd8b5b33807e3421404493b05113068c7a074c8",
+      "topicCount": 2
+    }
+  ],
+  "nativeBatchState": "not_queried",
+  "productionReadiness": "not_established",
+  "provider": "Etherscan V2",
+  "publicationReview": "not_approved",
+  "requestCount": 2,
+  "requestLedger": [
+    {
+      "action": "getsourcecode",
+      "elapsedMs": 347.713,
+      "module": "contract",
+      "outcome": "ok"
+    },
+    {
+      "action": "getsourcecode",
+      "elapsedMs": 299.454,
+      "module": "contract",
+      "outcome": "ok"
+    }
+  ],
+  "role": "deposit",
+  "route": "united-stables-confidential-vault",
+  "schemaVersion": "1.0.0",
+  "sourceConfigurationSha256": "c93d64c0e72a2282d32206ee6130462cb5ddf0b258608b40651ed664366baf1e",
+  "sourceReviewStatus": "official_frontend_config_runtime_unverified",
+  "startedAtUtc": "2026-11-08T20:12:02.649520+00:00",
+  "status": "metadata_observed_logs_not_requested",
+  "warnings": [
+    "Official frontend config is not deployed-code or ABI-version approval.",
+    "No user amounts, participants, permits, private positions or full event payloads are retained.",
+    "An observed batch finalization is not proof every participant claimed.",
+    "Native state, privacy/publication policy, finality and APY history need separate validation."
+  ]
+}

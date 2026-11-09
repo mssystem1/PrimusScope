@@ -1,0 +1,318 @@
+[
+  {
+    "type": "function",
+    "name": "queryTask",
+    "inputs": [
+      {
+        "name": "taskId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "taskInfo",
+        "type": "tuple",
+        "internalType": "struct TaskInfo",
+        "components": [
+          {
+            "name": "templateId",
+            "type": "string",
+            "internalType": "string"
+          },
+          {
+            "name": "submitter",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "attestors",
+            "type": "address[]",
+            "internalType": "address[]"
+          },
+          {
+            "name": "taskResults",
+            "type": "tuple[]",
+            "internalType": "struct TaskResult[]",
+            "components": [
+              {
+                "name": "attestor",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "taskId",
+                "type": "bytes32",
+                "internalType": "bytes32"
+              },
+              {
+                "name": "attestation",
+                "type": "tuple",
+                "internalType": "struct Attestation",
+                "components": [
+                  {
+                    "name": "recipient",
+                    "type": "address",
+                    "internalType": "address"
+                  },
+                  {
+                    "name": "request",
+                    "type": "tuple[]",
+                    "internalType": "struct AttNetworkRequest[]",
+                    "components": [
+                      {
+                        "name": "url",
+                        "type": "string",
+                        "internalType": "string"
+                      },
+                      {
+                        "name": "header",
+                        "type": "string",
+                        "internalType": "string"
+                      },
+                      {
+                        "name": "method",
+                        "type": "string",
+                        "internalType": "string"
+                      },
+                      {
+                        "name": "body",
+                        "type": "string",
+                        "internalType": "string"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "responseResolve",
+                    "type": "tuple[]",
+                    "internalType": "struct AttNetworkOneUrlResponseResolve[]",
+                    "components": [
+                      {
+                        "name": "oneUrlResponseResolve",
+                        "type": "tuple[]",
+                        "internalType": "struct AttNetworkResponseResolve[]",
+                        "components": [
+                          {
+                            "name": "keyName",
+                            "type": "string",
+                            "internalType": "string"
+                          },
+                          {
+                            "name": "parseType",
+                            "type": "string",
+                            "internalType": "string"
+                          },
+                          {
+                            "name": "parsePath",
+                            "type": "string",
+                            "internalType": "string"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "name": "data",
+                    "type": "string",
+                    "internalType": "string"
+                  },
+                  {
+                    "name": "attConditions",
+                    "type": "string",
+                    "internalType": "string"
+                  },
+                  {
+                    "name": "timestamp",
+                    "type": "uint64",
+                    "internalType": "uint64"
+                  },
+                  {
+                    "name": "additionParams",
+                    "type": "string",
+                    "internalType": "string"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "name": "submittedAt",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "tokenSymbol",
+            "type": "uint8",
+            "internalType": "enum TokenSymbol"
+          },
+          {
+            "name": "callback",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "taskStatus",
+            "type": "uint8",
+            "internalType": "enum TaskStatus"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "taskTimeout",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "CallbackFailed",
+    "inputs": [
+      {
+        "name": "taskId",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "callback",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "reason",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ReportResult",
+    "inputs": [
+      {
+        "name": "attestor",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "taskId",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "tokenSymbol",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "enum TokenSymbol"
+      },
+      {
+        "name": "primusFee",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "attestorFee",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "SubmitTask",
+    "inputs": [
+      {
+        "name": "submitter",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "taskId",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "templateId",
+        "type": "string",
+        "indexed": false,
+        "internalType": "string"
+      },
+      {
+        "name": "attestors",
+        "type": "address[]",
+        "indexed": false,
+        "internalType": "address[]"
+      },
+      {
+        "name": "submittedAt",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "WithdrawBalance",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "tokenSymbol",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "enum TokenSymbol"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "settledTaskIds",
+        "type": "bytes32[]",
+        "indexed": false,
+        "internalType": "bytes32[]"
+      },
+      {
+        "name": "taskStatuses",
+        "type": "uint8[]",
+        "indexed": false,
+        "internalType": "enum TaskStatus[]"
+      }
+    ],
+    "anonymous": false
+  }
+]

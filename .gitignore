@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+.local/
+__pycache__/
+*.pyc
+node_modules/
+.next/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+.vercel/

@@ -1,0 +1,48 @@
+{
+  "chainId": 56,
+  "provider": "Etherscan V2",
+  "apiKeyValueRetained": false,
+  "credentialBinding": "ETHERSCAN_API_KEY ready; actual value neither printed nor retained",
+  "observedCapabilities": [
+    {
+      "operation": "contract/getsourcecode",
+      "outcome": "success",
+      "scope": "four finance aggregators and their implementation source/ABI metadata",
+      "successfulRequests": 8
+    },
+    {
+      "operation": "proxy/eth_blockNumber",
+      "outcome": "FREE_PLAN_CHAIN_UNSUPPORTED",
+      "requests": 1
+    },
+    {
+      "operation": "block/getblocknobytime",
+      "outcome": "FREE_PLAN_CHAIN_UNSUPPORTED",
+      "requests": 1
+    },
+    {
+      "operation": "logs/getLogs",
+      "outcome": "FREE_PLAN_CHAIN_UNSUPPORTED",
+      "requests": 1,
+      "scope": "endpoint entitlement-only request; one genesis block, offset1; not an activity measurement"
+    }
+  ],
+  "eventHistoryValidated": false,
+  "productionReadiness": "not_established",
+  "paidFallbackEnabled": false,
+  "evidenceFiles": [
+    {
+      "path": "bsc-first-source-observation.json",
+      "sha256": "b9021980e318846579e44451d7ef754dad7c63046349325f3251a741a78aa962"
+    },
+    {
+      "path": "bsc-other-source-observations.json",
+      "sha256": "d67786155c4ae4096b0260241cc5af446edbc7d3674d176a54f611f78de82117"
+    }
+  ],
+  "notes": [
+    "Free-plan eligibility was initially user-confirmed; runtime API outcomes are recorded per endpoint rather than assuming all BSC APIs have identical entitlement.",
+    "No request/response URL containing a key or raw error body is included.",
+    "No participant addresses, confidential amounts or private wallet history was queried or retained."
+  ]
+}

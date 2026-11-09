@@ -1,0 +1,93 @@
+{
+  "capturedAtUtc": "2026-11-09T19:18:45.663Z",
+  "scope": "bounded local incremental worker validation",
+  "evidencePolicy": "event_history_with_target_pinned_compatibility_v1",
+  "firstRun": [
+    {
+      "domain": "finance",
+      "chainId": 56,
+      "evidencePolicy": "event_history_with_target_pinned_compatibility_v1",
+      "outcome": "advanced",
+      "code": null,
+      "fromBlock": "132545502",
+      "toBlock": "132546501",
+      "targetFinalizedBlock": "132638759",
+      "remainingBlocks": "92258",
+      "committedRanges": 2,
+      "eventsAdded": 0,
+      "rpcRequests": 45,
+      "retryAfterSeconds": null,
+      "completedAt": "2026-11-09T19:16:27.499Z",
+      "compatibility": "event_history_with_target_pinned_compatibility_v1: explorer-matched event shapes; finalized-target bytecode/implementation pins and standard upgrade-event checks; historical ABI intervals not independently established"
+    },
+    {
+      "domain": "network",
+      "chainId": 8453,
+      "evidencePolicy": "event_history_with_target_pinned_compatibility_v1",
+      "outcome": "advanced",
+      "code": null,
+      "fromBlock": "55091642",
+      "toBlock": "55092641",
+      "targetFinalizedBlock": "55302670",
+      "remainingBlocks": "210029",
+      "committedRanges": 2,
+      "eventsAdded": 18,
+      "rpcRequests": 60,
+      "retryAfterSeconds": null,
+      "completedAt": "2026-11-09T19:16:50.376Z",
+      "compatibility": "event_history_with_target_pinned_compatibility_v1: official SDK event shapes; finalized-target implementation/code pins and standard upgrade-event checks; independent source match not established; historical ABI intervals not independently established"
+    }
+  ],
+  "resumedRun": [
+    {
+      "domain": "finance",
+      "chainId": 56,
+      "evidencePolicy": "event_history_with_target_pinned_compatibility_v1",
+      "outcome": "advanced",
+      "code": null,
+      "fromBlock": "132546502",
+      "toBlock": "132546601",
+      "targetFinalizedBlock": "132638894",
+      "remainingBlocks": "92293",
+      "committedRanges": 1,
+      "eventsAdded": 0,
+      "rpcRequests": 29,
+      "retryAfterSeconds": null,
+      "completedAt": "2026-11-09T19:17:26.398Z",
+      "compatibility": "event_history_with_target_pinned_compatibility_v1: explorer-matched event shapes; finalized-target bytecode/implementation pins and standard upgrade-event checks; historical ABI intervals not independently established"
+    },
+    {
+      "domain": "network",
+      "chainId": 8453,
+      "evidencePolicy": "event_history_with_target_pinned_compatibility_v1",
+      "outcome": "advanced",
+      "code": null,
+      "fromBlock": "55092642",
+      "toBlock": "55092741",
+      "targetFinalizedBlock": "55302670",
+      "remainingBlocks": "209929",
+      "committedRanges": 1,
+      "eventsAdded": 2,
+      "rpcRequests": 19,
+      "retryAfterSeconds": null,
+      "completedAt": "2026-11-09T19:17:32.941Z",
+      "compatibility": "event_history_with_target_pinned_compatibility_v1: official SDK event shapes; finalized-target implementation/code pins and standard upgrade-event checks; independent source match not established; historical ABI intervals not independently established"
+    }
+  ],
+  "publication": "available",
+  "snapshotId": "04836ca1c7b76f6fdaf8bb2d3358bb01ee914e023bb091adad96da2196ce85df",
+  "counts": {
+    "finance": 9,
+    "network": 243
+  },
+  "retainedStateSamples": {
+    "finance": 1,
+    "network": 1
+  },
+  "limitations": [
+    "Backlog remains against last observed provider-finalized targets.",
+    "No continuous hosted worker or Vercel deployment.",
+    "Historical code/ABI intervals are not independently verified.",
+    "Native states remain pinned samples; cryptographic attestation verification not run."
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "schemaVersion": "1.0.0",
+  "chainId": 56,
+  "reviewedAtClientDate": "2026-11-09",
+  "reviewStatus": "explorer_verified_source_methods_runtime_validation_pending",
+  "callTarget": "Configured aggregator proxy address, not its implementation address; use the same pinned block for every related read.",
+  "metadataApiCallsInThisReview": 4,
+  "rpcCallsInThisReview": 0,
+  "implementations": [
+    {
+      "role": "mint",
+      "address": "0x8b6213044534be95c7d889594cedaaee7757c29d",
+      "contractName": "UnitasMintAggregatorConfidential",
+      "abiSha256": "a0567f9b97132c77ec8938587cee8e3d5f5889220ca904c0b8a84f4a1f893169",
+      "sourceCodeSha256": "e62d95a303aa2e4b39b9e28ec0c4265f5fc2f6d35f3d7affc689f225e5cf4073",
+      "sourceUrl": "https://bscscan.com/address/0x8b6213044534be95c7d889594cedaaee7757c29d#code"
+    },
+    {
+      "role": "redeem",
+      "address": "0xa2652e6c1a825a18567fa670ff9b4416039aad46",
+      "contractName": "UnitasRedeemAggregatorConfidential",
+      "abiSha256": "0787c7edbc281b4ae19e9aac6813ce64b476c95e96ecd19cfb092ecbf15da889",
+      "sourceCodeSha256": "9f0559aa6cbabd4f2e738637d1f9d717b6cbcf54511be5c637077bc52d95805b",
+      "sourceUrl": "https://bscscan.com/address/0xa2652e6c1a825a18567fa670ff9b4416039aad46#code"
+    }
+  ],
+  "methods": [
+    {
+      "signature": "currentAggregateId()",
+      "selector": "0x8c78144f",
+      "abi": {"type":"function","name":"currentAggregateId","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},
+      "meaning": "Current open aggregate identifier, not a count of settled batches or participants. Source initializes the counter to 1."
+    },
+    {
+      "signature": "aggregateState(uint256)",
+      "selector": "0x70b90cc4",
+      "abi": {"type":"function","name":"aggregateState","inputs":[{"name":"aggregateId","type":"uint256","internalType":"uint256"}],"outputs":[{"name":"","type":"uint8","internalType":"enum AggregatorConfidentialUpgradeable.AggregateState"}],"stateMutability":"view"},
+      "meaning": "Computed native state with explicit existence check; unknown IDs revert AggregateNonexistent. State is not proof validity or individual claim completion."
+    },
+    {
+      "signature": "aggregateStep(uint256)",
+      "selector": "0x5fa17cdd",
+      "abi": {"type":"function","name":"aggregateStep","inputs":[{"name":"aggregateId","type":"uint256","internalType":"uint256"}],"outputs":[{"name":"","type":"uint8","internalType":"enum UnitasAggregatorConfidentialUpgradeable.Step"}],"stateMutability":"view"},
+      "meaning": "Unitas operational step mapping; a zero default alone does not establish aggregate existence."
+    },
+    {
+      "signature": "aggregateCreatedAt(uint256)",
+      "selector": "0xbbe423ed",
+      "abi": {"type":"function","name":"aggregateCreatedAt","inputs":[{"name":"aggregateId","type":"uint256","internalType":"uint256"}],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},
+      "meaning": "Aggregate initialization timestamp, not the first user's accepted request time. Zero-valued absent mappings must not become epoch chart data."
+    },
+    {
+      "signature": "aggregateDispatchedAt(uint256)",
+      "selector": "0x42156afe",
+      "abi": {"type":"function","name":"aggregateDispatchedAt","inputs":[{"name":"aggregateId","type":"uint256","internalType":"uint256"}],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},
+      "meaning": "Source records block.timestamp during dispatch. Zero may mean not dispatched or absent; establish state/existence first."
+    },
+    {
+      "signature": "aggregateMinAggregateAge(uint256)",
+      "selector": "0x387e0876",
+      "abi": {"type":"function","name":"aggregateMinAggregateAge","inputs":[{"name":"aggregateId","type":"uint256","internalType":"uint256"}],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},
+      "meaning": "Per-aggregate pinned minimum-age configuration. Dispatch compares elapsed block.timestamp against this value; it is not a guaranteed execution deadline."
+    },
+    {
+      "signature": "aggregateCallbackDeadline(uint256)",
+      "selector": "0x19cda6fb",
+      "abi": {"type":"function","name":"aggregateCallbackDeadline","inputs":[{"name":"aggregateId","type":"uint256","internalType":"uint256"}],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},
+      "meaning": "Per-aggregate snapshot of callback-deadline configuration. Do not render the raw configuration as an observed completion time or promised ETA."
+    },
+    {
+      "signature": "minAggregateAge()",
+      "selector": "0x9ea67f06",
+      "abi": {"type":"function","name":"minAggregateAge","inputs":[],"outputs":[{"name":"","type":"uint256","internalType":"uint256"}],"stateMutability":"view"},
+      "meaning": "Current global configuration, which may differ from a previously initialized aggregate's pinned minimum age."
+    },
+    {
+      "signature": "paused()",
+      "selector": "0x5c975abb",
+      "abi": {"type":"function","name":"paused","inputs":[],"outputs":[{"name":"","type":"bool","internalType":"bool"}],"stateMutability":"view"},
+      "meaning": "This contract's pause flag, not overall ecosystem availability, insolvency or fund safety."
+    },
+    {
+      "signature": "vault()",
+      "selector": "0xfbfa77cf",
+      "abi": {"type":"function","name":"vault","inputs":[],"outputs":[{"name":"","type":"address","internalType":"contract IERC4626"}],"stateMutability":"view"},
+      "meaning": "Underlying vault reference to compare with curated config; it does not establish Primus-attributable TVL or user ownership."
+    }
+  ],
+  "aggregateStateEnum": {"0":"Open","1":"Dispatched","2":"Finalized","3":"Canceled"},
+  "aggregateStateResolutionOrder": [
+    "If canceled flag is true: Canceled.",
+    "Otherwise if exchange-rate state is nonzero: Finalized. The numeric exchange rate is not queried or published by this fixture.",
+    "Otherwise if unshield-request state is nonzero: Dispatched. No user unshield history is queried.",
+    "Otherwise if ID equals currentAggregateId(): Open.",
+    "Otherwise revert AggregateNonexistent(aggregateId)."
+  ],
+  "unitasStepEnum": {"0":"None","1":"MintInit","2":"MintAwaitOutput","3":"RedeemInit","4":"RedeemCooldown","5":"RedeemAwaitOutput"},
+  "sourceFiles": [
+    "contracts/finance/AggregatorConfidentialUpgradeable.sol",
+    "contracts/finance/VaultAggregatorConfidentialUpgradeable.sol",
+    "contracts/finance/UnitasAggregatorConfidentialUpgradeable.sol"
+  ],
+  "selectorProvenance": "Ethereum Keccak-256, first 4 bytes, using ethereum-cryptography@3.2.0; not FIPS SHA3-256.",
+  "limitations": [
+    "These are read-only method/schema facts from current explorer-verified source, not independently verified deployed bytecode or historical ABI compatibility.",
+    "Call only the configured proxy at a pinned block and verify chain/proxy implementation first.",
+    "A current open aggregate may be empty. Counter/initialization time does not establish accepted user operations or their wait duration.",
+    "Keep state, timestamps and step reads at one block to avoid mixing a counter advance with a later snapshot.",
+    "Do not enumerate wallet addresses, read totalDeposits/exchangeRate values, inspect permits or construct confidential amount/participant histories.",
+    "A missing/unsupported/reverting read is not zero activity. Finalized native batch state is separate from chain finality and cryptographic proof verification."
+  ]
+}
