@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     const result = await collectHosted({ store,
       collector: { mode: 'scheduled', provider: 'vercel_cron', intervalMinutes: 15, runUrl: null },
       rpcFor: domain => new FetchRpc(domain === 'finance' ? 'https://bsc-rpc.publicnode.com' : 'https://base-rpc.publicnode.com', {
-        maxRequests: 600, maxSeconds: Math.max(15, Math.min(200, Math.floor((240_000 - (Date.now() - started)) / 1000))),
+        maxRequests: 600, maxSeconds: Math.max(15, Math.min(220, Math.floor((240_000 - (Date.now() - started)) / 1000))),
         timeoutSeconds: 10, maxResponseBytes: 2_000_000, minIntervalMs: 350,
       }),
     });

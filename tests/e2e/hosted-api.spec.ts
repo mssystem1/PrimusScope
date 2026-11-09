@@ -12,7 +12,10 @@ test('hosted reads expose scoped data and distinguish unavailable values from ze
   expect(body.finance.eventCount).toBeGreaterThanOrEqual(9);
   expect(body.network.requestCount).toBeGreaterThanOrEqual(116);
   expect(body.network.reportEventCount).toBeGreaterThanOrEqual(90);
-  expect(body.network.totalEvents).toBe(body.network.requestCount + body.network.reportEventCount + body.network.withdrawalEventCount);
+  const requestEvents = body.network.blockBins.reduce((sum: number, bin: { requestCount: number }) => sum + bin.requestCount, 0);
+  expect(requestEvents).toBeGreaterThanOrEqual(body.network.requestCount);
+  expect(body.network.totalEvents).toBe(requestEvents + body.network.reportEventCount
+    + body.network.withdrawalEventCount + body.network.callbackFailureEventCount);
   expect(body.finance.apy).toBeNull(); expect(body.finance.tvl).toBeNull();
   expect(body.network.successRate).toBeNull(); expect(body.network.verifiedProofCount).toBeNull();
   for (const domain of ['finance','network']) {

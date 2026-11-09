@@ -1,0 +1,131 @@
+{
+  "schemaVersion": "1.0.0",
+  "observedAt": "2026-11-09T21:07:34.263332+00:00",
+  "deployedCommit": "03d589bdbc293b933b700a56e8b84785a0f0538a",
+  "application": {
+    "url": "https://primus-scope.vercel.app",
+    "deploymentId": "dpl_J43yLUM25w6jdKTCfhNH7CDsAjtw",
+    "mode": "indexed_observations",
+    "storage": "hosted_postgres"
+  },
+  "collector": {
+    "url": "https://primus-scope-collector.vercel.app",
+    "deploymentId": "dpl_AzECgguWrdPc75NHaVJQrymyZwwy",
+    "schedule": "*/15 * * * *",
+    "scheduleEnabledVerified": true,
+    "automaticCronInvocationObserved": false,
+    "authorizedInvocation": {
+      "outcome": "completed",
+      "revision": "2",
+      "reports": [
+        {
+          "domain": "finance",
+          "chainId": 56,
+          "evidencePolicy": "event_history_with_target_pinned_compatibility_v1",
+          "outcome": "advanced",
+          "code": null,
+          "fromBlock": "132545502",
+          "toBlock": "132555501",
+          "targetFinalizedBlock": "132652755",
+          "remainingBlocks": "97254",
+          "committedRanges": 1,
+          "eventsAdded": 0,
+          "rpcRequests": 29,
+          "retryAfterSeconds": null,
+          "completedAt": "2026-11-09T21:01:24.861Z",
+          "compatibility": "event_history_with_target_pinned_compatibility_v1: explorer-matched event shapes; finalized-target bytecode/implementation pins and standard upgrade-event checks; historical ABI intervals not independently established"
+        },
+        {
+          "domain": "network",
+          "chainId": 8453,
+          "evidencePolicy": "event_history_with_target_pinned_compatibility_v1",
+          "outcome": "advanced",
+          "code": null,
+          "fromBlock": "55091642",
+          "toBlock": "55101641",
+          "targetFinalizedBlock": "55331671",
+          "remainingBlocks": "230030",
+          "committedRanges": 10,
+          "eventsAdded": 161,
+          "rpcRequests": 408,
+          "retryAfterSeconds": null,
+          "completedAt": "2026-11-09T21:03:47.542Z",
+          "compatibility": "event_history_with_target_pinned_compatibility_v1: official SDK event shapes; finalized-target implementation/code pins and standard upgrade-event checks; independent source match not established; historical ABI intervals not independently established"
+        }
+      ]
+    },
+    "resumeInvocation": {
+      "outcome": "partial",
+      "revision": "4",
+      "reports": [
+        {
+          "domain": "finance",
+          "chainId": 56,
+          "evidencePolicy": "event_history_with_target_pinned_compatibility_v1",
+          "outcome": "advanced",
+          "code": null,
+          "fromBlock": "132555502",
+          "toBlock": "132565501",
+          "targetFinalizedBlock": "132653209",
+          "remainingBlocks": "87708",
+          "committedRanges": 1,
+          "eventsAdded": 0,
+          "rpcRequests": 29,
+          "retryAfterSeconds": null,
+          "completedAt": "2026-11-09T21:04:45.448Z",
+          "compatibility": "event_history_with_target_pinned_compatibility_v1: explorer-matched event shapes; finalized-target bytecode/implementation pins and standard upgrade-event checks; historical ABI intervals not independently established"
+        },
+        {
+          "domain": "network",
+          "chainId": 8453,
+          "evidencePolicy": "event_history_with_target_pinned_compatibility_v1",
+          "outcome": "failed",
+          "code": "RUN_DEADLINE_EXHAUSTED",
+          "fromBlock": "55101642",
+          "toBlock": "55110641",
+          "targetFinalizedBlock": "55333486",
+          "remainingBlocks": "222845",
+          "committedRanges": 9,
+          "eventsAdded": 209,
+          "rpcRequests": 543,
+          "retryAfterSeconds": null,
+          "completedAt": "2026-11-09T21:07:55.434Z",
+          "compatibility": "event_history_with_target_pinned_compatibility_v1: official SDK event shapes; finalized-target implementation/code pins and standard upgrade-event checks; independent source match not established; historical ABI intervals not independently established"
+        }
+      ]
+    },
+    "resumeRangesContiguousVerified": true
+  },
+  "database": {
+    "provider": "Neon",
+    "plan": "free_v3",
+    "region": "iad1",
+    "webReadOnlyRoleVerified": true,
+    "adminCredentialRemovedFromWebProject": true
+  },
+  "checks": {
+    "typecheck": "passed",
+    "applicationTests": 151,
+    "discoveryTests": 114,
+    "localBrowserTests": 30,
+    "deployedBrowserWorkflows": 17,
+    "deployedApiTests": 4,
+    "normalTlsVerification": true,
+    "reviewedDesktopAndPhoneScreenshots": true,
+    "traceManifests": 21,
+    "sensitiveOrTestFilesInTraces": 0,
+    "unauthorizedCollectorStatus": 401,
+    "invalidCollectorQueryStatus": 400,
+    "overlappingJobCode": "LEASE_BUSY",
+    "githubActionsRun": "https://github.com/mssystem1/PrimusScope/actions/runs/42698287606",
+    "githubActionsConclusion": "success"
+  },
+  "limits": [
+    "History is not caught up; inspect measured block lag and source times.",
+    "Configured cron is distinct from an observed automatic scheduled invocation.",
+    "One current publication; 16 MB and 100000 events per domain.",
+    "Provider backup/restore and retention expansion remain follow-up work.",
+    "Independent consensus, every historical implementation interval and cryptographic proof verification are not established.",
+    "The resume trial hit its run budget after 9000 completed Network blocks; completed data stayed published. Chunk sizing and time allocation were adjusted for the next release."
+  ]
+}

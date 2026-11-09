@@ -35,6 +35,8 @@ RPC work. Query parameters are refused. The endpoint is not a public RPC proxy.
 Node 24 and a 300-second function limit are required. Each job targets a bounded
 240-second collection budget and at most 10,000 additional blocks per domain.
 Registered keyless PublicNode endpoints supply BSC Finance and Base Network data.
+Network scans start with 5,000-block chunks and split on range/event limits;
+this reduces repeated validation calls while retaining bounded, atomic ranges.
 
 A database-clock global lease prevents overlapping collectors. Each job restores
 the latest validated PostgreSQL publication into private temporary SQLite, using

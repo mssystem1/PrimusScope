@@ -37,7 +37,7 @@ export async function collectHosted(options: HostedOptions) {
         const rpc = options.rpcFor?.(domain) ?? new CurlRpc(sourceFor(domain, initial.publication.snapshot).endpoint,
           { ...DEFAULT_RPC_LIMITS, maxRequests: 600, maxSeconds: 240 });
         reports.push(await (options.runDomain ?? runOnce)(local, rpc, domain, options.limits ??
-          { ...DEFAULT_SCAN_LIMITS, maxBlocks: 10_000, chunkSize: domain === 'finance' ? 10_000 : 1000 }));
+          { ...DEFAULT_SCAN_LIMITS, maxBlocks: 10_000, chunkSize: domain === 'finance' ? 10_000 : 5000 }));
       } catch (error) {
         reports.push({ domain, outcome: 'failed', code: error instanceof StorageError || error instanceof WorkerError
           ? error.code : 'INDEXER_FAILED' });

@@ -1,5 +1,12 @@
 # Implementation status — 9 November 2026
 
+Hosted release validation: both Vercel projects are deployed, Neon Free is seeded,
+and an authorized collector invocation advanced both chain scopes by 10,000
+blocks without rebuilding the public app. The deployed checks passed 17 desktop/
+mobile workflows and four API tests. These results and explicit remaining
+backlog/operational limits are retained in
+[hosted-release-observation.json](hosted-release-observation.json).
+
 The local application and a durable incremental indexing slice are implemented
 and validated. Default recorded mode uses retained observations; optional local
 indexed mode reads completed worker publications from SQLite without a rebuild.

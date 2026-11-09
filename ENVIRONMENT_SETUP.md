@@ -76,6 +76,15 @@ Browser TLS verification stays enabled. Browser trust/configuration problems are
 
 ## One separate launch configuration batch
 
+**Hosted batch now configured:** Neon Free stores the durable publication;
+`primus-scope` receives only `WEB_DATABASE_URL` and `PRIMUSSCOPE_DATA_MODE=hosted`;
+`primus-scope-collector` receives only `WORKER_DATABASE_URL` and `CRON_SECRET`.
+These are encrypted Vercel production settings, not new Codex settings to enter
+or publish. Provider administrative connection variables were disconnected from
+the web project after bootstrap. See [HOSTED_INDEXER.md](docs/HOSTED_INDEXER.md).
+The table below describes ownership boundaries; no further credential entry is
+required for these deployed public workflows.
+
 These values cannot be supplied before the database, worker service and Vercel project exist. They are not prerequisites for current source discovery or local development. Provisioning/selection should be completed together and the resulting configuration reviewed as one launch batch.
 
 | Configuration | Where it belongs | Why / who supplies it |
