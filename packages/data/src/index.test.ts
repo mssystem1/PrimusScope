@@ -85,14 +85,14 @@ describe('recorded real observation serving', () => {
       .toMatchObject({ state: 'clock_skew', ageSeconds: '0' });
   });
 
-  it('preserves the real block window and only the two witnessed finance event times', () => {
+  it('preserves the real block window and the reconciled block-header calendar times', () => {
     expect(snapshot.finance.coverage).toMatchObject({
       fromBlock: '132495502', toBlock: '132545501',
       fromTime: '2026-11-09T01:20:18.000Z', toTime: '2026-11-09T07:35:25.000Z',
     });
-    expect(snapshot.finance.events.filter(event => event.timestamp !== null)).toHaveLength(2);
-    expect(snapshot.network.events.every(event => event.timestamp === null)).toBe(true);
-    expect(snapshot.network.coverage.fromTime).toBeNull();
+    expect(snapshot.finance.events.filter(event => event.timestamp !== null)).toHaveLength(9);
+    expect(snapshot.network.events.every(event => event.timestamp !== null)).toBe(true);
+    expect(snapshot.network.coverage.fromTime).not.toBeNull();
     const summary = repository().getNetworkSummary();
     expect(summary.blockBins.reduce((count, bin) => count + bin.requestCount, 0)).toBe(116);
     expect(summary.blockBins.reduce((count, bin) => count + bin.reportEventCount, 0)).toBe(90);
@@ -287,6 +287,7 @@ describe('explicit snapshot import boundary', () => {
       'docs/discovery/bsc-rpc-observation.json', 'docs/discovery/bsc-native-observation.json',
       'docs/discovery/bsc-window-observation.json', 'docs/discovery/network-free-rpc-observation.json',
       'scripts/discovery/sources/bsc-finance-source.json',
+      'docs/discovery/calendar-block-times.json',
     ];
     const excluded = 'excluded-sensitive-source-marker';
     for (const file of files) {
@@ -322,6 +323,7 @@ describe('explicit snapshot import boundary', () => {
       'docs/discovery/bsc-rpc-observation.json', 'docs/discovery/bsc-native-observation.json',
       'docs/discovery/bsc-window-observation.json', 'docs/discovery/network-free-rpc-observation.json',
       'scripts/discovery/sources/bsc-finance-source.json',
+      'docs/discovery/calendar-block-times.json',
     ];
     for (const file of files) {
       const value = JSON.parse(readFileSync(join(root, file), 'utf8'));

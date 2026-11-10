@@ -222,6 +222,25 @@ export function buildObservationSet(root: string, generatedAt = new Date()): Obs
       developerTelemetry: 'not_configured' as const,
     },
   };
+  const timePath=join(root,'docs/discovery/calendar-block-times.json');
+  if(existsSync(timePath)){
+    const evidence=object(JSON.parse(readFileSync(timePath,'utf8')));
+    const times=new Map(list(evidence.blocks).map(row=>[integer(row.chainId)+':'+integer(row.blockNumber),
+      {blockHash:hash(row.blockHash),timestamp:instant(row.timestamp)}]));
+    for(const domain of [observedCore.finance,observedCore.network]){
+      for(const event of domain.events){
+        const timed=times.get(domain.chainId+':'+event.blockNumber);if(!timed)continue;
+        if(timed.blockHash!==event.blockHash||(event.timestamp!==null&&event.timestamp!==timed.timestamp))throw new Error('SOURCE_TIMESTAMP_MISMATCH');
+        event.timestamp=timed.timestamp;
+      }
+      const boundary=list(evidence.boundaries).find(row=>integer(row.chainId)===String(domain.chainId)&&integer(row.fromBlock)===domain.coverage.fromBlock);
+      if(boundary){
+        const start=instant(boundary.fromTime);
+        if(domain.coverage.fromTime!==null&&domain.coverage.fromTime!==start)throw new Error('SOURCE_TIMESTAMP_MISMATCH');
+        domain.coverage.fromTime=start;
+      }
+    }
+  }
   // Import time is not part of snapshot identity or source freshness.
   const snapshotId = digest(observedCore);
   return ObservationSetSchema.parse({ ...observedCore, snapshotId, generatedAt: generatedAt.toISOString() });

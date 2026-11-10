@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { collectHosted } from '@primusscope/worker/hosted';
 import { FetchRpc } from '@primusscope/worker/fetch-rpc';
+import { collectPublicStrategy } from '@primusscope/worker/strategy';
 import { StorageError } from '@primusscope/storage';
 import { neonClient, PostgresPublicationStore } from '@primusscope/storage/postgres';
 
@@ -21,12 +22,16 @@ export async function GET(request: Request) {
   const connection = process.env.WORKER_DATABASE_URL;
   if (!connection) return Response.json({ code: 'DATABASE_NOT_CONFIGURED' }, { status: 503, headers });
   const started = Date.now();
+  const strategyEnabled = process.env.PRIMUSSCOPE_STRATEGY_ENABLED === '1';
   try {
     const store = new PostgresPublicationStore(neonClient(connection));
     const result = await collectHosted({ store,
+      ...(strategyEnabled ? { collectStrategy: collectPublicStrategy } : {}),
       collector: { mode: 'scheduled', provider: 'vercel_cron', intervalMinutes: 15, runUrl: null },
       rpcFor: domain => new FetchRpc(domain === 'finance' ? 'https://bsc-rpc.publicnode.com' : 'https://base-rpc.publicnode.com', {
-        maxRequests: 600, maxSeconds: Math.max(15, Math.min(220, Math.floor((240_000 - (Date.now() - started)) / 1000))),
+        // Reserve strategy reads and a Network attempt inside the shared job budget.
+        maxRequests: 600, maxSeconds: Math.max(15, Math.min(strategyEnabled && domain === 'finance' ? 110 : 220,
+          Math.floor((240_000 - (Date.now() - started)) / 1000))),
         timeoutSeconds: 10, maxResponseBytes: 2_000_000, minIntervalMs: 350,
       }),
     });

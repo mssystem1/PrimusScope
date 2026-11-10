@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { chmodSync, existsSync, mkdirSync } from 'node:fs';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { ObservationSetSchema, type ObservationSet } from '@primusscope/api-schema';
+import { FinanceStrategySchema, ObservationSetSchema, type FinanceStrategy, type ObservationSet } from '@primusscope/api-schema';
 import type { Checkpoint, CompletedRange, Domain, DomainStatus, IndexerStatus, Lease, RunRecord, ServingState } from './types';
 import { StorageError } from './errors';
 import { validatePublication, type HostedPublication } from './publication';
@@ -370,6 +370,15 @@ export class SQLiteStore {
     return this.transaction(() => ({ snapshot: this.currentSnapshot(), status: this.status() }), false);
   }
   readSnapshot(): ObservationSet { return this.readServingState().snapshot; }
+
+  /** Public shared-strategy observations are a separate, explicitly attributed dataset. */
+  recordStrategy(token:string,input:FinanceStrategy):void {
+    const strategy=FinanceStrategySchema.parse(input);
+    this.transaction(()=>{
+      this.lease('finance',token);
+      const snapshot=this.currentSnapshot();snapshot.finance.strategy=strategy;this.publish(snapshot);
+    });
+  }
 
   /** Worker-only transfer: includes the last validated facts during quarantine. */
   exportPublication(collector: HostedPublication['collector'] = { mode: 'manual', intervalMinutes: null, runUrl: null }): HostedPublication {

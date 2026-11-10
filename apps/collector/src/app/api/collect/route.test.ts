@@ -18,6 +18,7 @@ import { GET } from './route';
 
 const oldSecret = process.env.CRON_SECRET;
 const oldDatabase = process.env.WORKER_DATABASE_URL;
+const oldStrategyFlag = process.env.PRIMUSSCOPE_STRATEGY_ENABLED;
 const secret = 's'.repeat(48);
 function request(url = 'https://collector.example/api/collect', authorization = `Bearer ${secret}`) {
   return new Request(url, { headers: { authorization } });
@@ -29,11 +30,27 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 afterEach(() => {
+  vi.restoreAllMocks();
   if (oldSecret === undefined) delete process.env.CRON_SECRET; else process.env.CRON_SECRET = oldSecret;
   if (oldDatabase === undefined) delete process.env.WORKER_DATABASE_URL; else process.env.WORKER_DATABASE_URL = oldDatabase;
+  if (oldStrategyFlag === undefined) delete process.env.PRIMUSSCOPE_STRATEGY_ENABLED; else process.env.PRIMUSSCOPE_STRATEGY_ENABLED = oldStrategyFlag;
 });
 
 describe('scheduled collection route', () => {
+  it('reserves time for strategy and Network collection within the shared invocation budget', async () => {
+    process.env.PRIMUSSCOPE_STRATEGY_ENABLED = '1';
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
+    mocks.collectHosted.mockImplementationOnce(async options => {
+      expect(options.collectStrategy).toEqual(expect.any(Function));
+      options.rpcFor('finance');
+      clock.mockReturnValue(1_215_000);
+      options.rpcFor('network');
+      return { outcome: 'completed' };
+    });
+    expect((await GET(request())).status).toBe(200);
+    expect(mocks.FetchRpc.mock.calls[0][1].maxSeconds).toBe(110);
+    expect(mocks.FetchRpc.mock.calls[1][1].maxSeconds).toBe(25);
+  });
   it('rejects unauthorized requests before database setup or collection RPC work', async () => {
     const response = await GET(request('https://collector.example/api/collect', 'Bearer wrong'));
     expect(response.status).toBe(401);

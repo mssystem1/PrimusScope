@@ -19,7 +19,7 @@ function readSaved(): SavedItem[] {
   try {
     const value: unknown = JSON.parse(localStorage.getItem(STORAGE) ?? "[]");
     if (!Array.isArray(value)) return [];
-    return value.slice(0, 100).filter((item): item is SavedItem => typeof item === "object" && item !== null && typeof item.id === "string" && item.id.length <= 256 && typeof item.title === "string" && item.title.length <= 200 && typeof item.href === "string" && item.href.length <= 512 && /^\/(finance|network|explore)(\/|$|\?)/.test(item.href) && ["finance", "network", "view"].includes(item.domain) && typeof item.savedAt === "string" && Number.isFinite(Date.parse(item.savedAt))).slice(0, 50).map(({ id, title, href, domain, savedAt }) => ({ id, title, href, domain, savedAt }));
+    return value.slice(0, 100).filter((item): item is SavedItem => typeof item === "object" && item !== null && typeof item.id === "string" && item.id.length <= 256 && typeof item.title === "string" && item.title.length <= 200 && typeof item.href === "string" && item.href.length <= 512 && /^\/(finance|network|explore)(\/|$|\?|#)/.test(item.href) && ["finance", "network", "view"].includes(item.domain) && typeof item.savedAt === "string" && Number.isFinite(Date.parse(item.savedAt))).slice(0, 50).map(({ id, title, href, domain, savedAt }) => ({ id, title, href, domain, savedAt }));
   } catch { return []; }
 }
 
@@ -45,10 +45,11 @@ export function SaveButton({ item, compact = false }: { item: Omit<SavedItem, "s
   }}>{saved ? <Check size={15} /> : <Bookmark size={15} />}{saved ? "Saved" : "Save view"}</button><span className="sr-only" role="status">{message}</span></>;
 }
 
-export function CopyButton({ value, label = "Copy" }: { value: string; label?: string }) {
+export function CopyButton({ value, label = "Copy", copyAsUrl = false }: { value: string; label?: string; copyAsUrl?: boolean }) {
   const [message, setMessage] = useState("");
-  return <button className="button button-small button-secondary" onClick={async () => {
-    try { await navigator.clipboard.writeText(value); setMessage("Copied"); } catch { setMessage("Copy unavailable"); }
+  useEffect(() => setMessage(''), [value]);
+  return <button className="button button-small button-secondary" aria-label={message || label} onClick={async () => {
+    try { await navigator.clipboard.writeText(copyAsUrl ? new URL(value, window.location.origin).href : value); setMessage("Copied"); } catch { setMessage("Copy unavailable"); }
   }}><Copy size={14} />{message || label}<span className="sr-only" role="status">{message}</span></button>;
 }
 
@@ -97,7 +98,10 @@ export function ExplorerSearch({ exampleTask, mode = "recorded_observations" }: 
 const endpoints = [
   { label: "Ecosystem overview", path: "/api/v1/overview" },
   { label: "Finance vault directory", path: "/api/v1/finance/vaults" },
+  { label: "Finance dashboard analytics", path: "/api/v1/finance/analytics?range=30d" },
+  { label: "Network dashboard analytics", path: "/api/v1/network/analytics?range=24h&interval=hour" },
   { label: "Network summary", path: "/api/v1/network/summary" },
+  { label: "Network activity events", path: "/api/v1/network/events?limit=10" },
   { label: "Source status", path: "/api/v1/status/sources" },
 ];
 

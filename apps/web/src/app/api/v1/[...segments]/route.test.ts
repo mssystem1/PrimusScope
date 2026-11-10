@@ -11,6 +11,45 @@ function get(path: string, query = "") {
 }
 
 describe("public observations API routes", () => {
+  it('serves actual strategy history separately from Primus route operations',async()=>{
+    const response=await get('finance/analytics','?range=30d&routeId=united-stables-confidential-vault');
+    expect(response.status).toBe(200);const body=await response.json();
+    expect(body.strategy.attribution).toBe('shared_unitas_strategy');expect(body.strategy.assetSymbol).toBe('USDu');
+    expect(body.strategy.points.length).toBeGreaterThanOrEqual(29);expect(body.strategy.flows.length).toBeGreaterThan(0);
+    expect(body.strategy.latest.apy7d).toEqual(expect.any(Number));expect(body.strategy.latest.apy30d).toEqual(expect.any(Number));
+    expect(body.operations.routeActivity).toHaveLength(1);expect(body.operations.routeActivity[0].routeId).toBe('united-stables-confidential-vault');
+    expect((await get('finance/analytics','?routeId=missing')).status).toBe(422);
+  });
+  it('keeps Network cohort coverage, latency and explicit source windows consistent',async()=>{
+    const response=await get('network/analytics','?range=24h&interval=hour');expect(response.status).toBe(200);
+    const body=await response.json(),data=body.analytics;
+    expect(data.requestCohort.requestsWithSubsequentReport).toBe(data.firstReportLatency.count);
+    expect(data.requestCohort.requestsWithSubsequentReport).toBeLessThanOrEqual(data.requestCohort.requestCount);
+    expect(data.series.reduce((sum:number,row:{SubmitTask:number})=>sum+row.SubmitTask,0)).toBe(116);
+    expect((await get('network/analytics','?range=1y')).status).toBe(400);
+    expect((await get('network/analytics','?privateKey=secret-input')).status).toBe(400);
+  });
+  it('serves strict paged Network events and documents their filters', async () => {
+    const response=await get('network/events','?eventKind=ReportResult&limit=2');
+    expect(response.status).toBe(200); const page=await response.json();
+    expect(page.items).toHaveLength(2);expect(page.total).toBe(90);expect(page.nextCursor).toEqual(expect.any(String));
+    expect(page.items.every((event:{kind:string})=>event.kind==='ReportResult')).toBe(true);
+    const document=await (await get('openapi.json')).json();
+    expect(document.paths['/network/events'].get.parameters.map((p:{name:string})=>p.name)).toContain('fromBlock');
+    expect(document.paths['/exports/metrics.csv'].get.parameters.map((p:{name:string})=>p.name)).toContain('snapshotId');
+  });
+  it.each(['?eventKind=SUCCESS','?fromBlock=01','?taskId=secret-value','?limit=1&limit=2','?privateKey=secret-value','?cursor=x&cursor=y'])(
+    'rejects malformed Network query %s safely',async query=>{
+      const response=await get('network/events',query);expect(response.status).toBe(400);
+      expect(await response.text()).not.toContain('secret-value');
+    });
+  it('guards range and cursor scope and refuses exports after a snapshot changes',async()=>{
+    const first=await (await get('network/events','?limit=1')).json();
+    expect((await get('network/events','?fromBlock=0')).status).toBe(422);
+    expect((await get('network/events','?eventKind=ReportResult&limit=1&cursor='+first.nextCursor)).status).toBe(400);
+    const response=await get('exports/metrics.csv','?domain=network&snapshotId='+'a'.repeat(64));
+    expect(response.status).toBe(409);expect((await response.json()).code).toBe('SNAPSHOT_EXPIRED');
+  });
   it("serves a serializable OpenAPI 3.1 document with strict public schemas", async () => {
     const response = await get("openapi.json");
     expect(response.status).toBe(200);

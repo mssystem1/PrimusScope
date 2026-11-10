@@ -94,6 +94,17 @@ export const NetworkEventSchema = SharedEventSchema.extend({
 });
 export type NetworkEvent = z.infer<typeof NetworkEventSchema>;
 
+/** Public selection over already validated Network observations. */
+export const NetworkEventFiltersSchema = z.object({
+  chainId: z.number().int().positive().max(Number.MAX_SAFE_INTEGER).optional(),
+  contractAddress: AddressSchema.optional(),
+  fromBlock: DecimalStringSchema.optional(),
+  toBlock: DecimalStringSchema.optional(),
+  eventKind: NetworkEventKindSchema.optional(),
+  taskId: HashSchema.optional(),
+}).strict();
+export type NetworkEventFilters = z.infer<typeof NetworkEventFiltersSchema>;
+
 export const FinanceContractSchema = z.object({
   id: IdentifierSchema,
   routeId: IdentifierSchema,
@@ -158,6 +169,32 @@ export const SourceSchema = z.object({
 }).strict();
 export type Source = z.infer<typeof SourceSchema>;
 
+export const StrategySampleSchema = z.object({
+  blockNumber: DecimalStringSchema, blockHash: HashSchema, timestamp: IsoTimestampSchema,
+  observedAt: IsoTimestampSchema, sourceUrl: z.enum(['https://bsc-mainnet.public.blastapi.io','https://bsc-rpc.publicnode.com']),
+  totalAssetsRaw: DecimalStringSchema, totalSupplyRaw: DecimalStringSchema,
+  exchangeRateRaw: DecimalStringSchema, unvestedRaw: DecimalStringSchema,
+}).strict();
+export const StrategyFlowSchema = z.object({
+  id: IdentifierSchema, blockNumber: DecimalStringSchema, blockHash: HashSchema,
+  transactionHash: HashSchema, logIndex: DecimalStringSchema, timestamp: IsoTimestampSchema,
+  kind: z.enum(['Deposit','Withdraw']), assetsRaw: DecimalStringSchema, sharesRaw: DecimalStringSchema,
+}).strict();
+export const FinanceStrategySchema = z.object({
+  schemaVersion: z.literal('1.0.0'), chainId: z.literal(56),
+  attribution: z.literal('shared_unitas_strategy'),
+  proxyAddress: AddressSchema, vaultAddress: AddressSchema, assetAddress: AddressSchema,
+  assetSymbol: z.literal('USDu'), shareSymbol: z.literal('sUSDu'),
+  assetDecimals: z.literal(18), shareDecimals: z.literal(18),
+  samples: z.array(StrategySampleSchema).max(5000), flows: z.array(StrategyFlowSchema).max(20000),
+  flowCoverage: z.object({fromBlock:DecimalStringSchema,toBlock:DecimalStringSchema,
+    toBlockHash:HashSchema.optional(),
+    fromTime:IsoTimestampSchema,toTime:IsoTimestampSchema,observedAt:IsoTimestampSchema,
+    sourceUrl:z.enum(['https://bsc-mainnet.public.blastapi.io','https://bsc-rpc.publicnode.com']),complete:z.boolean()}).strict().nullable(),
+}).strict();
+export type FinanceStrategy = z.infer<typeof FinanceStrategySchema>;
+export type StrategySample = z.infer<typeof StrategySampleSchema>;
+
 export const FinanceObservationSchema = z.object({
   chainId: z.literal(56),
   contracts: z.array(FinanceContractSchema).min(1).max(100),
@@ -165,6 +202,7 @@ export const FinanceObservationSchema = z.object({
   events: z.array(FinanceEventSchema).max(100_000),
   stateSamples: z.array(FinanceStateSampleSchema).max(10_000),
   latencySamples: z.array(FinanceLatencySampleSchema).max(10_000),
+  strategy: FinanceStrategySchema.optional(),
 }).strict();
 export type FinanceObservation = z.infer<typeof FinanceObservationSchema>;
 

@@ -2,15 +2,19 @@ import { PGlite } from '@electric-sql/pglite';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { ObservationSetSchema } from '@primusscope/api-schema';
 import { SQLiteStore } from '@primusscope/storage';
 import { PostgresPublicationStore } from '@primusscope/storage/postgres';
 import recorded from '../../../data/observations/current.json';
+import strategyJson from '../../../data/strategy/unitas-history.json';
+import { FinanceStrategySchema } from '@primusscope/api-schema';
 import { collectHosted } from './hosted';
 import type { runOnce, RunReport } from './indexer';
 
 let database: PGlite;
+// PostgreSQL/WASM cold start and durable restart exercise real I/O.
+vi.setConfig({testTimeout:15000});
 afterEach(async () => { await database?.close(); });
 async function fixture() {
   database = new PGlite();
@@ -38,6 +42,14 @@ const advance: typeof runOnce = async (store, _rpc, domain) => {
   store.releaseLease(token);
   return { domain, outcome: 'advanced', toBlock } as RunReport;
 };
+
+it('retains strategy observations through the next domain commit and a fresh collector job',async()=>{
+  const store=await fixture(),strategy=FinanceStrategySchema.parse(strategyJson);
+  await collectHosted({store,collector,rpcFor,runDomain:advance,collectStrategy:async()=>({strategy})});
+  expect((await store.read())?.publication.snapshot.finance.strategy).toEqual(strategy);
+  await collectHosted({store,collector,rpcFor,runDomain:advance});
+  expect((await store.read())?.publication.snapshot.finance.strategy).toEqual(strategy);
+});
 
 it('persists a completed domain before a later failure and resumes in a fresh job', async () => {
   const store = await fixture(), before = (await store.read())!;

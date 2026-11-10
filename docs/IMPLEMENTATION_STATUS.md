@@ -1,4 +1,18 @@
-# Implementation status — 9 November 2026
+# Implementation status — 10 November 2026
+
+Finance and zkTLS Network now have calendar analytics dashboards, interactive
+charts, exact chart CSV and accessible data tables. Finance preserves U/eU and
+USDT/eUSDT as primary routes and separately measures the shared Unitas strategy:
+61 daily assets/share/NAV samples across 60 days, geometric 7D/30D APY and
+67 receipt-verified public flows across seven days. These totals are not private
+Primus positions or route-attributable TVL. Network charts cover traffic, request
+cohorts, first-report latency and report distributions. See
+[ANALYTICS_DASHBOARDS.md](ANALYTICS_DASHBOARDS.md).
+
+Network activity research now includes conjunctive event/task/block filters,
+newest-first pagination, chart-interval drill-down, shareable and browser-saved
+views, JSON reads and matching CSV with an on-page snapshot-refresh workflow.
+Ranges outside published coverage are rejected. See [NETWORK_ACTIVITY.md](NETWORK_ACTIVITY.md).
 
 Hosted release validation: both Vercel projects are deployed, Neon Free is seeded,
 and an authorized collector invocation advanced both chain scopes by 10,000
@@ -39,11 +53,11 @@ deployment-specific validation tracked separately from local results.
 ## Validation evidence
 
 The final production build and `npm run typecheck` pass. `npm test` passes
-**151 tests** across schema, data, HTTP-helper, API-route, SQLite, PostgreSQL role/
+**188 tests** across schema, data, HTTP-helper, API-route, SQLite, PostgreSQL role/
 lease/publication, hosted recovery, transport and worker checks.
 
-Production-server Playwright runs pass **30 of 30 tests**: the original 25
-recorded-mode checks plus five isolated indexed-mode workflows.
+Production-server Playwright runs pass **45 of 45 tests**: 40 recorded-mode
+checks plus five isolated indexed-mode workflows.
 
 - Eight API checks, including counts, unavailable values, typed lookup, invalid
   inputs, pagination and scoped CSV reconciliation.
@@ -55,14 +69,18 @@ recorded-mode checks plus five isolated indexed-mode workflows.
   page reflow at 360 and 390 pixels, including task and batch detail pages.
 - Indexed publications changing without rebuild, writer process reopening,
   replay safety, cursor expiration, failure/backlog disclosure and recovery.
+- Financial chart data, legend controls, keyboard inspection, period changes and
+  chart CSV; Network cohort API/UI reconciliation and dashboard WCAG scans.
+- Network filters, copy/share, save/reopen/reset, real CSV downloads, export
+  refresh prompts, stale-page recovery and chart drill-down at all three widths.
 
 Manual screenshot review prompted larger phone typography. Initial browser
 failures also led to contrast and horizontal-overflow fixes; the final tests
 were rerun against the rebuilt application. Automated accessibility checks do
 not replace broader user testing.
 
-The build has no dynamic-filesystem tracing warning. All 15 deployment trace
-manifests were checked: discovery files, `.local` artifacts and `.env` files are
+The build has no dynamic-filesystem tracing warning. Deployment trace
+manifests are checked: discovery files, `.local` artifacts and `.env` files are
 excluded. This is local packaging evidence, not a deployed Vercel test.
 
 Commands and report locations are documented in [TESTING.md](TESTING.md).
@@ -98,8 +116,9 @@ implementation interval or independent consensus.
 3. Build authentic official SDK verification/diagnostic workflows with explicit
    context, trust and privacy rules. SDK links are currently references, not
    executed integrations or telemetry.
-4. Add useful history, filters and saved-view changes based on the indexed data.
-   Private positions and authoritative yield remain gated by their integrations.
+4. Expand validated financial stock/flow history and Network coverage. Public
+   shared-strategy yield is implemented; private positions and Primus-attributable
+   balances/returns remain gated by their integrations.
 5. Keep API/UI/workflow/E2E checks against the actual HTTPS deployment distinct
    from local fixture results, including collection advancing without a rebuild.
 

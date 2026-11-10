@@ -2,14 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import {
   AddressSchema, DecimalStringSchema, HashSchema,
-  CoverageSchema, FinanceEventSchema, NetworkEventSchema, ApiErrorSchema,
+  CoverageSchema, FinanceEventSchema, NetworkEventSchema, ApiErrorSchema, Sha256Schema,
 } from "@primusscope/api-schema";
 import {
   getOverview, getObservationSet, getSources, getFinanceVaults, getFinanceVault,
-  getFinanceBatches, getFinanceBatch, getNetworkSummary, getNetworkTask,
+  getFinanceBatches, getFinanceBatch, getNetworkSummary, getNetworkEvents, getNetworkTask,
   lookupIdentifier, exportMetricsCsv, getServingState, getServingMode, getIndexerStatus, PublicIndexerStatusSchema,
+  buildFinanceAnalytics, buildNetworkAnalytics, buildStrategyAnalytics,
 } from "@primusscope/data";
 import { HttpError, errorResponse, jsonResponse, readJson, readQuery } from "../../../../lib/http";
+import { networkFiltersQuery, networkPageQuery } from '../../../../lib/network-query';
+import { analyticsQuery } from '../../../../lib/analytics-query';
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,11 +52,11 @@ const definitions: Record<string, {label: string; unit: string; formula: string;
 };
 
 function openApi() {
-  const get = (summary: string) => ({get: {summary, responses: {"200": {description: "Recorded public observations with coverage and freshness"},
+  const get = (summary: string) => ({get: {summary, responses: {"200": {description: "Public observations with explicit serving mode, coverage and freshness"},
     "400": {description: "Invalid query"}, "503": {description: "Observation store unavailable"}}}});
   return {
     openapi: "3.1.0", info: {title: "PrimusScope public observations API", version: "0.1.0",
-    description: "Source-scoped public observations. Serving mode is explicitly recorded or locally indexed; no global Primus census or continuously running worker is implied. Public reads require no authentication or RPC credentials."},
+    description: "Source-scoped public observations served from a recorded artifact, local SQLite or hosted PostgreSQL. Exact coverage and collection status are explicit; no global Primus census is implied. Public reads require no authentication or RPC credentials."},
     servers: [{url: "/api/v1"}],
     paths: {
       "/overview": get("Separate Finance and Network summaries"),
@@ -66,6 +69,19 @@ function openApi() {
         responses:{"200":{description:"Snapshot-bound batch page"},"400":{description:"Invalid cursor or query"},"409":{description:"Snapshot changed"}}
       }},
       "/network/summary": get("Separate request/report counts and block-interval activity"),
+      '/finance/analytics':{get:{summary:'Finance route operations and separately attributed public Unitas strategy history',
+        parameters:Object.entries(z.toJSONSchema(analyticsQuery).properties??{}).map(([name,schema])=>({name,in:'query',schema})),
+        responses:{'200':{description:'UTC series, route activity, latency and shared strategy NAV, APY and public flows'},'400':{description:'Invalid selection'},'422':{description:'Unknown Finance route'}}}},
+      '/network/analytics':{get:{summary:'UTC network activity, cumulative requests, request-report cohorts and first-report latency',
+        parameters:Object.entries(z.toJSONSchema(analyticsQuery.omit({routeId:true})).properties??{}).map(([name,schema])=>({name,in:'query',schema})),
+        responses:{'200':{description:'Source-covered time series; report coverage is separate from task outcomes and proof validity'}}}},
+      "/network/events": {get: {
+        summary: 'Paginated public Network events, newest first',
+        parameters: Object.entries(z.toJSONSchema(networkPageQuery).properties ?? {}).map(([name,schema]) => ({name,in:'query',schema})),
+        responses: {'200':{description:'Filtered event page with full coverage, exact selection and snapshot-bound cursor'},
+          '400':{description:'Invalid filter or cursor'}, '409':{description:'Snapshot changed; restart pagination'},
+          '422':{description:'Selection outside published coverage'},'503':{description:'Publication unavailable'}},
+      }},
       "/network/tasks/{chainId}/{contract}/{taskId}": {get: {
         summary:"Exact recorded task and separately observed native state",
         parameters:["chainId","contract","taskId"].map(name=>({name,in:"path",required:true,schema:{type:"string"}})),
@@ -76,8 +92,13 @@ function openApi() {
         responses:{"200":{description:"Zero or more recorded matches with coverage"},"400":{description:"Invalid identifier"},"413":{description:"Body exceeds 2048 bytes"}}
       }},
       "/status/sources": get("Recorded source coverage and staleness"),
-      "/status/indexer": get("Local indexer checkpoints, source lag and publication status; readable during quarantine"),
-      "/exports/metrics.csv": get("Source-labelled observed event rows, respecting domain and route filters"),
+      "/status/indexer": get("Indexer checkpoints, source lag and publication status; readable during quarantine"),
+      "/exports/metrics.csv": {get:{summary:'Source-labelled events using the same Network selection as /network/events',
+        parameters:Object.entries(z.toJSONSchema(networkFiltersQuery.extend({domain:z.enum(['finance','network']).optional(),
+          routeId:z.string().min(1).max(100).optional(),snapshotId:Sha256Schema.optional()})).properties ?? {}).map(([name,schema])=>({name,in:'query',schema})),
+        responses:{'200':{description:'CSV with full coverage, selected bounds and source/event identities'},
+          '400':{description:'Invalid or cross-domain filter'},'409':{description:'Snapshot changed before export'},
+          '422':{description:'Selection outside coverage or more than 5000 matching rows'}}}},
     },
     components: {schemas: {
       Coverage:z.toJSONSchema(CoverageSchema), FinanceEvent:z.toJSONSchema(FinanceEventSchema),
@@ -93,6 +114,18 @@ export async function GET(request: NextRequest, context: Context) {
     const path = parts.join("/");
     const url = request.nextUrl;
     if (path === "overview") { readQuery(url, emptyQuery); return jsonResponse(await getOverview()); }
+    if(path==='finance/analytics'){
+      const query=readQuery(url,analyticsQuery),{snapshot,mode}=await getServingState();
+      if(query.routeId&&!snapshot.finance.contracts.some(c=>c.routeId===query.routeId))throw new HttpError('UNSUPPORTED_SCOPE','Select a registered Finance route.',422);
+      const options={range:'30d' as const,interval:'day' as const,...query};
+      return jsonResponse({mode,snapshotId:snapshot.snapshotId,coverage:snapshot.finance.coverage,
+        operations:buildFinanceAnalytics(snapshot,options),strategy:buildStrategyAnalytics(snapshot,options)});
+    }
+    if(path==='network/analytics'){
+      const query=readQuery(url,analyticsQuery.omit({routeId:true})),{snapshot,mode}=await getServingState();
+      return jsonResponse({mode,snapshotId:snapshot.snapshotId,coverage:snapshot.network.coverage,
+        analytics:buildNetworkAnalytics(snapshot,{range:'24h',interval:'hour',...query})});
+    }
     if (path === "health") {
       readQuery(url, emptyQuery); const {snapshot,mode} = await getServingState();
       return jsonResponse({status:"snapshot_available",mode,snapshotId:snapshot.snapshotId});
@@ -117,6 +150,7 @@ export async function GET(request: NextRequest, context: Context) {
       const query = readQuery(url,z.object({chainId:positiveIntegerParameter.optional(),contractAddress:AddressSchema.optional()}).strict());
       return jsonResponse(await getNetworkSummary(query));
     }
+    if (path === 'network/events') return jsonResponse(await getNetworkEvents(readQuery(url, networkPageQuery)));
     if (parts[0] === "network" && parts[1] === "tasks" && parts.length === 5) {
       readQuery(url,emptyQuery);
       const chainId=positiveIntegerParameter.parse(parts[2]);AddressSchema.parse(parts[3]);HashSchema.parse(parts[4]);
@@ -131,7 +165,7 @@ export async function GET(request: NextRequest, context: Context) {
       return jsonResponse({key:parts[1],definitionVersion:"1.0.0",mode:getServingMode(),...definition});
     }
     if (path === "exports/metrics.csv") {
-      const query=readQuery(url,z.object({domain:z.enum(["finance","network"]).optional(),routeId:z.string().min(1).max(100).optional(),contractAddress:AddressSchema.optional()}).strict());
+      const query=readQuery(url,networkFiltersQuery.extend({domain:z.enum(["finance","network"]).optional(),routeId:z.string().min(1).max(100).optional(),snapshotId:Sha256Schema.optional()}));
       return new NextResponse(await exportMetricsCsv(query),{headers:{"Content-Type":"text/csv; charset=utf-8",
         "Content-Disposition":`attachment; filename="primusscope-${query.domain??"finance"}-observations.csv"`,"Cache-Control":"no-store",
         "X-PrimusScope-Data-Mode":getServingMode().replaceAll("_","-")}});

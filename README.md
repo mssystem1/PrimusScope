@@ -3,13 +3,14 @@
 Independent analytics for the Primus ecosystem: Confidential Finance, zkTLS
 Network, public task exploration, developer interfaces and a personal workspace.
 
-The application defaults to **recorded, source-traceable observations**. An
-optional indexed modes read local SQLite or a hosted PostgreSQL publication
+The application defaults to **recorded, source-traceable observations**. Optional indexed modes read local SQLite or a hosted PostgreSQL publication
 updated by bounded incremental jobs. Finance covers four registered aggregators on BNB Smart
 Chain (chain 56); the separate Network sample covers one task contract on Base
 (chain 8453). Every dataset carries its contract and block scope, observation time
-and source. Private balances, yield, TVL and cryptographic proof checks remain
-explicitly unavailable when unsupported by the evidence.
+and source. Private balances, route-attributable TVL/yield and cryptographic proof checks remain
+explicitly unavailable when unsupported by the evidence. Public strategy analytics
+separately measure USDu assets, sUSDu shares, NAV growth and verified vault flows;
+the shared strategy is counted once, not as either Primus route’s holdings.
 
 ## Run locally
 
@@ -58,8 +59,11 @@ collector. See [HOSTED_INDEXER.md](docs/HOSTED_INDEXER.md) for permissions,
 ## Application and API
 
 - `/`: ecosystem overview with separate Finance and Network scopes.
-- `/finance`: registered routes, observed batches and batch event timelines.
-- `/network`: requests, report events, block-interval activity and task details.
+- `/finance`: U/eU and USDT/eUSDT routes; shared-strategy TVL, shares, NAV,
+  7D/30D APY and flows; Primus batch activity and lifecycle analytics.
+- `/network`: traffic, request cohorts, report coverage and latency dashboards,
+  chart drill-down and a filterable public
+  event explorer with shareable/saved views, pagination and matching CSV.
 - `/explore`: type-aware lookup across recorded public identifiers.
 - `/workspace`: public objects saved in this browser, with remove/clear controls.
 - `/developers`: API playground, integration references and verification limits.
@@ -73,6 +77,11 @@ reports safe collection status independently of publication availability.
 CSV exports preserve event
 identity, filters and provenance. Unknown records are described within the
 recorded scope, without claiming a proof or transaction is invalid.
+
+[Analytics dashboards](docs/ANALYTICS_DASHBOARDS.md) documents metric formulas,
+shared-strategy attribution, source/history limits and live collection.
+[Network activity research](docs/NETWORK_ACTIVITY.md) documents the event
+filters, `/api/v1/network/events`, pagination/recovery and snapshot-bound export.
 
 The code is split into `apps/web`, `apps/worker`, `apps/collector`, `packages/api-schema`,
 `packages/data` and `packages/storage`.

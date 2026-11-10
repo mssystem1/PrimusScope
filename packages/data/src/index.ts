@@ -1,21 +1,24 @@
 import { createHash } from 'node:crypto';
 import {
-  ObservationSetSchema,
+  ObservationSetSchema, NetworkEventFiltersSchema,
   type Coverage,
   type FinanceEvent,
   type NetworkEvent,
   type ObservationSet,
+  type NetworkEventFilters,
 } from '@primusscope/api-schema';
 import {
   DataAccessError, getServingState, type ServingContext, type ServingMode,
 } from './serving';
 export * from './serving';
+export * from './analytics';
+export * from './strategy-analytics';
 
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const HASH = /^0x[0-9a-fA-F]{64}$/;
 const DECIMAL = /^(0|[1-9][0-9]*)$/;
 const FRESHNESS_SECONDS = 300;
-const MAX_EXPORT_ROWS = 5_000;
+export const MAX_EXPORT_ROWS = 5_000;
 const FINANCE_STATE_NAMES = ['Open', 'Dispatched', 'Finalized', 'Canceled'] as const;
 const NETWORK_STATE_NAMES = ['INIT', 'SUCCESS', 'PARTIAL_SUCCESS', 'PARTIAL_SUCCESS_SETTLED', 'FAILED'] as const;
 
@@ -64,6 +67,11 @@ export type FinanceBatchFilters = {
   contractAddress?: string;
   cursor?: string;
   limit?: number;
+};
+
+export type NetworkEventPageOptions = NetworkEventFilters & { cursor?: string; limit?: number };
+export type MetricsExportOptions = NetworkEventFilters & {
+  domain?: 'finance' | 'network'; routeId?: string; snapshotId?: string;
 };
 
 export type LookupInput = {
@@ -281,7 +289,7 @@ export function createRepository(input: ObservationSet, clock: () => Date = () =
         finalizedBatchCount: new Set(selected.events.filter(e => e.kind === 'AggregateFinalized').map(e => e.contractAddress + ':' + e.batchId)).size,
         apy: null, totalAssets: null,
         yieldAvailability: 'unsupported' as const,
-        yieldReason: 'No authoritative yield history was validated for this recorded snapshot.',
+        yieldReason: 'Route-specific returns are not public in this dataset. Shared strategy NAV/APY is available separately at /api/v1/finance/analytics.',
         holdingsAvailability: 'confidential' as const,
       };
     });
@@ -349,6 +357,45 @@ export function createRepository(input: ObservationSet, clock: () => Date = () =
       nativeStateSampleCount: snapshot.network.stateSamples.length,
       successRate: null, verifiedProofCount: null, blockBins,
     };
+  }
+
+  function networkEventSelection(input: NetworkEventFilters = {}) {
+    const parsed = NetworkEventFiltersSchema.safeParse(input);
+    if (!parsed.success) throw new DataAccessError('INVALID_FILTER', 'Check the Network event filters and identifier formats.');
+    const options = parsed.data;
+    const contractAddress = networkScope(options.chainId, options.contractAddress);
+    const coverage = snapshot.network.coverage;
+    const fromBlock = options.fromBlock ?? coverage.fromBlock, toBlock = options.toBlock ?? coverage.toBlock;
+    if (BigInt(fromBlock) > BigInt(toBlock)) throw new DataAccessError('INVALID_FILTER', 'The start block must not exceed the end block.');
+    if (BigInt(fromBlock) < BigInt(coverage.fromBlock) || BigInt(toBlock) > BigInt(coverage.toBlock)) {
+      throw new DataAccessError('UNSUPPORTED_SCOPE', 'Select a block range within the published Network coverage.', 422);
+    }
+    const taskId = options.taskId?.toLowerCase() ?? null;
+    const selection = { chainId: 8453 as const, contractAddress, fromBlock, toBlock,
+      eventKind: options.eventKind ?? null, taskId };
+    const events = snapshot.network.events.filter(event => BigInt(event.blockNumber) >= BigInt(fromBlock)
+      && BigInt(event.blockNumber) <= BigInt(toBlock)
+      && (!selection.eventKind || event.kind === selection.eventKind)
+      && (!taskId || event.taskId === taskId)).sort((a, b) => eventOrder(b, a));
+    return { selection, events };
+  }
+
+  function getNetworkEvents(options: NetworkEventPageOptions = {}) {
+    const { limit = 25, cursor, ...filters } = options;
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+      throw new DataAccessError('INVALID_FILTER', 'Page size must be an integer from 1 to 100.');
+    }
+    const { selection, events } = networkEventSelection(filters);
+    const filterHash = hashObject({ resource: 'network.events.v1', ...selection, limit });
+    const lastId = cursor === undefined ? undefined : readCursor(cursor, snapshot.snapshotId, filterHash);
+    const index = lastId === undefined ? -1 : events.findIndex(event => event.id === lastId);
+    if (lastId !== undefined && index < 0) throw new DataAccessError('INVALID_CURSOR', 'The cursor position is not in this view.');
+    const items = events.slice(index + 1, index + 1 + limit);
+    return { ...base(), ...networkMetadata(), selection, items, total: events.length,
+      pageStart: items.length ? index + 2 : 0, pageEnd: index + 1 + items.length,
+      exportRowLimit: MAX_EXPORT_ROWS,
+      nextCursor: index + 1 + items.length < events.length
+        ? cursorFor(snapshot.snapshotId, filterHash, items[items.length - 1]!.id) : null };
   }
 
   function getNetworkTask(chainId: number, contractAddress: string, taskId: string) {
@@ -450,35 +497,45 @@ export function createRepository(input: ObservationSet, clock: () => Date = () =
     return { ...base(), matches, coverage: [snapshot.finance.coverage, snapshot.network.coverage] };
   }
 
-  function exportMetricsCsv(options: { domain?: 'finance' | 'network'; routeId?: string; contractAddress?: string } = {}) {
+  function exportMetricsCsv(options: MetricsExportOptions = {}) {
     const domain = options.domain ?? 'finance';
     if (!['finance', 'network'].includes(domain)) throw new DataAccessError('INVALID_FILTER', 'Select finance or network for export.');
+    if (options.snapshotId !== undefined && options.snapshotId !== snapshot.snapshotId) {
+      throw new DataAccessError('SNAPSHOT_EXPIRED', 'The observation snapshot changed; refresh before exporting.', 409);
+    }
     const coverage = domain === 'finance' ? snapshot.finance.coverage : snapshot.network.coverage;
     let events: (FinanceEvent | NetworkEvent)[];
+    let selectionFrom = coverage.fromBlock, selectionTo = coverage.toBlock;
     if (domain === 'finance') {
+      if ([options.chainId, options.fromBlock, options.toBlock, options.eventKind, options.taskId].some(value => value !== undefined)) {
+        throw new DataAccessError('INVALID_FILTER', 'Network event filters do not apply to Finance exports.');
+      }
       events = financeSelection(options).events;
     } else {
       if (options.routeId !== undefined) throw new DataAccessError('INVALID_FILTER', 'Vault filters do not apply to network exports.');
-      networkScope(8453, options.contractAddress);
-      events = snapshot.network.events;
+      const selected = networkEventSelection({ chainId: options.chainId, contractAddress: options.contractAddress,
+        fromBlock: options.fromBlock, toBlock: options.toBlock, eventKind: options.eventKind, taskId: options.taskId });
+      events = selected.events; selectionFrom = selected.selection.fromBlock; selectionTo = selected.selection.toBlock;
     }
     if (events.length > MAX_EXPORT_ROWS) throw new DataAccessError('RANGE_TOO_LARGE', 'This export exceeds the bounded row limit.', 422);
     const source = snapshot.sources.find(item => item.id === coverage.sourceId)!;
     const header = ['domain', 'chain_id', 'contract_address', 'event', 'task_id', 'batch_id', 'block_number',
       'transaction_hash', 'log_index', 'source_id', 'source_url', 'observed_at', 'coverage_from_block',
-      'coverage_to_block', 'snapshot_id', 'definition_version', 'data_mode'];
+      'coverage_to_block', 'snapshot_id', 'definition_version', 'data_mode', 'event_timestamp_utc',
+      'selection_from_block', 'selection_to_block', 'event_kind_filter', 'task_id_filter'];
     const rows = events.map(event => [
       domain, coverage.chainId, event.contractAddress, event.kind,
       'taskId' in event ? event.taskId : '', 'batchId' in event ? event.batchId : '', event.blockNumber,
       event.transactionHash, event.logIndex, event.sourceId, source.url, coverage.observedAt,
-      coverage.fromBlock, coverage.toBlock, snapshot.snapshotId, '1.0.0', context.mode,
+      coverage.fromBlock, coverage.toBlock, snapshot.snapshotId, '1.0.0', context.mode, event.timestamp,
+      selectionFrom, selectionTo, options.eventKind ?? '', options.taskId?.toLowerCase() ?? '',
     ]);
     return [header, ...rows].map(row => row.map(sanitizeCsvCell).join(',')).join('\r\n') + '\r\n';
   }
 
   return {
     getOverview, getSources, getFinanceVaults, getFinanceVault, getFinanceBatches, getFinanceBatch,
-    getNetworkSummary, getNetworkTask, lookupIdentifier, exportMetricsCsv,
+    getNetworkSummary, getNetworkEvents, getNetworkTask, lookupIdentifier, exportMetricsCsv,
   };
 }
 
@@ -493,6 +550,7 @@ export const getFinanceVault = async (routeId: string) => (await repository()).g
 export const getFinanceBatches = async (options: FinanceBatchFilters = {}) => (await repository()).getFinanceBatches(options);
 export const getFinanceBatch = async (contractAddress: string, batchId: string) => (await repository()).getFinanceBatch(contractAddress, batchId);
 export const getNetworkSummary = async (options: { chainId?: number; contractAddress?: string } = {}) => (await repository()).getNetworkSummary(options);
+export const getNetworkEvents = async (options: NetworkEventPageOptions = {}) => (await repository()).getNetworkEvents(options);
 export const getNetworkTask = async (chainId: number, contractAddress: string, taskId: string) => (await repository()).getNetworkTask(chainId, contractAddress, taskId);
 export const lookupIdentifier = async (input: LookupInput) => (await repository()).lookupIdentifier(input);
-export const exportMetricsCsv = async (options: { domain?: 'finance' | 'network'; routeId?: string; contractAddress?: string } = {}) => (await repository()).exportMetricsCsv(options);
+export const exportMetricsCsv = async (options: MetricsExportOptions = {}) => (await repository()).exportMetricsCsv(options);

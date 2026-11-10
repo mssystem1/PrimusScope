@@ -52,7 +52,7 @@ URLs containing embedded credentials are rejected to keep them out of reports.
 
 ## Local indexed mode
 
-The default command above retains the 25 recorded-mode checks. Run the separate
+The default command above runs 40 recorded-mode checks. Run the separate
 indexed-mode project after building the application:
 
 ```sh
@@ -85,7 +85,7 @@ E2E_DATA_MODE=hosted E2E_BASE_URL=https://primus-scope.vercel.app npm run test:e
 ```
 
 This uses the same desktop/mobile workflows with indexed-mode disclosures and
-coverage-aware API assertions, plus actual hosted database status and CSV checks.
+coverage-aware API assertions, plus actual hosted database status and CSV checks (36 hosted checks).
 It never writes to the production database or receives collector credentials.
 Reports use `.local/test-results-hosted/` and `.local/playwright-report-hosted/`.
 The collector must have completed an authorized invocation before this suite:
@@ -96,3 +96,18 @@ database role permissions and durable job handoff. Native transport tests cover
 response budgets and safe errors; route tests refuse unauthorized work before
 database/RPC setup. These local tests supplement actual Neon/Vercel validation.
 Build both projects with `npm run build` and `npm run build:collector`.
+
+The Network activity workflows run in each desktop/mobile project. They cover
+combined filters, share/copy, saved view restoration (including section anchors),
+CSV selection/snapshot consistency, paging, stale-cursor recovery, empty and
+uncovered scopes, and accessible chart drill-down. Run them alone with
+`npm run test:e2e -- --grep 'event filters|pagination, changed|chart intervals'`.
+
+The dashboard workflows run on desktop and both phone widths. They check the
+primary U/eU and USDT/eUSDT routes, measured strategy charts, legend visibility,
+keyboard inspection, downloadable chart CSV, period changes, cohort API/UI
+reconciliation, accessible chart tables, WCAG scans and horizontal reflow.
+Unit tests separately verify exact raw-unit conversion, actual-elapsed APY, flow
+conservation, coverage gaps, report cohort counts, runtime pinning and persistence
+across collector jobs. These are source and arithmetic checks, not private
+position attribution or independent consensus.

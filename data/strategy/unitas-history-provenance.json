@@ -1,0 +1,163 @@
+{
+  "addresses": {
+    "asset": "0xea953ea6634d55dac6697c436b1e81a679db5882",
+    "implementation": "0x8d5e94c1eaae7d71ed4fcba2402e6b03380354f8",
+    "proxy": "0xe9E8573Bb351da16c6EE7DDaC0cBC70b7f9784AE",
+    "stakedVault": "0x385c279445581a186a4182a5503094ebb652ec71"
+  },
+  "attribution": "shared_unitas_strategy",
+  "chainId": 56,
+  "flowCollection": {
+    "schemaVersion": "1.0.0",
+    "sourceUrl": "https://bsc-rpc.publicnode.com",
+    "stakedVault": "0x385c279445581a186a4182a5503094ebb652ec71",
+    "requestedRange": {
+      "fromBlock": "131372721",
+      "toBlock": "132717606",
+      "fromTime": "2026-11-03T04:56:54.000Z",
+      "toTime": "2026-11-10T05:07:36.000Z"
+    },
+    "requestedDays": 7,
+    "coveredRange": {
+      "fromBlock": "131372721",
+      "toBlock": "132717606",
+      "fromTime": "2026-11-03T04:56:54.000Z",
+      "toTime": "2026-11-10T05:07:36.000Z"
+    },
+    "coverageCompleteWithinCoveredRange": true,
+    "partialHistory": true,
+    "flowCount": 67,
+    "eventCounts": {
+      "Deposit": 31,
+      "Withdraw": 36
+    },
+    "logRequests": 135,
+    "maxLogRequests": 180,
+    "splitGaps": [],
+    "missingTimestampBlocks": [],
+    "receiptCheck": {
+      "attempted": 67,
+      "matchedTransactions": 67,
+      "mismatchedTransactions": 0,
+      "unavailableTransactions": 0
+    },
+    "privacyProjection": "Deposit/Withdraw transaction identity, timestamp, block hash, log index, assetsRaw and sharesRaw only; sender, owner and receiver topics omitted.",
+    "attribution": "shared_unitas_strategy; these are not Primus-specific flows.",
+    "requestSummary": {
+      "requestCount": 272,
+      "maxRequests": 540,
+      "outcomes": {
+        "eth_chainId:ok": 1,
+        "eth_getBlockByNumber:ok": 69,
+        "eth_getLogs:ok": 135,
+        "eth_getTransactionReceipt:ok": 67
+      }
+    },
+    "attemptHistory": [
+      {
+        "attempt": "30d PublicNode 50k-block initial query",
+        "requestedRange": {
+          "fromBlock": "126958842",
+          "toBlock": "132717409",
+          "fromTime": "2026-10-11T04:51:43.000Z",
+          "toTime": "2026-11-10T05:06:07.000Z"
+        },
+        "splitGaps": [
+          {
+            "fromBlock": "126958842",
+            "toBlock": "127008841",
+            "outcome": "HTTP_403"
+          }
+        ],
+        "requestSummary": {
+          "requestCount": 4,
+          "maxRequests": 540,
+          "outcomes": {
+            "eth_chainId:ok": 1,
+            "eth_getBlockByNumber:ok": 2,
+            "eth_getLogs:HTTP_403": 1
+          }
+        }
+      }
+    ]
+  },
+  "head": {
+    "hash": "0xdb5a4bdb45468838c4d1c93f119fd8dc2716b3be0bf52533d410b9c86fc18597",
+    "number": "132716031",
+    "tag": "finalized",
+    "timestamp": "2026-11-10T04:55:47.000Z"
+  },
+  "limitations": [
+    "Dataset values describe the shared Unitas strategy, not Primus-attributable balances or flows.",
+    "No missing daily sample was forward-filled.",
+    "Source-code ABI and code pins are point-in-time observations; deployment creation metadata is unavailable on the free chain-56 endpoint."
+  ],
+  "requestSummary": {
+    "maxRequests": 550,
+    "outcomes": {
+      "eth_call:ok": 309,
+      "eth_chainId:ok": 1,
+      "eth_getBlockByNumber:ok": 61,
+      "eth_getCode:ok": 8,
+      "eth_getStorageAt:ok": 62
+    },
+    "requestCount": 441
+  },
+  "sampleTargets": {
+    "actualSamples": 61,
+    "dailyDaysAgo": 60,
+    "maximumAbsoluteAlignmentSeconds": 3600,
+    "missing": []
+  },
+  "schemaVersion": "1.0.0",
+  "shareSourceUrl": "https://bscscan.com/address/0x385c279445581a186a4182a5503094ebb652ec71#code",
+  "sourceUrl": "https://bsc-mainnet.public.blastapi.io",
+  "sourceVerifiedUrl": "https://bscscan.com/address/0x8d5e94c1eaae7d71ed4fcba2402e6b03380354f8#code",
+  "validation": {
+    "bytecodeSha256": {
+      "proxy": "18808e7e12c9fbc460bbd2d0098955b0a78629568f355c18c16e9f175c14fbcb",
+      "implementation": "63100f54260009276f2b8c73d3941f110dfffc1f8d5ef3a49a853f3712c0bf6d",
+      "stakedVault": "fc837e6985f76ecc6325d3334a2e1aa63e7259f883a8cbb3a92f0cbde3600f73",
+      "asset": "00fa8d946d05f35c22b3562125c4651f4540856ea51aa0d0e00056c671d14634"
+    },
+    "codePins": {
+      "asset": {
+        "address": "0xea953ea6634d55dac6697c436b1e81a679db5882",
+        "keccak256": "0x9b72e5d564234f67b2266e0438e0f272fd0e767d0441ae2e765c89ce51e0ec75"
+      },
+      "implementation": {
+        "address": "0x8d5e94c1eaae7d71ed4fcba2402e6b03380354f8",
+        "keccak256": "0x5b3729d09d744907b413a8f955269f5033e78bf23e8a644c2d6cfb7c63f14075",
+        "sourceUrl": "https://bscscan.com/address/0x8d5e94c1eaae7d71ed4fcba2402e6b03380354f8#code"
+      },
+      "proxy": {
+        "address": "0xe9E8573Bb351da16c6EE7DDaC0cBC70b7f9784AE",
+        "keccak256": "0xe5e3693157141608a301682c8c228c0277eac7efc0b98b57f874ca49752b5fd8"
+      },
+      "stakedVault": {
+        "address": "0x385c279445581a186a4182a5503094ebb652ec71",
+        "keccak256": "0xa29e6dfe4a67c17a6380767e65104cbf481fedf8c3184cb0151fbb17f456fee6",
+        "sourceUrl": "https://bscscan.com/address/0x385c279445581a186a4182a5503094ebb652ec71#code"
+      }
+    },
+    "currentConvertToAssetsVerified": true,
+    "exchangeRateFormula": "totalAssetsRaw == USDu.balanceOf(sUSDu) - unvestedRaw; floor((totalAssetsRaw * 10^18) / totalSupplyRaw) == exchangeRateRaw.",
+    "finalizedBlock": "132716031",
+    "finalizedHash": "0xdb5a4bdb45468838c4d1c93f119fd8dc2716b3be0bf52533d410b9c86fc18597",
+    "finalizedTimestamp": "2026-11-10T04:55:47.000Z",
+    "implementationAddress": "0x8d5e94c1eaae7d71ed4fcba2402e6b03380354f8",
+    "implementationCheckedAtEverySample": true,
+    "tokenMetadata": {
+      "assetDecimals": 18,
+      "shareDecimals": 18,
+      "stakedAsset": "0xea953ea6634d55dac6697c436b1e81a679db5882"
+    },
+    "bytecodeHexTextSha256": {
+      "asset": "af256b0b204d8aef3c425d8f3b94743b8f6c85270cf1960ce2e33e9eae0b657f",
+      "implementation": "ef28d575592e4ff75067510e653c84f0454856f82ed84be1d636127a963c215a",
+      "proxy": "237dbd61b4b4dcc669766801bace5512ecac052cb29602549dcf0d29decd3e43",
+      "stakedVault": "60c2516b8fdbc3452b428d3067142ae9fd8b6ca67e28e85567166a5a318a0620"
+    },
+    "bytecodeHashEncoding": "SHA-256 of decoded runtime bytecode bytes"
+  }
+}

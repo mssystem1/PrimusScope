@@ -11,7 +11,7 @@ account's existing plan and quotas; this is not a promise of unlimited free host
 | Runtime | Production settings | Database permission |
 | --- | --- | --- |
 | Public web, `apps/web` | `PRIMUSSCOPE_DATA_MODE=hosted`, `WEB_DATABASE_URL` | SELECT on the publication table only |
-| Collector, `apps/collector` | `WORKER_DATABASE_URL`, `CRON_SECRET` | Publication/checkpoint and lease writes |
+| Collector, `apps/collector` | `WORKER_DATABASE_URL`, `CRON_SECRET`, optional `PRIMUSSCOPE_STRATEGY_ENABLED=1` | Publication/checkpoint and lease writes |
 | One-time administration | Provider admin connection in ignored `.local/neon-admin.env` | Schema and role setup; never a web runtime credential |
 
 The native integration is disconnected from the public project after bootstrap
@@ -80,3 +80,21 @@ Inspect safe state with `npm run indexer:hosted -- status` when the worker
 credential has been loaded securely. A manual CLI run is labeled manual; only
 the scheduled endpoint records the 15-minute scheduler. Do not print DSNs,
 authorization headers, raw private inputs or database credential files in reports.
+
+## Public financial strategy collection
+
+Deploy the web/API schema before enabling `PRIMUSSCOPE_STRATEGY_ENABLED=1` on
+the collector production project, then redeploy that collector to activate it.
+This prevents older strict web readers encountering new strategy fields. No
+additional key, paid API or managed cloud publication is required. Removing the
+flag stops new strategy reads and retains the last validated public history.
+
+When enabled, each job validates finalized BSC contract/runtime pins, asset/share
+relationships and NAV arithmetic through the fixed keyless Blast endpoint, then
+advances a bounded contiguous flow range through PublicNode. Stock reads have a
+45-second budget; flow reads have a separate 60-second budget within the overall
+job limit. Flow failure preserves verified history and does not invent coverage.
+An hourly stock sample is retained for 90 days (at most 5,000 samples); exceeding
+the 20,000-flow limit refuses advancement rather than silently truncating history.
+The bundled daily history and exact public source definitions are documented in
+[ANALYTICS_DASHBOARDS.md](ANALYTICS_DASHBOARDS.md).
