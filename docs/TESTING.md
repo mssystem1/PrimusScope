@@ -52,7 +52,7 @@ URLs containing embedded credentials are rejected to keep them out of reports.
 
 ## Local indexed mode
 
-The default command above runs 40 recorded-mode checks. Run the separate
+The default command above runs 43 recorded-mode checks. Run the separate
 indexed-mode project after building the application:
 
 ```sh
@@ -85,7 +85,7 @@ E2E_DATA_MODE=hosted E2E_BASE_URL=https://primus-scope.vercel.app npm run test:e
 ```
 
 This uses the same desktop/mobile workflows with indexed-mode disclosures and
-coverage-aware API assertions, plus actual hosted database status and CSV checks (36 hosted checks).
+coverage-aware API assertions, plus actual hosted database status and CSV checks (39 hosted checks).
 It never writes to the production database or receives collector credentials.
 Reports use `.local/test-results-hosted/` and `.local/playwright-report-hosted/`.
 The collector must have completed an authorized invocation before this suite:
@@ -111,3 +111,11 @@ Unit tests separately verify exact raw-unit conversion, actual-elapsed APY, flow
 conservation, coverage gaps, report cohort counts, runtime pinning and persistence
 across collector jobs. These are source and arithmetic checks, not private
 position attribution or independent consensus.
+
+UTC date tests cover real/leap dates, inclusive day ends, invalid/repeated query
+parameters, whole and partial coverage, historical stock KPIs, lagging flow heads
+and selections outside history. Browser workflows preserve exact dates through
+copy, save/reopen, route navigation and Network filters, including custom-form
+accessibility. Dataset tests reconcile all 60 source share deltas against the
+full historical flows using exact integers. Collector tests reject conflicting
+log reads and share-supply mismatches instead of advancing false coverage.

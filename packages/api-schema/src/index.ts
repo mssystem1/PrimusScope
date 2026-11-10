@@ -190,7 +190,8 @@ export const FinanceStrategySchema = z.object({
   flowCoverage: z.object({fromBlock:DecimalStringSchema,toBlock:DecimalStringSchema,
     toBlockHash:HashSchema.optional(),
     fromTime:IsoTimestampSchema,toTime:IsoTimestampSchema,observedAt:IsoTimestampSchema,
-    sourceUrl:z.enum(['https://bsc-mainnet.public.blastapi.io','https://bsc-rpc.publicnode.com']),complete:z.boolean()}).strict().nullable(),
+    sourceUrl:z.enum(['https://bsc-mainnet.public.blastapi.io','https://bsc-rpc.publicnode.com','https://bsc.api.pocket.network']),
+    sourceUrls:z.array(z.enum(['https://bsc-mainnet.public.blastapi.io','https://bsc-rpc.publicnode.com','https://bsc.api.pocket.network'])).min(1).max(3).optional(),complete:z.boolean()}).strict().nullable(),
 }).strict();
 export type FinanceStrategy = z.infer<typeof FinanceStrategySchema>;
 export type StrategySample = z.infer<typeof StrategySampleSchema>;
@@ -312,6 +313,28 @@ export const ObservationSetSchema = z.object({
   }
 });
 export type ObservationSet = z.infer<typeof ObservationSetSchema>;
+
+export const AnalyticsRangeSchema = z.enum(['all', '24h', '7d', '30d', 'custom']);
+export const AnalyticsIntervalSchema = z.enum(['hour', 'day']);
+export const UtcDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => {
+  const date = new Date(value + 'T00:00:00.000Z');
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}, 'Use a real UTC calendar date.');
+export const AnalyticsSelectionFieldsSchema = z.object({
+  range: AnalyticsRangeSchema.optional(), interval: AnalyticsIntervalSchema.optional(),
+  from: UtcDateSchema.optional(), to: UtcDateSchema.optional(),
+});
+export function refineAnalyticsSelection(value: z.infer<typeof AnalyticsSelectionFieldsSchema>, ctx: z.RefinementCtx) {
+  if (value.range === 'custom') {
+    if (!value.from || !value.to) ctx.addIssue({ code: 'custom', message: 'Custom dates require both from and to.', path: ['from'] });
+    else {
+      const span = Date.parse(value.to) - Date.parse(value.from);
+      if (span < 0 || span >= 366 * 86400000) ctx.addIssue({ code: 'custom', message: 'Choose an ordered range of at most 366 UTC days.', path: ['to'] });
+    }
+  } else if (value.from || value.to) ctx.addIssue({ code: 'custom', message: 'Dates require range=custom.', path: ['range'] });
+}
+export const AnalyticsSelectionSchema = AnalyticsSelectionFieldsSchema.strict().superRefine(refineAnalyticsSelection);
+export type AnalyticsSelection = z.infer<typeof AnalyticsSelectionSchema>;
 
 export const ApiErrorCodeSchema = z.enum([
   "INVALID_IDENTIFIER", "AMBIGUOUS_IDENTIFIER", "UNSUPPORTED_SCOPE", "NOT_INDEXED",

@@ -78,8 +78,11 @@ CSV exports preserve event
 identity, filters and provenance. Unknown records are described within the
 recorded scope, without claiming a proof or transaction is invalid.
 
-[Analytics dashboards](docs/ANALYTICS_DASHBOARDS.md) documents metric formulas,
+[Analytics dashboards](docs/ANALYTICS_DASHBOARDS.md) documents custom UTC dates,
+saved selections, metric formulas,
 shared-strategy attribution, source/history limits and live collection.
+The [history workflow](docs/STRATEGY_HISTORY.md) backfills the complete retained
+60-day financial period using keyless public RPC and ABI-decoded events.
 [Network activity research](docs/NETWORK_ACTIVITY.md) documents the event
 filters, `/api/v1/network/events`, pagination/recovery and snapshot-bound export.
 

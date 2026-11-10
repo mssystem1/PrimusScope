@@ -4,10 +4,16 @@ Finance and zkTLS Network now have calendar analytics dashboards, interactive
 charts, exact chart CSV and accessible data tables. Finance preserves U/eU and
 USDT/eUSDT as primary routes and separately measures the shared Unitas strategy:
 61 daily assets/share/NAV samples across 60 days, geometric 7D/30D APY and
-67 receipt-verified public flows across seven days. These totals are not private
+4,098 receipt-verified public flows across the same retained 60-day period.
+All 60 daily net-share changes reconcile with on-chain share supply. These totals are not private
 Primus positions or route-attributable TVL. Network charts cover traffic, request
 cohorts, first-report latency and report distributions. See
 [ANALYTICS_DASHBOARDS.md](ANALYTICS_DASHBOARDS.md).
+
+Both dashboards now support exact inclusive UTC calendar dates, source-specific
+coverage, explicit partial boundary buckets and saved/shareable analytical
+selections. Historical financial KPIs use the selected period’s last sample;
+missing periods display unavailable values.
 
 Network activity research now includes conjunctive event/task/block filters,
 newest-first pagination, chart-interval drill-down, shareable and browser-saved
@@ -53,10 +59,10 @@ deployment-specific validation tracked separately from local results.
 ## Validation evidence
 
 The final production build and `npm run typecheck` pass. `npm test` passes
-**188 tests** across schema, data, HTTP-helper, API-route, SQLite, PostgreSQL role/
+**204 tests** across schema, data, HTTP-helper, API-route, SQLite, PostgreSQL role/
 lease/publication, hosted recovery, transport and worker checks.
 
-Production-server Playwright runs pass **45 of 45 tests**: 40 recorded-mode
+Production-server Playwright runs pass **48 of 48 tests**: 43 recorded-mode
 checks plus five isolated indexed-mode workflows.
 
 - Eight API checks, including counts, unavailable values, typed lookup, invalid

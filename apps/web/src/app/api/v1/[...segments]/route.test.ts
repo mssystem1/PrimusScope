@@ -11,6 +11,21 @@ function get(path: string, query = "") {
 }
 
 describe("public observations API routes", () => {
+  it('supports exact inclusive UTC dates without substituting present-day KPIs',async()=>{
+    const response=await get('finance/analytics','?range=custom&from=2026-10-01&to=2026-10-15&interval=day');
+    expect(response.status).toBe(200);const body=await response.json();
+    expect(body.strategy.points).toHaveLength(15);expect(body.strategy.sourceAsOf.slice(0,10)).toBe('2026-10-15');
+    expect(body.strategy.requestedTo).toBe('2026-10-15T23:59:59.999Z');
+    expect(body.operations.hasCoverage).toBe(false);expect(body.operations.series).toEqual([]);
+    const future=await (await get('network/analytics','?range=custom&from=2030-01-01&to=2030-01-02')).json();
+    expect(future.analytics).toMatchObject({hasCoverage:false,coveredFrom:null,coveredTo:null,series:[]});
+  });
+  it('rejects malformed, mismatched and duplicate calendar-date parameters',async()=>{
+    for(const query of ['?range=custom&from=2026-02-30&to=2026-03-01','?range=custom&from=2026-11-09','?range=7d&from=2026-11-01&to=2026-11-09','?range=custom&from=2026-11-01&from=2026-11-02&to=2026-11-09']){
+      expect((await get('finance/analytics',query)).status).toBe(400);
+    }
+  });
+
   it('serves actual strategy history separately from Primus route operations',async()=>{
     const response=await get('finance/analytics','?range=30d&routeId=united-stables-confidential-vault');
     expect(response.status).toBe(200);const body=await response.json();

@@ -130,7 +130,31 @@ export function strategyFlowStart(previous: FinanceStrategy, targetBlock: bigint
   return previous.flowCoverage?.complete ? BigInt(previous.flowCoverage.toBlock) + 1n : targetBlock;
 }
 
-async function collectFlows(rpc: Rpc, stock: StrategySample, previous: FinanceStrategy, now: () => Date): Promise<Pick<FinanceStrategy, 'flows' | 'flowCoverage'>> {
+export function reconcileStrategyFlowShares(logs:Pick<StrategyFlow,'kind'|'sharesRaw'>[],before:bigint,after:bigint){
+  const net=logs.reduce((sum,flow)=>sum+(flow.kind==='Deposit'?BigInt(flow.sharesRaw):-BigInt(flow.sharesRaw)),0n);
+  if(net!==after-before)throw new WorkerError('FLOW_SUPPLY_RECONCILIATION_FAILED');
+}
+export function mergeStrategyLogReads(groups:unknown[],from:bigint,to:bigint){
+  const unique=new Map<string,Record<string,unknown>>();
+  for(const group of groups){
+    if(!Array.isArray(group))throw new WorkerError('FLOW_INVALID_LOG');
+    for(const raw of group){
+      if(!raw||typeof raw!=='object'||Array.isArray(raw))throw new WorkerError('FLOW_INVALID_LOG');
+      const item=raw as Record<string,unknown>;
+      if(typeof item.address!=='string'||item.address.toLowerCase()!==VAULT||!Array.isArray(item.topics)||!item.topics.length)throw new WorkerError('FLOW_INVALID_LOG');
+      const block=hexQuantity(item.blockNumber);if(block<from||block>to)throw new WorkerError('FLOW_LOG_OUTSIDE_RANGE');
+      const topic=hash(item.topics[0]);if(!ERC4626_TOPICS.includes(topic))continue;
+      const projected=projectStrategyFlowLog(item,block),existing=unique.get(projected.id);
+      if(existing){
+        const old=projectStrategyFlowLog(existing,block);
+        if(JSON.stringify(old)!==JSON.stringify(projected))throw new WorkerError('FLOW_CONFLICTING_LOG_READS');
+      }else unique.set(projected.id,item);
+    }
+  }
+  return [...unique.values()].sort((a,b)=>{const an=hexQuantity(a.blockNumber),bn=hexQuantity(b.blockNumber);return an<bn?-1:an>bn?1:hexQuantity(a.logIndex)<hexQuantity(b.logIndex)?-1:1;});
+}
+
+async function collectFlows(rpc: Rpc, stock: StrategySample, previous: FinanceStrategy, now: () => Date, accountingRpc:Rpc): Promise<Pick<FinanceStrategy, 'flows' | 'flowCoverage'>> {
   if (hexQuantity(await rpc.call('eth_chainId', [])) !== 56n) throw new WorkerError('FLOW_WRONG_CHAIN');
   const target = BigInt(stock.blockNumber);
   const old = previous.flowCoverage?.complete ? previous.flowCoverage : null;
@@ -139,8 +163,10 @@ async function collectFlows(rpc: Rpc, stock: StrategySample, previous: FinanceSt
   let to = from + 9_999n < target ? from + 9_999n : target;
   const publicTarget = header(await rpc.call('eth_getBlockByNumber', [qty(target), false]), target);
   if (publicTarget.hash !== stock.blockHash) throw new WorkerError('FLOW_TARGET_HASH_MISMATCH');
+  let previousBoundary:Header|null=null;
   if (old) {
     const boundary = header(await rpc.call('eth_getBlockByNumber', [qty(BigInt(old.toBlock)), false]), BigInt(old.toBlock));
+    previousBoundary=boundary;
     if (boundary.time !== old.toTime || (old.toBlockHash&&boundary.hash!==old.toBlockHash)
       || previous.flows.some(flow => flow.blockNumber === old.toBlock && flow.blockHash !== boundary.hash)) {
       throw new WorkerError('FLOW_BOUNDARY_HASH_MISMATCH');
@@ -148,7 +174,9 @@ async function collectFlows(rpc: Rpc, stock: StrategySample, previous: FinanceSt
   }
   let rawLogs: unknown;
   for (let attempt = 0; attempt < 10; attempt++) {
-    rawLogs = await rpc.call('eth_getLogs', [{ address: VAULT, fromBlock: qty(from), toBlock: qty(to), topics: [ERC4626_TOPICS] }]);
+    const topicRead=await rpc.call('eth_getLogs', [{ address: VAULT, fromBlock: qty(from), toBlock: qty(to), topics: [ERC4626_TOPICS] }]);
+    const addressRead=await rpc.call('eth_getLogs', [{ address: VAULT, fromBlock: qty(from), toBlock: qty(to) }]);
+    rawLogs=mergeStrategyLogReads([topicRead,addressRead],from,to);
     if (!Array.isArray(rawLogs)) throw new WorkerError('FLOW_INVALID_LOG');
     if (rawLogs.length <= 60) break;
     const boundaryLog = rawLogs[60] as Record<string, unknown>;
@@ -167,6 +195,27 @@ async function collectFlows(rpc: Rpc, stock: StrategySample, previous: FinanceSt
     rawById.set(parsed.id, item);
     return parsed;
   });
+  // A successful log response may still omit events. Check share conservation
+  // before spending the remaining budget on receipt validation or advancing coverage.
+  if(old&&previousBoundary){
+    const beforeSample=previous.samples.find(sample=>sample.blockNumber===old.toBlock);
+    let before:bigint;
+    if(beforeSample){
+      if(beforeSample.blockHash!==previousBoundary.hash)throw new WorkerError('FLOW_ACCOUNTING_HASH_MISMATCH');
+      before=BigInt(beforeSample.totalSupplyRaw);
+    }else{
+      const beforeHeader=header(await accountingRpc.call('eth_getBlockByNumber',[qty(BigInt(old.toBlock)),false]),BigInt(old.toBlock));
+      if(beforeHeader.hash!==previousBoundary.hash)throw new WorkerError('FLOW_ACCOUNTING_HASH_MISMATCH');
+      before=uintWord(await fixedCall(accountingRpc,VAULT,'totalSupply()',qty(BigInt(old.toBlock))));
+    }
+    let after=BigInt(stock.totalSupplyRaw);
+    if(to!==target){
+      const afterHeader=header(await accountingRpc.call('eth_getBlockByNumber',[qty(to),false]),to);
+      if(afterHeader.hash!==ending.hash)throw new WorkerError('FLOW_ACCOUNTING_HASH_MISMATCH');
+      after=uintWord(await fixedCall(accountingRpc,VAULT,'totalSupply()',qty(to)));
+    }
+    reconcileStrategyFlowShares(logs,before,after);
+  }
   const positions = new Set<string>();
   for (const event of logs) {
     const position = `${event.blockHash}:${event.logIndex}`;
@@ -216,7 +265,8 @@ async function collectFlows(rpc: Rpc, stock: StrategySample, previous: FinanceSt
   if (flowsById.size > 20_000) throw new WorkerError('FLOW_CAPACITY');
   const flows = [...flowsById.values()].sort((a, b) => BigInt(a.blockNumber) < BigInt(b.blockNumber) ? -1 : BigInt(a.blockNumber) > BigInt(b.blockNumber) ? 1 : BigInt(a.logIndex) < BigInt(b.logIndex) ? -1 : BigInt(a.logIndex) > BigInt(b.logIndex) ? 1 : a.id.localeCompare(b.id));
   return { flows, flowCoverage: { fromBlock: old?.fromBlock ?? String(from), toBlock: String(to), toBlockHash:ending.hash,
-    fromTime: old?.fromTime ?? startHeader!.time, toTime: ending.time, observedAt: now().toISOString(), sourceUrl: PUBLICNODE, complete: true } };
+    fromTime: old?.fromTime ?? startHeader!.time, toTime: ending.time, observedAt: now().toISOString(), sourceUrl: PUBLICNODE,
+    sourceUrls:[...new Set<NonNullable<FinanceStrategy['flowCoverage']>['sourceUrl']>([...(old?.sourceUrls??(old?[old.sourceUrl]:[])),PUBLICNODE])], complete: true } };
 }
 
 export async function collectPublicStrategy(previous?: FinanceStrategy, rpcOverrides: { stockRpc?: Rpc; flowRpc?: Rpc; now?: () => Date } = {}): Promise<{ strategy: FinanceStrategy; flowIssueCode?: string }> {
@@ -230,7 +280,7 @@ export async function collectPublicStrategy(previous?: FinanceStrategy, rpcOverr
   if(sample.blockNumber===previousHead.blockNumber&&sample.blockHash!==previousHead.blockHash)throw new WorkerError('STRATEGY_BLOCK_CHANGED');
   const common = { ...prior, samples: mergeStrategySamples(prior.samples, [sample]) };
   try {
-    const flow = await collectFlows(flowRpc, sample, prior, now);
+    const flow = await collectFlows(flowRpc, sample, prior, now, stockRpc);
     return { strategy: FinanceStrategySchema.parse({ ...common, ...flow }) };
   } catch (error) {
     return { strategy: FinanceStrategySchema.parse(common), flowIssueCode: asCode(error) };

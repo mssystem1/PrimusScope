@@ -9,49 +9,51 @@
   "chainId": 56,
   "flowCollection": {
     "schemaVersion": "1.0.0",
-    "sourceUrl": "https://bsc-rpc.publicnode.com",
+    "sourceUrl": "https://bsc.api.pocket.network",
     "stakedVault": "0x385c279445581a186a4182a5503094ebb652ec71",
     "requestedRange": {
-      "fromBlock": "131372721",
+      "fromBlock": "121201762",
       "toBlock": "132717606",
-      "fromTime": "2026-11-03T04:56:54.000Z",
+      "fromTime": "2026-09-11T04:56:07.000Z",
       "toTime": "2026-11-10T05:07:36.000Z"
     },
-    "requestedDays": 7,
+    "requestedDays": 60,
     "coveredRange": {
-      "fromBlock": "131372721",
+      "fromBlock": "121201762",
       "toBlock": "132717606",
-      "fromTime": "2026-11-03T04:56:54.000Z",
+      "fromTime": "2026-09-11T04:56:07.000Z",
       "toTime": "2026-11-10T05:07:36.000Z"
     },
     "coverageCompleteWithinCoveredRange": true,
-    "partialHistory": true,
-    "flowCount": 67,
+    "partialHistory": false,
+    "flowCount": 4098,
     "eventCounts": {
-      "Deposit": 31,
-      "Withdraw": 36
+      "Deposit": 2565,
+      "Withdraw": 1533
     },
-    "logRequests": 135,
-    "maxLogRequests": 180,
+    "logRequests": 2314,
+    "maxLogRequests": 2600,
     "splitGaps": [],
     "missingTimestampBlocks": [],
     "receiptCheck": {
-      "attempted": 67,
-      "matchedTransactions": 67,
+      "attempted": 4098,
+      "matchedTransactions": 4098,
       "mismatchedTransactions": 0,
-      "unavailableTransactions": 0
+      "unavailableTransactions": 0,
+      "uniqueReceiptSources": {
+        "Pocket": 738,
+        "Blast": 3360
+      }
     },
     "privacyProjection": "Deposit/Withdraw transaction identity, timestamp, block hash, log index, assetsRaw and sharesRaw only; sender, owner and receiver topics omitted.",
     "attribution": "shared_unitas_strategy; these are not Primus-specific flows.",
     "requestSummary": {
-      "requestCount": 272,
-      "maxRequests": 540,
-      "outcomes": {
-        "eth_chainId:ok": 1,
-        "eth_getBlockByNumber:ok": 69,
-        "eth_getLogs:ok": 135,
-        "eth_getTransactionReceipt:ok": 67
-      }
+      "initialOperationCountIncludingRetries": 3863,
+      "receiptOperationCountIncludingRetries": 6806,
+      "initialTopicRangeQueries": 2314,
+      "addressOnlyRepairRanges": 848,
+      "lockedRedistributedTopicRanges": 116,
+      "independentNownodesRanges": 48
     },
     "attemptHistory": [
       {
@@ -79,7 +81,445 @@
           }
         }
       }
-    ]
+    ],
+    "newFlowCount": 4031,
+    "headerVerification": {
+      "eventBlocks": 4091,
+      "directEventHeaderRecords": 100,
+      "receiptReportedBlockMetadataBlocks": 4091,
+      "stockSampleAnchorsVerified": 61,
+      "freeFallbackHeaderReads": 0,
+      "allReceiptIdentitiesMatched": true,
+      "verified": true
+    },
+    "dailyReconciliation": {
+      "days": 60,
+      "matched": 60,
+      "failed": 0,
+      "intervals": [
+        {
+          "fromBlock": "121201762",
+          "toBlock": "121393685",
+          "actualSharesRaw": "105671644979312934976615",
+          "stockDeltaSharesRaw": "105671644979312934976615",
+          "match": true
+        },
+        {
+          "fromBlock": "121393685",
+          "toBlock": "121585600",
+          "actualSharesRaw": "-22955903299368302526202",
+          "stockDeltaSharesRaw": "-22955903299368302526202",
+          "match": true
+        },
+        {
+          "fromBlock": "121585600",
+          "toBlock": "121777521",
+          "actualSharesRaw": "70064285798330565581815",
+          "stockDeltaSharesRaw": "70064285798330565581815",
+          "match": true
+        },
+        {
+          "fromBlock": "121777521",
+          "toBlock": "121969449",
+          "actualSharesRaw": "74281796640064132936744",
+          "stockDeltaSharesRaw": "74281796640064132936744",
+          "match": true
+        },
+        {
+          "fromBlock": "121969449",
+          "toBlock": "122161390",
+          "actualSharesRaw": "-270313960692945439687970",
+          "stockDeltaSharesRaw": "-270313960692945439687970",
+          "match": true
+        },
+        {
+          "fromBlock": "122161390",
+          "toBlock": "122353276",
+          "actualSharesRaw": "-106813973221209011593887",
+          "stockDeltaSharesRaw": "-106813973221209011593887",
+          "match": true
+        },
+        {
+          "fromBlock": "122353276",
+          "toBlock": "122545204",
+          "actualSharesRaw": "338119606825659014871913",
+          "stockDeltaSharesRaw": "338119606825659014871913",
+          "match": true
+        },
+        {
+          "fromBlock": "122545204",
+          "toBlock": "122737127",
+          "actualSharesRaw": "131042802473332493994128",
+          "stockDeltaSharesRaw": "131042802473332493994128",
+          "match": true
+        },
+        {
+          "fromBlock": "122737127",
+          "toBlock": "122929073",
+          "actualSharesRaw": "491047355548836500803134",
+          "stockDeltaSharesRaw": "491047355548836500803134",
+          "match": true
+        },
+        {
+          "fromBlock": "122929073",
+          "toBlock": "123120988",
+          "actualSharesRaw": "-28541450460460980009310",
+          "stockDeltaSharesRaw": "-28541450460460980009310",
+          "match": true
+        },
+        {
+          "fromBlock": "123120988",
+          "toBlock": "123312931",
+          "actualSharesRaw": "-53329208014513723285224",
+          "stockDeltaSharesRaw": "-53329208014513723285224",
+          "match": true
+        },
+        {
+          "fromBlock": "123312931",
+          "toBlock": "123504848",
+          "actualSharesRaw": "-6735005216527705239022",
+          "stockDeltaSharesRaw": "-6735005216527705239022",
+          "match": true
+        },
+        {
+          "fromBlock": "123504848",
+          "toBlock": "123696783",
+          "actualSharesRaw": "110247395926538601560720",
+          "stockDeltaSharesRaw": "110247395926538601560720",
+          "match": true
+        },
+        {
+          "fromBlock": "123696783",
+          "toBlock": "123888724",
+          "actualSharesRaw": "82285212622665319975815",
+          "stockDeltaSharesRaw": "82285212622665319975815",
+          "match": true
+        },
+        {
+          "fromBlock": "123888724",
+          "toBlock": "124080676",
+          "actualSharesRaw": "437543906419030241484353",
+          "stockDeltaSharesRaw": "437543906419030241484353",
+          "match": true
+        },
+        {
+          "fromBlock": "124080676",
+          "toBlock": "124272633",
+          "actualSharesRaw": "198835687371508703722752",
+          "stockDeltaSharesRaw": "198835687371508703722752",
+          "match": true
+        },
+        {
+          "fromBlock": "124272633",
+          "toBlock": "124464565",
+          "actualSharesRaw": "-11710730160182776828001",
+          "stockDeltaSharesRaw": "-11710730160182776828001",
+          "match": true
+        },
+        {
+          "fromBlock": "124464565",
+          "toBlock": "124656442",
+          "actualSharesRaw": "2214624037457246304399858",
+          "stockDeltaSharesRaw": "2214624037457246304399858",
+          "match": true
+        },
+        {
+          "fromBlock": "124656442",
+          "toBlock": "124848368",
+          "actualSharesRaw": "62435342984736167522726",
+          "stockDeltaSharesRaw": "62435342984736167522726",
+          "match": true
+        },
+        {
+          "fromBlock": "124848368",
+          "toBlock": "125040311",
+          "actualSharesRaw": "69489439099908315476843",
+          "stockDeltaSharesRaw": "69489439099908315476843",
+          "match": true
+        },
+        {
+          "fromBlock": "125040311",
+          "toBlock": "125232230",
+          "actualSharesRaw": "-9821743647842911841216",
+          "stockDeltaSharesRaw": "-9821743647842911841216",
+          "match": true
+        },
+        {
+          "fromBlock": "125232230",
+          "toBlock": "125424169",
+          "actualSharesRaw": "265704574267880350080461",
+          "stockDeltaSharesRaw": "265704574267880350080461",
+          "match": true
+        },
+        {
+          "fromBlock": "125424169",
+          "toBlock": "125616115",
+          "actualSharesRaw": "236214710793875776506766",
+          "stockDeltaSharesRaw": "236214710793875776506766",
+          "match": true
+        },
+        {
+          "fromBlock": "125616115",
+          "toBlock": "125807941",
+          "actualSharesRaw": "-1245444530105018741675",
+          "stockDeltaSharesRaw": "-1245444530105018741675",
+          "match": true
+        },
+        {
+          "fromBlock": "125807941",
+          "toBlock": "125999889",
+          "actualSharesRaw": "71780001793728914310075",
+          "stockDeltaSharesRaw": "71780001793728914310075",
+          "match": true
+        },
+        {
+          "fromBlock": "125999889",
+          "toBlock": "126191824",
+          "actualSharesRaw": "17319161064797578899230",
+          "stockDeltaSharesRaw": "17319161064797578899230",
+          "match": true
+        },
+        {
+          "fromBlock": "126191824",
+          "toBlock": "126383701",
+          "actualSharesRaw": "511618440205915399456524",
+          "stockDeltaSharesRaw": "511618440205915399456524",
+          "match": true
+        },
+        {
+          "fromBlock": "126383701",
+          "toBlock": "126575653",
+          "actualSharesRaw": "-1106856836423932888351700",
+          "stockDeltaSharesRaw": "-1106856836423932888351700",
+          "match": true
+        },
+        {
+          "fromBlock": "126575653",
+          "toBlock": "126767576",
+          "actualSharesRaw": "76221708829211699920405",
+          "stockDeltaSharesRaw": "76221708829211699920405",
+          "match": true
+        },
+        {
+          "fromBlock": "126767576",
+          "toBlock": "126958842",
+          "actualSharesRaw": "94376450440088089108886",
+          "stockDeltaSharesRaw": "94376450440088089108886",
+          "match": true
+        },
+        {
+          "fromBlock": "126958842",
+          "toBlock": "127150648",
+          "actualSharesRaw": "565137129888047246348205",
+          "stockDeltaSharesRaw": "565137129888047246348205",
+          "match": true
+        },
+        {
+          "fromBlock": "127150648",
+          "toBlock": "127342565",
+          "actualSharesRaw": "181047428775870805591782",
+          "stockDeltaSharesRaw": "181047428775870805591782",
+          "match": true
+        },
+        {
+          "fromBlock": "127342565",
+          "toBlock": "127534486",
+          "actualSharesRaw": "43547612812729643490718",
+          "stockDeltaSharesRaw": "43547612812729643490718",
+          "match": true
+        },
+        {
+          "fromBlock": "127534486",
+          "toBlock": "127726343",
+          "actualSharesRaw": "-221329983582878502966894",
+          "stockDeltaSharesRaw": "-221329983582878502966894",
+          "match": true
+        },
+        {
+          "fromBlock": "127726343",
+          "toBlock": "127918226",
+          "actualSharesRaw": "-1305771595867836952011272",
+          "stockDeltaSharesRaw": "-1305771595867836952011272",
+          "match": true
+        },
+        {
+          "fromBlock": "127918226",
+          "toBlock": "128110169",
+          "actualSharesRaw": "-81114095110221142669482",
+          "stockDeltaSharesRaw": "-81114095110221142669482",
+          "match": true
+        },
+        {
+          "fromBlock": "128110169",
+          "toBlock": "128302110",
+          "actualSharesRaw": "247855069809918899681547",
+          "stockDeltaSharesRaw": "247855069809918899681547",
+          "match": true
+        },
+        {
+          "fromBlock": "128302110",
+          "toBlock": "128494049",
+          "actualSharesRaw": "264492777446318707198358",
+          "stockDeltaSharesRaw": "264492777446318707198358",
+          "match": true
+        },
+        {
+          "fromBlock": "128494049",
+          "toBlock": "128685928",
+          "actualSharesRaw": "13583544434283551242232",
+          "stockDeltaSharesRaw": "13583544434283551242232",
+          "match": true
+        },
+        {
+          "fromBlock": "128685928",
+          "toBlock": "128877843",
+          "actualSharesRaw": "145905283809123188858769",
+          "stockDeltaSharesRaw": "145905283809123188858769",
+          "match": true
+        },
+        {
+          "fromBlock": "128877843",
+          "toBlock": "129069773",
+          "actualSharesRaw": "146074768435037012951702",
+          "stockDeltaSharesRaw": "146074768435037012951702",
+          "match": true
+        },
+        {
+          "fromBlock": "129069773",
+          "toBlock": "129261728",
+          "actualSharesRaw": "-85454015905437099895145",
+          "stockDeltaSharesRaw": "-85454015905437099895145",
+          "match": true
+        },
+        {
+          "fromBlock": "129261728",
+          "toBlock": "129453605",
+          "actualSharesRaw": "950290422387765089446253",
+          "stockDeltaSharesRaw": "950290422387765089446253",
+          "match": true
+        },
+        {
+          "fromBlock": "129453605",
+          "toBlock": "129645455",
+          "actualSharesRaw": "165615039342338971116674",
+          "stockDeltaSharesRaw": "165615039342338971116674",
+          "match": true
+        },
+        {
+          "fromBlock": "129645455",
+          "toBlock": "129837321",
+          "actualSharesRaw": "61220101575902955852336",
+          "stockDeltaSharesRaw": "61220101575902955852336",
+          "match": true
+        },
+        {
+          "fromBlock": "129837321",
+          "toBlock": "130029151",
+          "actualSharesRaw": "-313121352962526874063043",
+          "stockDeltaSharesRaw": "-313121352962526874063043",
+          "match": true
+        },
+        {
+          "fromBlock": "130029151",
+          "toBlock": "130221088",
+          "actualSharesRaw": "-736142048256207230432685",
+          "stockDeltaSharesRaw": "-736142048256207230432685",
+          "match": true
+        },
+        {
+          "fromBlock": "130221088",
+          "toBlock": "130412963",
+          "actualSharesRaw": "389839218914724694054847",
+          "stockDeltaSharesRaw": "389839218914724694054847",
+          "match": true
+        },
+        {
+          "fromBlock": "130412963",
+          "toBlock": "130604920",
+          "actualSharesRaw": "-2288004719153312372331903",
+          "stockDeltaSharesRaw": "-2288004719153312372331903",
+          "match": true
+        },
+        {
+          "fromBlock": "130604920",
+          "toBlock": "130796866",
+          "actualSharesRaw": "-317653671800340366997102",
+          "stockDeltaSharesRaw": "-317653671800340366997102",
+          "match": true
+        },
+        {
+          "fromBlock": "130796866",
+          "toBlock": "130988816",
+          "actualSharesRaw": "133365242704157842605918",
+          "stockDeltaSharesRaw": "133365242704157842605918",
+          "match": true
+        },
+        {
+          "fromBlock": "130988816",
+          "toBlock": "131180764",
+          "actualSharesRaw": "375272758305141958741266",
+          "stockDeltaSharesRaw": "375272758305141958741266",
+          "match": true
+        },
+        {
+          "fromBlock": "131180764",
+          "toBlock": "131372721",
+          "actualSharesRaw": "-105113361155370460897355",
+          "stockDeltaSharesRaw": "-105113361155370460897355",
+          "match": true
+        },
+        {
+          "fromBlock": "131372721",
+          "toBlock": "131564667",
+          "actualSharesRaw": "-56466332596299443768636",
+          "stockDeltaSharesRaw": "-56466332596299443768636",
+          "match": true
+        },
+        {
+          "fromBlock": "131564667",
+          "toBlock": "131756617",
+          "actualSharesRaw": "-418890002770883661286587",
+          "stockDeltaSharesRaw": "-418890002770883661286587",
+          "match": true
+        },
+        {
+          "fromBlock": "131756617",
+          "toBlock": "131948532",
+          "actualSharesRaw": "-310642888727749694101605",
+          "stockDeltaSharesRaw": "-310642888727749694101605",
+          "match": true
+        },
+        {
+          "fromBlock": "131948532",
+          "toBlock": "132140484",
+          "actualSharesRaw": "-61580358502387371856091",
+          "stockDeltaSharesRaw": "-61580358502387371856091",
+          "match": true
+        },
+        {
+          "fromBlock": "132140484",
+          "toBlock": "132332419",
+          "actualSharesRaw": "-379574120478861503019080",
+          "stockDeltaSharesRaw": "-379574120478861503019080",
+          "match": true
+        },
+        {
+          "fromBlock": "132332419",
+          "toBlock": "132524223",
+          "actualSharesRaw": "-150973221094941589775690",
+          "stockDeltaSharesRaw": "-150973221094941589775690",
+          "match": true
+        },
+        {
+          "fromBlock": "132524223",
+          "toBlock": "132716031",
+          "actualSharesRaw": "-133835942985136637822676",
+          "stockDeltaSharesRaw": "-133835942985136637822676",
+          "match": true
+        }
+      ]
+    },
+    "queryCoverageNote": "The original topic-filtered eth_getLogs queries returned incomplete partial event sets on several ranges. Address-only scans and a supply-bisected recovery were unioned by transactionHash/logIndex; coverage is supported by exact receipt identities and all 60 retained totalSupply deltas."
   },
   "head": {
     "hash": "0xdb5a4bdb45468838c4d1c93f119fd8dc2716b3be0bf52533d410b9c86fc18597",

@@ -4,6 +4,7 @@ import { useId, useState } from 'react';
 import { ArrowDownRight, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export type ChartRow = { label: string; [key: string]: string | number | null };
+type BucketCoverage = {at:string;from:string;to:string;partial:boolean};
 export type ChartSeries = { key: string; label: string; color: string };
 const numeric=(value:unknown)=>value===null||value===undefined||value===''?null:Number.isFinite(Number(value))?Number(value):null;
 function timeLabel(value:string,full=false){
@@ -11,9 +12,10 @@ function timeLabel(value:string,full=false){
   return new Intl.DateTimeFormat('en-GB',{timeZone:'UTC',day:'numeric',month:'short',...(full?{year:'numeric',hour:'2-digit',minute:'2-digit'}:{})}).format(new Date(value))+(full?' UTC':'');
 }
 
-export function AnalyticsChart({ title, description, rows, series, type='line', unit='events', precision=0, startAtZero=true, source }: {
-  title:string; description:string; rows:ChartRow[]; series:ChartSeries[]; type?:'line'|'bar';unit?:string; precision?:number;startAtZero?:boolean;source:string;
+export function AnalyticsChart({ title, description, rows, series, type='line', unit='events', precision=0, startAtZero=true, source, bucketCoverage }: {
+  title:string; description:string; rows:ChartRow[]; series:ChartSeries[]; type?:'line'|'bar';unit?:string; precision?:number;startAtZero?:boolean;source:string;bucketCoverage?:BucketCoverage[];
 }){
+  const bucketByTime=new Map(bucketCoverage?.map(bucket=>[bucket.at,bucket]));
   const id=useId(),[visible,setVisible]=useState(series.map(s=>s.key)),[active,setActive]=useState(Math.max(0,rows.length-1));
   const selected=series.filter(s=>visible.includes(s.key)),values=rows.flatMap(row=>selected.map(s=>numeric(row[s.key])).filter((v):v is number=>v!==null));
   let low=values.length?Math.min(...values):0,high=values.length?Math.max(...values):1;
@@ -32,7 +34,7 @@ export function AnalyticsChart({ title, description, rows, series, type='line', 
   const format=(value:unknown,compact=false)=>numeric(value)===null?'Not measured':new Intl.NumberFormat('en-US',
     {maximumFractionDigits:precision,minimumFractionDigits:precision>0&&!compact?Math.min(precision,2):0,...(compact&&Math.abs(Number(value))>=10000?{notation:'compact' as const,maximumFractionDigits:1}:{})}).format(Number(value));
   const download=()=>{
-    const table=[['time_or_category',...series.map(s=>s.label+' ('+unit+')')],...rows.map(row=>[row.label,...series.map(s=>row[s.key]??'')])];
+    const table=[['time_or_category',...series.map(s=>s.label+' ('+unit+')'),...(bucketCoverage?['covered_from_utc','covered_through_utc','partial_bucket']:[])],...rows.map(row=>[row.label,...series.map(s=>row[s.key]??''),...(bucketCoverage?[bucketByTime.get(row.label)?.from??'',bucketByTime.get(row.label)?.to??'',String(bucketByTime.get(row.label)?.partial??'')]:[])])];
     const csv=table.map(cells=>cells.map(value=>'"'+String(value).replaceAll('"','""')+'"').join(',')).join('\r\n')+'\r\n';
     const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');
     a.href=url;a.download=title.toLowerCase().replace(/[^a-z0-9]+/g,'-')+'.csv';a.click();window.setTimeout(()=>URL.revokeObjectURL(url),30000);
@@ -56,8 +58,8 @@ export function AnalyticsChart({ title, description, rows, series, type='line', 
           {row&&<line x1={type==='bar'?(index+.5)*800/rows.length:x(index)} x2={type==='bar'?(index+.5)*800/rows.length:x(index)} y1="0" y2="220" stroke="#a1b6c2" strokeDasharray="3 4" opacity=".6" vectorEffect="non-scaling-stroke"/>}
         </svg><div className="analytics-x-axis" aria-hidden="true">{axisLabels.map((label,i)=><span key={i}>{shortLabel(label)}</span>)}</div>
       </div></div>
-      <div className="analytics-inspector"><div className="analytics-inspector-values" aria-live="polite"><strong>{row?timeLabel(row.label,true):''}</strong>{selected.map(s=><span key={s.key}><i style={{background:s.color}}/>{s.label}: <b>{format(row?.[s.key])}</b></span>)}</div><div className="analytics-point-controls"><button type="button" className="icon-button" aria-label={'Previous observation in '+title} disabled={index===0} onClick={()=>setActive(index-1)}><ChevronLeft size={17}/></button><button type="button" className="icon-button" aria-label={'Next observation in '+title} disabled={index>=rows.length-1} onClick={()=>setActive(index+1)}><ChevronRight size={17}/></button></div></div>
+      <div className="analytics-inspector"><div className="analytics-inspector-values" aria-live="polite"><strong>{row?timeLabel(row.label,true):''}</strong>{row&&bucketByTime.get(row.label)?.partial&&<small>Partial UTC bucket · {timeLabel(bucketByTime.get(row.label)!.from,true)} through {timeLabel(bucketByTime.get(row.label)!.to,true)}</small>}{selected.map(s=><span key={s.key}><i style={{background:s.color}}/>{s.label}: <b>{format(row?.[s.key])}</b></span>)}</div><div className="analytics-point-controls"><button type="button" className="icon-button" aria-label={'Previous observation in '+title} disabled={index===0} onClick={()=>setActive(index-1)}><ChevronLeft size={17}/></button><button type="button" className="icon-button" aria-label={'Next observation in '+title} disabled={index>=rows.length-1} onClick={()=>setActive(index+1)}><ChevronRight size={17}/></button></div></div>
     </>:<div className="analytics-chart-empty"><strong>No measured points for this selection</strong><p>Missing history stays unavailable. Choose a covered period or return after new observations.</p></div>}
-    <div className="analytics-chart-foot"><p>{source}</p><details><summary>Explore chart data</summary><div className="table-scroll"><table><caption className="sr-only">Data for {title}</caption><thead><tr><th>Time / category</th>{series.map(s=><th key={s.key}>{s.label} ({unit})</th>)}</tr></thead><tbody>{rows.map((r,i)=><tr key={i}><th scope="row">{timeLabel(r.label,true)}</th>{series.map(s=><td key={s.key}>{r[s.key]===null?'Not measured':String(r[s.key]??'')}</td>)}</tr>)}</tbody></table></div></details></div>
+    <div className="analytics-chart-foot"><p>{source}</p><details><summary>Explore chart data</summary><div className="table-scroll"><table><caption className="sr-only">Data for {title}</caption><thead><tr><th>Time / category</th>{series.map(s=><th key={s.key}>{s.label} ({unit})</th>)}{bucketCoverage&&<><th>Covered from · UTC</th><th>Covered through · UTC</th><th>Bucket coverage</th></>}</tr></thead><tbody>{rows.map((r,i)=><tr key={i}><th scope="row">{timeLabel(r.label,true)}</th>{series.map(s=><td key={s.key}>{r[s.key]===null?'Not measured':String(r[s.key]??'')}</td>)}{bucketCoverage&&<><td>{bucketByTime.get(r.label)?.from??'—'}</td><td>{bucketByTime.get(r.label)?.to??'—'}</td><td>{bucketByTime.get(r.label)?.partial?'Partial UTC bucket':'Complete UTC bucket'}</td></>}</tr>)}</tbody></table></div></details></div>
   </section>;
 }

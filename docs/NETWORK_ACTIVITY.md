@@ -3,8 +3,9 @@
 The Network page now lets an anonymous visitor inspect every covered public
 event through a paginated list. It supports exact inclusive block ranges, event
 type and an optional exact task ID. No wallet, API key or new environment setting
-is needed. The overview metrics and chart retain their full published scope;
-filters affect the activity list and its export.
+is needed. The overview metrics and block chart retain their full published scope;
+the calendar dashboard uses its own selected UTC period. Event filters affect
+the activity list and its export. Shared/saved views preserve both selections.
 
 Open **View chart data** and select a block interval to drill into its events.
 Use **Apply filters** to combine a type, range and task. **Copy view link** copies

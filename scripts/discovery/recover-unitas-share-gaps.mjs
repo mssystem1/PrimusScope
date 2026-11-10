@@ -1,0 +1,24 @@
+/** Locate missing public vault events with exact historical ABI supply reads.
+ * State deltas locate blocks only; they never manufacture deposit/withdrawal amounts.
+ * Output remains a candidate until the main harvester validates its receipt.
+ */
+import {readFileSync,writeFileSync} from 'node:fs';
+import {resolve,dirname} from 'node:path';
+import {fileURLToPath} from 'node:url';
+const ROOT=resolve(dirname(fileURLToPath(import.meta.url)),'../..');
+const localPath=name=>resolve(ROOT,'.local/research',name);
+const cp=JSON.parse(readFileSync(localPath('pocket-history-checkpoint.json'),'utf8')),data=JSON.parse(readFileSync(resolve(ROOT,'data/strategy/unitas-history.json'),'utf8'));
+const VAULT=data.vaultAddress,DEP='0xdcbc1c05240f31ff3ad067ef1ee35ce4997762752e3a095284754544f4c709d7',WD='0xfbde797d201c681b91056529119e0b02407c7bb96a4a2c75c01fc9667232c8db';
+const facts=new Map();function visit(v){if(!v||typeof v!=='object')return;if(v.transactionHash&&v.logIndex!==undefined&&['Deposit','Withdraw'].includes(v.kind)&&v.sharesRaw!==undefined){const key=v.transactionHash+':'+v.logIndex,old=facts.get(key);if(old&&['sharesRaw','assetsRaw','blockHash','blockNumber','kind'].some(k=>old[k]!==v[k]))throw Error('FACT_CONFLICT');facts.set(key,v);}else for(const value of Object.values(v))visit(value);}visit(cp);visit(data.flows);
+let calls=0,last=0;const hx=n=>'0x'+n.toString(16),cache=new Map(data.samples.map(s=>[s.blockNumber,BigInt(s.totalSupplyRaw)]));
+async function rpc(url,method,params){const wait=Math.max(0,last+500-Date.now());await new Promise(r=>setTimeout(r,wait));last=Date.now();if(++calls>180)throw Error('BISECTION_BUDGET');const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:calls,method,params}),signal:AbortSignal.timeout(20000)});if(!r.ok)throw Error('RPC_HTTP_'+r.status);const text=await r.text();if(text.length>4_000_000)throw Error('BODY_LIMIT');const x=JSON.parse(text);if(x.error)throw Error('RPC_'+x.error.code);return x.result;}
+async function supply(block){const key=String(block);if(!cache.has(key)){const value=await rpc('https://bsc-mainnet.public.blastapi.io','eth_call',[{to:VAULT,data:'0x18160ddd'},hx(block)]);if(typeof value!=='string'||!/^0x[0-9a-f]{64}$/i.test(value))throw Error('INVALID_SUPPLY');cache.set(key,BigInt(value));}return cache.get(key);}
+function net(lo,hi){return [...facts.values()].filter(f=>BigInt(f.blockNumber)>lo&&BigInt(f.blockNumber)<=hi).reduce((n,f)=>n+(f.kind==='Deposit'?BigInt(f.sharesRaw):-BigInt(f.sharesRaw)),0n);}
+const targets=[],extra=[];
+async function search(lo,hi,a,b,depth=0){const residual=b-a-net(lo,hi);if(residual===0n)return;if(depth>24)throw Error('DEPTH_LIMIT');if(hi-lo===1n){targets.push({block:String(hi),residualSharesRaw:String(residual)});return;}const mid=(lo+hi)/2n,m=await supply(mid);await search(lo,mid,a,m,depth+1);await search(mid,hi,m,b,depth+1);}
+const mismatches=[];for(let i=1;i<data.samples.length;i++){const a=data.samples[i-1],b=data.samples[i],lo=BigInt(a.blockNumber),hi=BigInt(b.blockNumber),residual=BigInt(b.totalSupplyRaw)-BigInt(a.totalSupplyRaw)-net(lo,hi);if(residual!==0n)mismatches.push({lo,hi,a:BigInt(a.totalSupplyRaw),b:BigInt(b.totalSupplyRaw),residual});}
+console.log(JSON.stringify({status:'start',unionFacts:facts.size,mismatches:mismatches.map(m=>({from:String(m.lo),to:String(m.hi),residual:String(m.residual)}))}));
+for(const endpoint of ['https://bsc-mainnet.public.blastapi.io','https://bsc.api.pocket.network'])if(await rpc(endpoint,'eth_chainId',[])!=='0x38')throw Error('WRONG_CHAIN');
+for(const m of mismatches)await search(m.lo,m.hi,m.a,m.b);
+for(const target of targets){const block=BigInt(target.block);const logs=await rpc('https://bsc.api.pocket.network','eth_getLogs',[{address:VAULT,fromBlock:hx(block),toBlock:hx(block)}]);if(!Array.isArray(logs))throw Error('INVALID_LOGS');target.topics=logs.map(l=>l.topics?.[0]);target.logCount=logs.length;for(const l of logs){const topic=l.topics?.[0]?.toLowerCase();if(![DEP,WD].includes(topic))continue;if(l.address.toLowerCase()!==VAULT||l.removed!==false||!/^0x[0-9a-f]{128}$/i.test(l.data))throw Error('INVALID_EVENT');const f={id:`unitas-susdu:56:${l.transactionHash}:${BigInt(l.logIndex)}`,blockNumber:String(BigInt(l.blockNumber)),blockHash:l.blockHash,transactionHash:l.transactionHash,logIndex:String(BigInt(l.logIndex)),kind:topic===DEP?'Deposit':'Withdraw',assetsRaw:String(BigInt('0x'+l.data.slice(2,66))),sharesRaw:String(BigInt('0x'+l.data.slice(66))),timestamp:l.blockTimestamp?new Date(Number(BigInt(l.blockTimestamp))*1000).toISOString():''};if(!facts.has(f.transactionHash+':'+f.logIndex)){extra.push(f);facts.set(f.transactionHash+':'+f.logIndex,f);}}}
+const result={calls,targets,extra};writeFileSync(localPath('supply-bisection-results.json'),JSON.stringify(result,null,2));console.log(JSON.stringify(result));

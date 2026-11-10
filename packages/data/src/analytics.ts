@@ -1,13 +1,11 @@
-import type { FinanceEvent, NetworkEvent, ObservationSet } from '@primusscope/api-schema';
+import type { AnalyticsSelection, FinanceEvent, NetworkEvent, ObservationSet } from '@primusscope/api-schema';
+import { analyticsWindow } from './analytics-selection';
 
-export type AnalyticsRange = 'all' | '24h' | '7d' | '30d';
-export type AnalyticsInterval = 'hour' | 'day';
-export type AnalyticsOptions = { range?: AnalyticsRange; interval?: AnalyticsInterval; routeId?: string };
+export type AnalyticsRange = NonNullable<AnalyticsSelection['range']>;
+export type AnalyticsInterval = NonNullable<AnalyticsSelection['interval']>;
+export type AnalyticsOptions = AnalyticsSelection & { routeId?: string };
 type Event = FinanceEvent | NetworkEvent;
 
-const duration: Record<Exclude<AnalyticsRange, 'all'>, number> = {
-  '24h': 24 * 3600_000, '7d': 7 * 86400_000, '30d': 30 * 86400_000,
-};
 const ms = (value: string | null) => value === null ? null : Date.parse(value);
 const cmpBig = (a: string, b: string) => BigInt(a) < BigInt(b) ? -1 : BigInt(a) > BigInt(b) ? 1 : 0;
 function canonicalOrder(a: Event, b: Event): number {
@@ -23,12 +21,8 @@ function timeWindow(events: Event[], coverage: ObservationSet['network']['covera
   const timed = events.map(e => ms(e.timestamp)).filter((v): v is number => v !== null && Number.isFinite(v));
   const end = Date.parse(coverage.toTime);
   const coveredStart = coverage.fromTime === null ? (timed.length ? Math.min(...timed) : end) : Date.parse(coverage.fromTime);
-  const requestedStart = options.range === 'all' || options.range === undefined
-    ? coveredStart : end - duration[options.range];
-  const start = Math.max(coveredStart, requestedStart);
-  const step = options.interval === 'hour' ? 3600_000 : 86400_000;
-  const historyComplete = coverage.fromTime !== null && requestedStart >= coveredStart;
-  return { start, end, coveredStart, requestedStart, step, historyComplete };
+  const {routeId: _route, ...selection} = options;
+  return analyticsWindow(coveredStart, end, selection, coverage.fromTime !== null && coverage.completeForRegisteredContracts);
 }
 function series(events: Event[], window: ReturnType<typeof timeWindow>, kinds: string[]): Array<{ at: string; [key: string]: string | number }> {
   const buckets = new Map<number, Record<string, number>>();
@@ -99,8 +93,9 @@ export function buildFinanceAnalytics(snapshot: ObservationSet, options: Analyti
     eventCount: events.filter(e => e.contractAddress.toLowerCase() === contract.address.toLowerCase() && timedEvents.has(e)).length }));
   return {
     domain: 'finance' as const, range: options.range ?? 'all', interval: options.interval ?? 'day',
-    from: new Date(window.start).toISOString(), to: new Date(window.end).toISOString(),
-    historyComplete: window.historyComplete, missingTimestampCount: events.filter(e => e.timestamp === null).length,
+    from: window.from, to: window.to, requestedFrom: window.requestedFrom, requestedTo: window.requestedTo,
+    coveredFrom: window.coveredFrom, coveredTo: window.coveredTo, hasCoverage: window.hasCoverage,
+    bucketCoverage: window.bucketCoverage, historyComplete: window.historyComplete, missingTimestampCount: events.filter(e => e.timestamp === null).length,
     series: rows, cumulative: cumulative(rows, ['AggregateDispatched', 'AggregateFinalized']),
     routeActivity: [...new Set(contracts.map(c => c.routeId))].map(routeId => ({ routeId,
       depositEventCount: routeCounts.filter(r => r.routeId === routeId && r.role === 'deposit').reduce((n, r) => n + r.eventCount, 0),
@@ -147,8 +142,9 @@ export function buildNetworkAnalytics(snapshot: ObservationSet, options: Analyti
   const totalRequests = requests.size;
   return {
     domain: 'network' as const, range: options.range ?? 'all', interval: options.interval ?? 'day',
-    from: new Date(window.start).toISOString(), to: new Date(window.end).toISOString(),
-    historyComplete: window.historyComplete, missingTimestampCount: events.filter(e => e.timestamp === null).length,
+    from: window.from, to: window.to, requestedFrom: window.requestedFrom, requestedTo: window.requestedTo,
+    coveredFrom: window.coveredFrom, coveredTo: window.coveredTo, hasCoverage: window.hasCoverage,
+    bucketCoverage: window.bucketCoverage, historyComplete: window.historyComplete, missingTimestampCount: events.filter(e => e.timestamp === null).length,
     series: rows, cumulative: cumulative(rows, ['SubmitTask', 'ReportResult']),
     requestCohort: { requestCount: totalRequests, requestsWithSubsequentReport: totalRequests - missingRequestCount,
       reportObservedRate: totalRequests ? (totalRequests - missingRequestCount) / totalRequests : null },

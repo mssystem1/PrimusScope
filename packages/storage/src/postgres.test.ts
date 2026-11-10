@@ -39,7 +39,8 @@ describe('Postgres durable publication protocol', () => {
     await db.query('RESET ROLE'); await db.query('SET ROLE primusscope_worker');
     const token = await store.acquireLease('worker'); expect(token).toBeTruthy();
     await store.releaseLease(token!); await db.query('RESET ROLE');
-  });
+  }, 15000); // Includes the first PGlite WASM startup.
+
   it('initializes once and refuses a different seed without overwriting data', async () => {
     const { store } = await fixture(); const seed = publication();
     expect(await store.read()).toBeNull(); expect(await store.initialize(seed)).toBe(true);

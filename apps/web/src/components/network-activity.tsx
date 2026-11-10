@@ -18,15 +18,14 @@ export function NetworkActivity({ coverage, filters, result, error, analyticsOpt
   analyticsOptions?:AnalyticsOptions;
 }) {
   const params = networkViewQuery(filters);
-  if(analyticsOptions.range)params.set('range',analyticsOptions.range);
-  if(analyticsOptions.interval)params.set('interval',analyticsOptions.interval);
+  for(const key of ['range','interval','from','to'] as const)if(analyticsOptions[key])params.set(key,analyticsOptions[key]!);
   const viewHref = '/network' + (params.size ? '?' + params : '') + '#activity';
   const blockTitle = (value: string | undefined, fallback: string) => value ? value.length > 15 ? value.slice(0, 6) + '…' + value.slice(-6) : format(value) : fallback;
   const title = `Network activity · ${filters.eventKind ? names[filters.eventKind] : 'All events'}`
     + (filters.fromBlock || filters.toBlock ? ` · ${blockTitle(filters.fromBlock, 'start')}–${blockTitle(filters.toBlock, 'latest')}` : '')
     + (filters.taskId ? ` · Task ${short(filters.taskId)}` : '');
   const exportParams = new URLSearchParams(params); exportParams.delete('limit'); exportParams.set('domain', 'network');
-  exportParams.delete('range');exportParams.delete('interval');
+  for(const key of ['range','interval','from','to'])exportParams.delete(key);
   if (result) exportParams.set('snapshotId', result.snapshotId);
   const nextParams = new URLSearchParams(params); if (result?.nextCursor) nextParams.set('cursor', result.nextCursor);
   const jsonParams = networkViewQuery(filters, true);
@@ -36,8 +35,7 @@ export function NetworkActivity({ coverage, filters, result, error, analyticsOpt
       <SaveButton compact item={{ id: 'view:network:' + createHash('sha256').update(viewHref).digest('hex'), title, href: viewHref, domain: 'view' }} />
     </div>}</div>
     <form key={params.toString()} className="activity-filters" method="get" action="/network#activity" aria-label="Network activity filters" aria-describedby="activity-filter-scope">
-      {analyticsOptions.range&&<input type="hidden" name="range" value={analyticsOptions.range}/>}
-      {analyticsOptions.interval&&<input type="hidden" name="interval" value={analyticsOptions.interval}/>}
+      {(['range','interval','from','to'] as const).map(key=>analyticsOptions[key]&&<input key={key} type="hidden" name={key} value={analyticsOptions[key]}/>)}
       {filters.chainId !== undefined && <input type="hidden" name="chainId" value={filters.chainId} />}
       {filters.contractAddress && <input type="hidden" name="contractAddress" value={filters.contractAddress} />}
       <div className="activity-field"><label htmlFor="activity-kind">Event type</label><select id="activity-kind" name="eventKind" defaultValue={filters.eventKind ?? ''}><option value="">All event types</option>{Object.entries(names).map(([kind, label]) => <option key={kind} value={kind}>{label}</option>)}</select></div>

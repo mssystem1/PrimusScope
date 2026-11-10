@@ -3,7 +3,7 @@ import { getEventSelector, toFunctionSelector } from 'viem';
 import { FinanceStrategySchema } from '@primusscope/api-schema';
 import baselineData from '../../../data/strategy/unitas-history.json';
 import type { Rpc } from './rpc';
-import { mergeStrategySamples, projectStrategyFlowLog, strategyFlowStart, collectPublicStrategy } from './strategy';
+import { mergeStrategySamples, projectStrategyFlowLog, strategyFlowStart, collectPublicStrategy, reconcileStrategyFlowShares, mergeStrategyLogReads } from './strategy';
 
 vi.mock('node:crypto', async importOriginal => {
   const actual = await importOriginal<typeof import('node:crypto')>();
@@ -153,5 +153,21 @@ describe('public strategy collector', () => {
     expect(strategyFlowStart(prior, 123n)).toBe(123n);
     prior.flowCoverage = { ...prior.flowCoverage, complete: true, toBlock: '122' };
     expect(strategyFlowStart(prior, 200n)).toBe(123n);
+  });
+});
+
+
+describe('flow read completeness controls',()=>{
+  it('combines two differently filtered log reads without duplicating facts and refuses conflicts',()=>{
+    const topic=getEventSelector('Deposit(address,address,uint256,uint256)');
+    const first={address:baseline.vaultAddress,removed:false,topics:[topic,hash('1'),hash('2')],data:'0x'+word(10n)+word(9n),blockNumber:'0x64',blockHash:hash('a'),transactionHash:hash('c'),logIndex:'0x0'};
+    const second={...first,transactionHash:hash('d'),logIndex:'0x1'};
+    expect(mergeStrategyLogReads([[first],[first,second]],100n,100n)).toHaveLength(2);
+    expect(()=>mergeStrategyLogReads([[first],[{...first,data:'0x'+word(11n)+word(9n)}]],100n,100n)).toThrow();
+  });
+  it('rejects a silently incomplete flow set when on-chain share supply changed',()=>{
+    expect(()=>reconcileStrategyFlowShares([{kind:'Deposit',sharesRaw:'20'},{kind:'Withdraw',sharesRaw:'5'}],100n,115n)).not.toThrow();
+    expect(()=>reconcileStrategyFlowShares([{kind:'Withdraw',sharesRaw:'5'}],100n,115n)).toThrow('FLOW_SUPPLY_RECONCILIATION_FAILED');
+    expect(()=>reconcileStrategyFlowShares([],100n,100n)).not.toThrow();
   });
 });

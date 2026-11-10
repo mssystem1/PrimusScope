@@ -98,3 +98,11 @@ An hourly stock sample is retained for 90 days (at most 5,000 samples); exceedin
 the 20,000-flow limit refuses advancement rather than silently truncating history.
 The bundled daily history and exact public source definitions are documented in
 [ANALYTICS_DASHBOARDS.md](ANALYTICS_DASHBOARDS.md).
+
+Historical flow expansion uses the one-time keyless
+[history harvester and fenced publisher](STRATEGY_HISTORY.md). Current serving
+merges the bundled historical baseline with newer validated live data without
+shrinking coverage or duplicating semantic log identities. The scheduled
+collector preserves its full historical range, combines two log query forms and
+checks net share changes against block-pinned supply before advancing. A supply
+mismatch retains the last trusted flow range even if stock data can advance.

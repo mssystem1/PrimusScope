@@ -12,7 +12,7 @@ import {
 } from "@primusscope/data";
 import { HttpError, errorResponse, jsonResponse, readJson, readQuery } from "../../../../lib/http";
 import { networkFiltersQuery, networkPageQuery } from '../../../../lib/network-query';
-import { analyticsQuery } from '../../../../lib/analytics-query';
+import { analyticsQuery, networkAnalyticsQuery } from '../../../../lib/analytics-query';
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -73,7 +73,7 @@ function openApi() {
         parameters:Object.entries(z.toJSONSchema(analyticsQuery).properties??{}).map(([name,schema])=>({name,in:'query',schema})),
         responses:{'200':{description:'UTC series, route activity, latency and shared strategy NAV, APY and public flows'},'400':{description:'Invalid selection'},'422':{description:'Unknown Finance route'}}}},
       '/network/analytics':{get:{summary:'UTC network activity, cumulative requests, request-report cohorts and first-report latency',
-        parameters:Object.entries(z.toJSONSchema(analyticsQuery.omit({routeId:true})).properties??{}).map(([name,schema])=>({name,in:'query',schema})),
+        parameters:Object.entries(z.toJSONSchema(networkAnalyticsQuery).properties??{}).map(([name,schema])=>({name,in:'query',schema})),
         responses:{'200':{description:'Source-covered time series; report coverage is separate from task outcomes and proof validity'}}}},
       "/network/events": {get: {
         summary: 'Paginated public Network events, newest first',
@@ -122,7 +122,7 @@ export async function GET(request: NextRequest, context: Context) {
         operations:buildFinanceAnalytics(snapshot,options),strategy:buildStrategyAnalytics(snapshot,options)});
     }
     if(path==='network/analytics'){
-      const query=readQuery(url,analyticsQuery.omit({routeId:true})),{snapshot,mode}=await getServingState();
+      const query=readQuery(url,networkAnalyticsQuery),{snapshot,mode}=await getServingState();
       return jsonResponse({mode,snapshotId:snapshot.snapshotId,coverage:snapshot.network.coverage,
         analytics:buildNetworkAnalytics(snapshot,{range:'24h',interval:'hour',...query})});
     }
