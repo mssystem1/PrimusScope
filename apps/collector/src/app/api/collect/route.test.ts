@@ -15,6 +15,7 @@ vi.mock('@primusscope/storage/postgres', () => ({
 vi.mock('@primusscope/storage', () => ({ StorageError: class StorageError extends Error { code = 'STORAGE_FAILED'; } }));
 
 import { GET } from './route';
+import {SDKDiagnosticsStore} from '@primusscope/storage/diagnostics';
 
 const oldSecret = process.env.CRON_SECRET;
 const oldDatabase = process.env.WORKER_DATABASE_URL;
@@ -37,6 +38,16 @@ afterEach(() => {
 });
 
 describe('scheduled collection route', () => {
+  it('prunes expired diagnostic metadata after completed collection and reports the retention outcome',async()=>{
+    mocks.collectHosted.mockResolvedValueOnce({outcome:'completed'});
+    const prune=vi.spyOn(SDKDiagnosticsStore.prototype,'prune').mockResolvedValueOnce();
+    const response=await GET(request());expect(response.status).toBe(200);expect(prune).toHaveBeenCalledOnce();expect(response.headers.get('x-primusscope-diagnostics-retention')).toBe('pruned');
+  });
+  it('keeps completed chain work when independent diagnostic retention is unavailable',async()=>{
+    mocks.collectHosted.mockResolvedValueOnce({outcome:'completed'});
+    vi.spyOn(SDKDiagnosticsStore.prototype,'prune').mockRejectedValueOnce(new Error('PRIVATE_DATABASE_DETAIL'));
+    const response=await GET(request());expect(response.status).toBe(200);expect(response.headers.get('x-primusscope-diagnostics-retention')).toBe('unavailable');expect(await response.text()).not.toContain('PRIVATE_DATABASE_DETAIL');
+  });
   it('reserves time for strategy and Network collection within the shared invocation budget', async () => {
     process.env.PRIMUSSCOPE_STRATEGY_ENABLED = '1';
     const clock = vi.spyOn(Date, 'now').mockReturnValue(1_000_000);

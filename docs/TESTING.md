@@ -52,7 +52,7 @@ URLs containing embedded credentials are rejected to keep them out of reports.
 
 ## Local indexed mode
 
-The default command above runs 46 recorded-mode checks. Run the separate
+The default command above runs 55 recorded-mode checks. Run the separate
 indexed-mode project after building the application:
 
 ```sh
@@ -85,8 +85,12 @@ E2E_DATA_MODE=hosted E2E_BASE_URL=https://primus-scope.vercel.app npm run test:e
 ```
 
 This uses the same desktop/mobile workflows with indexed-mode disclosures and
-coverage-aware API assertions, plus actual hosted database status and CSV checks (42 hosted checks).
-It never writes to the production database or receives collector credentials.
+coverage-aware API assertions, plus actual hosted database status, CSV and SDK
+diagnostic checks (52 hosted checks). Public analytics checks are read-only.
+The SDK API canary creates two temporary diagnostic projects, records explicitly
+marked test metadata, then deletes them in cleanup. No collector credentials
+are needed. Live keys and owner cookies are excluded from canary traces and
+screenshots; avoid adding raw response bodies to assertion output.
 Reports use `.local/test-results-hosted/` and `.local/playwright-report-hosted/`.
 The collector must have completed an authorized invocation before this suite:
 the status checks require measured attempts and head comparisons.
@@ -102,6 +106,15 @@ combined filters, share/copy, saved view restoration (including section anchors)
 CSV selection/snapshot consistency, paging, stale-cursor recovery, empty and
 uncovered scopes, and accessible chart drill-down. Run them alone with
 `npm run test:e2e -- --grep 'event filters|pagination, changed|chart intervals'`.
+
+## Official SDK tools pilot
+
+The pilot's local evidence is 242 tests across 28 files; typecheck and
+web build pass. Release-specific HTTPS checks are recorded separately. The inspector and
+Developer Studio workflows, privacy boundaries and positive-verification gate
+are documented in [SDK_TOOLS.md](SDK_TOOLS.md). No public genuine Primus-signed
+fixture matches the pinned SDK signer, so negative-path and synthetic policy
+tests do not establish successful positive verification.
 
 The dashboard workflows run on desktop and both phone widths. They check the
 primary U/eU and USDT/eUSDT routes, measured strategy charts, legend visibility,

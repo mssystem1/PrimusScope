@@ -4,6 +4,7 @@ import { FetchRpc } from '@primusscope/worker/fetch-rpc';
 import { collectPublicStrategy } from '@primusscope/worker/strategy';
 import { StorageError } from '@primusscope/storage';
 import { neonClient, PostgresPublicationStore } from '@primusscope/storage/postgres';
+import {SDKDiagnosticsStore} from '@primusscope/storage/diagnostics';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -35,7 +36,10 @@ export async function GET(request: Request) {
         timeoutSeconds: 10, maxResponseBytes: 2_000_000, minIntervalMs: 350,
       }),
     });
-    return Response.json(result, { status: result.outcome === 'partial' ? 207 : 200, headers });
+    // Independent metadata retention must not roll back completed chain work.
+    let retention='unavailable';
+    try{await new SDKDiagnosticsStore(neonClient(connection)).prune();retention='pruned';}catch{}
+    return Response.json(result, { status: result.outcome === 'partial' ? 207 : 200, headers:{...headers,'X-PrimusScope-Diagnostics-Retention':retention} });
   } catch (error) {
     return Response.json({ code: error instanceof StorageError ? error.code : 'COLLECTION_FAILED' }, { status: 503, headers });
   }

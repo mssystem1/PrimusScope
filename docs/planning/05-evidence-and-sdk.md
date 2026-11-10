@@ -2,6 +2,10 @@
 
 Review date: 8 November 2026. This document distinguishes the supplied PRD's assertions, inspected official source, proposed product choices and still-unverified runtime behavior.
 
+This is the initial research snapshot. For the subsequently implemented Page
+Core 0.2.1 inspector and diagnostics pilot, see [SDK_TOOLS.md](../SDK_TOOLS.md).
+Its genuine signed positive-fixture gate remains explicitly unverified.
+
 Current data-source decision: the user requires free APIs and selected path 1, Base with bounded free RPC reads. [Decision 10](10-free-data-sources.md) records the evolution and exclusion of paid Base explorers. Base is selected for executable discovery, not certified for launch; there is no requirement to purchase RPC.
 
 ## Input and method

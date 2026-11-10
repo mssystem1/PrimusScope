@@ -1,0 +1,18 @@
+{
+  "package": "@primuslabs/zktls-page-core-sdk",
+  "version": "0.2.1",
+  "integrity": "sha512-KuEP7xPOUzUKsVA3/AATLWmDKXWjgUdlgosZ+A9DExLVUmBrWlr5XVwvS76uIzL9prV5ysQ3eKTCMruMNr8Ozw==",
+  "registry": "https://registry.npmjs.org/@primuslabs%2fzktls-page-core-sdk/0.2.1",
+  "repository": "https://github.com/primus-labs/zktls-page-core-sdk",
+  "sourceHashes": {
+    "dist/index.js": "3a8206e13156dd2c328e7055a2bdb17b7afbc37199ada7931c017238c1337197",
+    "dist/utils.js": "55af2dc5722758cb1c10e905de678fde49ad9c0af39166239fe55104628f84e8",
+    "dist/config/constants.js": "4b09a6ddb3ff9114c564e500d9fc28aab3ff5b4e7e053adb1e6f916f755e8b24"
+  },
+  "method": "PrimusPageCoreTLS.prototype.verifyAttestation",
+  "signer": "0xDB736B13E2f522dBE18B2015d0291E4b193D8eF6",
+  "constructorSideEffects": "Browser construction starts algorithm-node discovery fetch and WebSocket work; constructor and init are not invoked.",
+  "networkBoundary": "The bundled official verification method runs in a connect-src none Worker. No proof-generation runtime or WASM asset is loaded.",
+  "positiveFixture": "No official public signed fixture matching this SDK pin was found. Positive production-path validation remains unverified.",
+  "licensingMetadata": "Package has no license field or LICENSE file; no endorsement or certification is implied."
+}

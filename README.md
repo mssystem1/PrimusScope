@@ -67,6 +67,8 @@ collector. See [HOSTED_INDEXER.md](docs/HOSTED_INDEXER.md) for permissions,
 - `/explore`: type-aware lookup across recorded public identifiers.
 - `/workspace`: public objects saved in this browser, with remove/clear controls.
 - `/developers`: API playground, integration references and verification limits.
+- `/developers/verify`: local inspector for the supported Page Core signed-attestation format.
+- `/developers/apps`: opt-in Developer Studio pilot for app metadata and bounded diagnostics.
 - `/sources`: source links, exact coverage and recorded-data freshness.
 
 Public reads live under `/api/v1`; the machine-readable interface is at
@@ -103,7 +105,11 @@ The current implemented scope and verified results are recorded in
 [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md).
 
 The [planning package](docs/planning/README.md) defines the wider product and
-implementation sequence. Official SDK verification, private wallet authorization,
+implementation sequence. Official SDK tools are implemented as a pilot;
+genuine positive verification remains unverified because no
+public fixture matches the pinned signer. See [SDK_TOOLS.md](docs/SDK_TOOLS.md),
+[verification](https://primus-scope.vercel.app/developers/verify) and
+[Developer Studio](https://primus-scope.vercel.app/developers/apps). Private wallet authorization,
 broader history and provider backup/restore drills remain later stages. SQLite
 indexed mode is local; Vercel uses the external PostgreSQL serving adapter.
 [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md) records configuration needs. Local

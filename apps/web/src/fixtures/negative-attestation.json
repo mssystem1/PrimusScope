@@ -1,0 +1,29 @@
+{
+  "recipient": "0x1111111111111111111111111111111111111111",
+  "request": {
+    "url": "https://example.invalid/public-demo",
+    "header": "",
+    "method": "GET",
+    "body": ""
+  },
+  "reponseResolve": [
+    {
+      "keyName": "example",
+      "parseType": "string",
+      "parsePath": "$.example"
+    }
+  ],
+  "data": "{\"example\":\"Synthetic rejection example. Not issued by Primus.\"}",
+  "attConditions": "",
+  "timestamp": 1762819200,
+  "additionParams": "PrimusScope public negative test fixture",
+  "attestors": [
+    {
+      "attestorAddr": "0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf",
+      "url": "https://example.invalid"
+    }
+  ],
+  "signatures": [
+    "0x5c8f77a14429860f972472282b923dde85b111038af6792b15ba880e731ef9801dbc17a4f4ae47c73243cea122cbdccdfa857fc0478aacfaae40937dab3e64d31b"
+  ]
+}

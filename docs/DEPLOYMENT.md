@@ -24,7 +24,12 @@ Use Node 24 and the settings in `apps/web/vercel.json`:
 - Production serving: `PRIMUSSCOPE_DATA_MODE=hosted` and read-only `WEB_DATABASE_URL`.
 
 No Etherscan, RPC or wallet credential is required by the public web app. Its
-database role can only read the serving publication. Authentication for deployment belongs to the Vercel CLI/account, never
+public-data database role can only read the serving publication. The SDK tools
+pilot adds separate server-only `DIAGNOSTICS_DATABASE_URL` and
+`DIAGNOSTICS_RATE_LIMIT_SECRET` variables on the web project. Its restricted
+diagnostics role has function access only, with no public-index permissions.
+See [SDK_TOOLS.md](SDK_TOOLS.md) for the API, privacy boundaries and retention.
+Authentication for deployment belongs to the Vercel CLI/account, never
 the browser bundle or repository. Local authentication, linking and build files
 are ignored by Git and excluded from upload. The worker and discovery evidence
 are excluded from server-function tracing.
@@ -57,6 +62,9 @@ same workspace install command. Its production-only settings are
 `WORKER_DATABASE_URL` and `CRON_SECRET`. Vercel Cron calls `/api/collect` every
 15 minutes; the function limit is 300 seconds. The web project receives neither
 credential. Both projects are connected to the repository's main branch.
+The worker role also has permission to prune expired SDK diagnostic metadata;
+this separate retention task runs after chain collection and reports its status
+in `X-PrimusScope-Diagnostics-Retention`.
 
 See [HOSTED_INDEXER.md](HOSTED_INDEXER.md) for provisioning, permissions,
 publication fencing, restart behavior and operational limits. Scheduling does

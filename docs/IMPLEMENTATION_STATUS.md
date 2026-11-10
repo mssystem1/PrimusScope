@@ -27,6 +27,20 @@ mobile workflows and four API tests. These results and explicit remaining
 backlog/operational limits are retained in
 [hosted-release-observation.json](hosted-release-observation.json).
 
+## Official SDK tools pilot
+
+Step 1, the hosted pipeline, is complete. Step 2 is partial: period comparisons
+and saved-object change tracking remain unfinished. Step 3 implements a pilot
+with a local Page Core signature inspector at `/developers/verify` and opt-in
+Developer Studio diagnostics at `/developers/apps`. See [SDK_TOOLS.md](SDK_TOOLS.md)
+for supported formats, privacy boundaries and limits. Local verification is
+242 tests across 28 files, with typecheck and web build passing. Release-specific
+HTTPS and temporary-project checks are recorded separately from local evidence.
+
+No public genuine Primus-signed fixture matching the SDK's pinned signer is
+available, so positive production-path verification remains explicitly
+unverified. Negative-path and synthetic policy tests are not positive evidence.
+
 The local application and a durable incremental indexing slice are implemented
 and validated. Default recorded mode uses retained observations; optional local
 indexed mode reads completed worker publications from SQLite without a rebuild.
@@ -59,11 +73,14 @@ deployment-specific validation tracked separately from local results.
 ## Validation evidence
 
 The final production build and `npm run typecheck` pass. `npm test` passes
-**204 tests** across schema, data, HTTP-helper, API-route, SQLite, PostgreSQL role/
-lease/publication, hosted recovery, transport and worker checks.
+**242 tests** across schema, data, HTTP-helper, API-route, SQLite, PostgreSQL role/
+lease/publication, hosted recovery, transport, worker, actual SDK rejection,
+private-input lifecycle and developer diagnostics checks.
 
-Production-server Playwright runs pass **51 of 51 tests**: 46 recorded-mode
-checks plus five isolated indexed-mode workflows.
+Production-server Playwright covers **60 checks**: 55 recorded-mode checks
+plus five isolated indexed-mode workflows. SDK workflows run at all three
+viewport widths. Test execution evidence and any targeted reruns are retained
+under `.local/`; deployed validation remains a separate release check.
 
 - Eight API checks, including counts, unavailable values, typed lookup, invalid
   inputs, pagination and scoped CSV reconciliation.
@@ -121,9 +138,9 @@ implementation interval or independent consensus.
    refused as a Vercel persistence configuration.
 2. Establish deployment/history boundaries, production provider policies and
    independent reconciliation. Expand coverage only with validated sources.
-3. Build authentic official SDK verification/diagnostic workflows with explicit
-   context, trust and privacy rules. SDK links are currently references, not
-   executed integrations or telemetry.
+3. Obtain genuine positive signed-fixture evidence for the SDK tools pilot
+   before claiming successful positive
+   verification. See [SDK_TOOLS.md](SDK_TOOLS.md).
 4. Expand validated financial stock/flow history and Network coverage. Public
    shared-strategy yield is implemented; private positions and Primus-attributable
    balances/returns remain gated by their integrations.

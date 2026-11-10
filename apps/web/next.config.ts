@@ -20,6 +20,11 @@ const config: NextConfig = {
       {key: "Referrer-Policy", value: "no-referrer"},
       {key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()"},
       {key: "Content-Security-Policy", value: "base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'"}
+    ]}, {source:"/sdk/:path*",headers:[
+      {key:"Content-Security-Policy",value:"default-src 'none'; script-src 'self'; connect-src 'none'; worker-src 'none'; object-src 'none'; base-uri 'none'"},
+      {key:"Cache-Control",value:"public, max-age=31536000, immutable"}
+    ]}, {source:"/developers/verify",headers:[
+      {key:"Content-Security-Policy",value:"base-uri 'self'; object-src 'none'; frame-ancestors 'none'; frame-src 'none'; connect-src 'self'; worker-src 'self'; form-action 'none'"}
     ]}];
   }
 };

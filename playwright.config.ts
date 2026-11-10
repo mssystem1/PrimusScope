@@ -61,15 +61,15 @@ export default defineConfig({
   projects: indexed ? [
     { name: "indexed-chromium", testMatch: "indexed.spec.ts", use: chromium },
   ] : [
-    { name: "api", testMatch: hosted ? "hosted-api.spec.ts" : "api.spec.ts" },
+    { name: "api", testMatch: hosted ? ["hosted-api.spec.ts","sdk-hosted.spec.ts"] : "api.spec.ts" },
     {
       name: "chromium",
-      testMatch: ["app.spec.ts", "activity.spec.ts", "dashboards.spec.ts", "hydration.spec.ts"],
+      testMatch: ["app.spec.ts", "activity.spec.ts", "dashboards.spec.ts", "hydration.spec.ts", "sdk-tools.spec.ts"],
       use: chromium,
     },
     ...[360, 390].map((width) => ({
       name: `mobile-${width}`,
-      testMatch: ["mobile.spec.ts", "activity.spec.ts", "dashboards.spec.ts", "hydration.spec.ts"],
+      testMatch: ["mobile.spec.ts", "activity.spec.ts", "dashboards.spec.ts", "hydration.spec.ts", "sdk-tools.spec.ts"],
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width, height: 844 },
