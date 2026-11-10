@@ -52,7 +52,7 @@ URLs containing embedded credentials are rejected to keep them out of reports.
 
 ## Local indexed mode
 
-The default command above runs 43 recorded-mode checks. Run the separate
+The default command above runs 46 recorded-mode checks. Run the separate
 indexed-mode project after building the application:
 
 ```sh
@@ -85,7 +85,7 @@ E2E_DATA_MODE=hosted E2E_BASE_URL=https://primus-scope.vercel.app npm run test:e
 ```
 
 This uses the same desktop/mobile workflows with indexed-mode disclosures and
-coverage-aware API assertions, plus actual hosted database status and CSV checks (39 hosted checks).
+coverage-aware API assertions, plus actual hosted database status and CSV checks (42 hosted checks).
 It never writes to the production database or receives collector credentials.
 Reports use `.local/test-results-hosted/` and `.local/playwright-report-hosted/`.
 The collector must have completed an authorized invocation before this suite:
@@ -119,3 +119,8 @@ copy, save/reopen, route navigation and Network filters, including custom-form
 accessibility. Dataset tests reconcile all 60 source share deltas against the
 full historical flows using exact integers. Collector tests reject conflicting
 log reads and share-supply mismatches instead of advancing false coverage.
+
+A delayed-script browser regression checks that Network and analytics filters
+remain disabled until hydration finishes, then retain the first selection through
+native form submission. It runs on desktop and both phone widths. This protects
+against React applying server select defaults over an early user selection.

@@ -62,7 +62,7 @@ The final production build and `npm run typecheck` pass. `npm test` passes
 **204 tests** across schema, data, HTTP-helper, API-route, SQLite, PostgreSQL role/
 lease/publication, hosted recovery, transport and worker checks.
 
-Production-server Playwright runs pass **48 of 48 tests**: 43 recorded-mode
+Production-server Playwright runs pass **51 of 51 tests**: 46 recorded-mode
 checks plus five isolated indexed-mode workflows.
 
 - Eight API checks, including counts, unavailable values, typed lookup, invalid
@@ -79,6 +79,8 @@ checks plus five isolated indexed-mode workflows.
   chart CSV; Network cohort API/UI reconciliation and dashboard WCAG scans.
 - Network filters, copy/share, save/reopen/reset, real CSV downloads, export
   refresh prompts, stale-page recovery and chart drill-down at all three widths.
+- Delayed-script hydration checks on desktop and both phone widths prevent
+  early filter selections from being reset to their server defaults.
 
 Manual screenshot review prompted larger phone typography. Initial browser
 failures also led to contrast and horizontal-overflow fixes; the final tests

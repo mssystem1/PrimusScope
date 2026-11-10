@@ -14,7 +14,10 @@ test('event filters round-trip through sharing, saved views and matching CSV', a
   await activity.getByLabel('From block, inclusive',{exact:true}).fill(target.blockNumber);
   await activity.getByLabel('To block, inclusive',{exact:true}).fill(target.blockNumber);
   await activity.getByLabel('Exact task ID, optional',{exact:true}).fill(target.taskId);
-  await activity.getByRole('button',{name:'Apply filters',exact:true}).click();
+  await Promise.all([
+    page.waitForURL(url=>url.searchParams.get('eventKind')==='ReportResult'&&url.searchParams.get('taskId')===target.taskId),
+    activity.getByRole('button',{name:'Apply filters',exact:true}).click(),
+  ]);
   await expect(activity.getByRole('table',{name:'Filtered Network activity',exact:true})).toBeVisible();
   expect(new URL(page.url()).searchParams.get('eventKind')).toBe('ReportResult');
   const rows=activity.locator('tbody tr');expect(await rows.count()).toBeGreaterThan(0);

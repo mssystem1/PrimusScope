@@ -6,6 +6,7 @@ import { ArrowRight, ArrowUpRight, FileJson } from 'lucide-react';
 import { CopyButton, SaveButton } from './public-actions';
 import { networkViewQuery } from '../lib/network-query';
 import { SnapshotExport } from './snapshot-export';
+import { ReadyFields } from './ready-fields';
 
 type Page = ReturnType<ReturnType<typeof createRepository>['getNetworkEvents']>;
 const names = { SubmitTask: 'Task request', ReportResult: 'Attestor report', WithdrawBalance: 'Withdrawal', CallbackFailed: 'Callback failed' };
@@ -35,6 +36,7 @@ export function NetworkActivity({ coverage, filters, result, error, analyticsOpt
       <SaveButton compact item={{ id: 'view:network:' + createHash('sha256').update(viewHref).digest('hex'), title, href: viewHref, domain: 'view' }} />
     </div>}</div>
     <form key={params.toString()} className="activity-filters" method="get" action="/network#activity" aria-label="Network activity filters" aria-describedby="activity-filter-scope">
+      <ReadyFields className="activity-fields" label="Network activity filter controls">
       {(['range','interval','from','to'] as const).map(key=>analyticsOptions[key]&&<input key={key} type="hidden" name={key} value={analyticsOptions[key]}/>)}
       {filters.chainId !== undefined && <input type="hidden" name="chainId" value={filters.chainId} />}
       {filters.contractAddress && <input type="hidden" name="contractAddress" value={filters.contractAddress} />}
@@ -45,6 +47,7 @@ export function NetworkActivity({ coverage, filters, result, error, analyticsOpt
       <div className="activity-field"><label htmlFor="activity-limit">Events per page</label><select id="activity-limit" name="limit" defaultValue={filters.limit ?? 25}>{[...new Set([25, 50, 100, filters.limit ?? 25])].sort((a,b)=>a-b).map(limit => <option key={limit} value={limit}>{limit}</option>)}</select></div>
       <div className="activity-filter-buttons"><button className="button button-primary" type="submit">Apply filters</button><Link className="text-link" href="/network#activity" prefetch={false}>Reset filters</Link></div>
       <p id="activity-filter-scope">Published blocks {format(coverage.fromBlock)}–{format(coverage.toBlock)} · Base, registered task contract. Filters affect this list and its export; the summary and chart above use full coverage.</p>
+      </ReadyFields>
     </form>
     {error ? <div className="activity-empty" role="alert"><h3>{error.code === 'SNAPSHOT_EXPIRED' ? 'New observations arrived' : 'Check this selection'}</h3><p>{error.message}</p><Link className="button button-secondary" href={error.code === 'SNAPSHOT_EXPIRED' || error.code === 'INVALID_CURSOR' ? viewHref : '/network#activity'} prefetch={false}>{error.code === 'SNAPSHOT_EXPIRED' || error.code === 'INVALID_CURSOR' ? 'Restart matching events' : 'Use published coverage'}</Link></div> : result && <>
       <div className="activity-summary"><div><strong>{format(result.total)} matching events</strong><p>Blocks {format(result.selection.fromBlock)}–{format(result.selection.toBlock)} · newest first</p></div><div className="activity-actions">

@@ -14,6 +14,10 @@ navigation keeps the analytical selection. Invalid, repeated or incomplete date
 parameters produce a visible correction path and API 400, rather than silently
 substituting another period.
 
+Analytics and Network filter controls become available after hydration, avoiding
+loss of an early selection when React applies server defaults. These controls
+require JavaScript; a noscript message explains that requirement.
+
 Coverage is stated separately for stock/NAV samples, public vault flows and
 Primus operations. API `requestedFrom`/`requestedTo` describe the selection;
 `coveredFrom`/`coveredTo`, `hasCoverage` and `historyComplete` describe its
