@@ -1,6 +1,5 @@
 import {expect,test} from '@playwright/test';
-import {SDK_INFO,emptyInspectionPolicy,diagnosticFromResult} from '../../apps/web/src/lib/sdk-tools';
-import {inspectAttestation} from '../../apps/web/src/lib/primus-verifier';
+import primus from '@primuslabs/zktls-page-core-sdk';
 import fixture from '../../apps/web/src/fixtures/negative-attestation.json' with {type:'json'};
 
 // Live one-time API credentials and owner cookies must never enter traces,
@@ -15,8 +14,9 @@ test('hosted SDK diagnostics enforce ownership, consent, strict events, key revo
   const a=await register(request,'SDK release validation A'),b=await register(other,'SDK release validation B');
   expect((await request.get('/api/v1/developer/apps/'+b.app.id)).status()).toBe(404);
   expect((await other.get('/api/v1/developer/apps/'+a.app.id)).status()).toBe(404);
-  const event=diagnosticFromResult(inspectAttestation(JSON.stringify(fixture),emptyInspectionPolicy),true);
-  expect(event.sdk).toBe(SDK_INFO.package);expect(event.sdkInvoked).toBe(true);
+  const started=performance.now(),matches=primus.PrimusPageCoreTLS.prototype.verifyAttestation(fixture);
+  expect(matches).toBe(false);
+  const event={eventId:crypto.randomUUID(),sdk:'@primuslabs/zktls-page-core-sdk',version:'0.2.1',operation:'verifyAttestation',durationMs:Math.round((performance.now()-started)*100)/100,outcome:'rejected',sdkInvoked:true,isTest:true,errorCode:'SIGNER_MISMATCH',runtime:'browser'};
   const path='/api/v1/developer/apps/'+a.app.id+'/events',auth={Authorization:'Bearer '+a.ingestToken,Origin:origin};
   expect((await request.post(path,{headers:auth,data:{events:[{...event,proof:'FORBIDDEN_PRIVATE_PAYLOAD'}]}})).status()).toBe(400);
   expect((await request.post(path,{headers:{...auth,Origin:'https://wrong.invalid'},data:{events:[event]}})).status()).toBe(403);
