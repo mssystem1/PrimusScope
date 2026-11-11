@@ -1,4 +1,4 @@
-# Implementation status — 10 November 2026
+# Implementation status — 11 November 2026
 
 Finance and zkTLS Network now have calendar analytics dashboards, interactive
 charts, exact chart CSV and accessible data tables. Finance preserves U/eU and
@@ -29,12 +29,13 @@ backlog/operational limits are retained in
 
 ## Official SDK tools pilot
 
-Step 1, the hosted pipeline, is complete. Step 2 is partial: period comparisons
-and saved-object change tracking remain unfinished. Step 3 implements a pilot
+Step 1, the hosted pipeline, is complete. Step 2 now includes coverage-aware
+previous-period comparisons and browser-local saved-object review tracking;
+see [DAILY_USE.md](DAILY_USE.md) for exact scope and limits. Step 3 implements a pilot
 with a local Page Core signature inspector at `/developers/verify` and opt-in
 Developer Studio diagnostics at `/developers/apps`. See [SDK_TOOLS.md](SDK_TOOLS.md)
 for supported formats, privacy boundaries and limits. Local verification is
-242 tests across 28 files, with typecheck and web build passing. Release-specific
+261 tests across 30 files, with typecheck and web build passing. Release-specific
 HTTPS and temporary-project checks are recorded separately from local evidence.
 
 No public genuine Primus-signed fixture matching the SDK's pinned signer is
@@ -73,11 +74,12 @@ deployment-specific validation tracked separately from local results.
 ## Validation evidence
 
 The final production build and `npm run typecheck` pass. `npm test` passes
-**242 tests** across schema, data, HTTP-helper, API-route, SQLite, PostgreSQL role/
+**261 tests** across schema, data, HTTP-helper, API-route, SQLite, PostgreSQL role/
 lease/publication, hosted recovery, transport, worker, actual SDK rejection,
-private-input lifecycle and developer diagnostics checks.
+private-input lifecycle, developer diagnostics, period comparisons and saved
+review-baseline checks.
 
-Production-server Playwright covers **60 checks**: 55 recorded-mode checks
+Production-server Playwright covers **66 checks**: 61 recorded-mode checks
 plus five isolated indexed-mode workflows. SDK workflows run at all three
 viewport widths. Test execution evidence and any targeted reruns are retained
 under `.local/`; deployed validation remains a separate release check.

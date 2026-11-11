@@ -1,7 +1,8 @@
-import { buildFinanceAnalytics, buildNetworkAnalytics, buildStrategyAnalytics, type AnalyticsOptions } from '@primusscope/data';
+import { buildFinanceAnalytics, buildNetworkAnalytics, buildStrategyAnalytics, buildFinanceComparison, buildNetworkComparison, type AnalyticsOptions } from '@primusscope/data';
 import type { ObservationSet } from '@primusscope/api-schema';
 import { AnalyticsChart, type ChartRow } from './analytics-chart';
 import { AnalyticsControls } from './analytics-controls';
+import {PeriodComparison} from './period-comparison';
 import { analyticsQueryString, analyticsViewTitle } from '../lib/analytics-query';
 
 const C={u:'#ff9d73',usdt:'#a79cf4',green:'#53d9b5',blue:'#7bbcf9',red:'#f38b99',gold:'#edcd72'};
@@ -23,6 +24,7 @@ function SelectionCoverage({title,complete,from,to,requestedFrom,requestedTo,emp
 }
 
 export function FinanceAnalyticsDashboard({snapshot,options,action}:{snapshot:ObservationSet;options:AnalyticsOptions;action:string}){
+  const comparison=buildFinanceComparison(snapshot,options);
   const ops=buildFinanceAnalytics(snapshot,options),strategy=buildStrategyAnalytics(snapshot,options),latest=strategy.latest;
   const lifecycle=Object.entries(ops.lifecycle).map(([label,value])=>({label:label==='dispatched'?'Dispatched, no later finalization observed':label,value}));
   const opsSource=`Primus registered aggregator events · BSC · ${ops.from.slice(0,10)}–${ops.to.slice(0,10)} UTC. ${!ops.hasCoverage?'No history in this selected period.':ops.historyComplete?'Selected history is covered.':'Selected history is only partially covered.'}`;
@@ -35,6 +37,7 @@ export function FinanceAnalyticsDashboard({snapshot,options,action}:{snapshot:Ob
       <SelectionCoverage title="Deposits / withdrawals / net flows" complete={strategy.flowHistoryComplete} from={strategy.flowSelection?.hasCoverage?strategy.flowSelection.from:null} to={strategy.flowSelection?.hasCoverage?strategy.flowSelection.to:null} requestedFrom={strategy.requestedFrom} requestedTo={strategy.requestedTo} empty={!strategy.flows.length}/>
       <SelectionCoverage title="Primus route operations" complete={ops.historyComplete} from={ops.coveredFrom} to={ops.coveredTo} requestedFrom={ops.requestedFrom} requestedTo={ops.requestedTo} empty={!ops.hasCoverage}/>
     </div>
+    <PeriodComparison title="Shared strategy · period comparison" data={comparison.strategyFlows} snapshotId={snapshot.snapshotId} source="Public Unitas ERC-4626 flows · BSC · shared strategy, without Primus route attribution."/>
     <div className="analytics-section-heading"><h2>Public strategy · assets, shares & yield</h2><a className="text-link" href={`https://bscscan.com/address/${strategy.vaultAddress}#code`} target="_blank" rel="noopener noreferrer">StakedUSDu source ↗</a></div>
     <div className="analytics-kpis financial-kpis"><Kpi label="Strategy TVL / NAV" value={latest?amount(latest.assets)+' USDu':'—'} note="totalAssets · unvested rewards excluded"/><Kpi label="Vault share supply" value={latest?amount(latest.shares)+' sUSDu':'—'} note="Underlying shares · distinct from eU/eUSDT"/><Kpi label="NAV per vault share" value={latest?amount(latest.nav,6):'—'} note="USDu per sUSDu · on-chain exchange price"/><Kpi label="APY · 7D" value={percent(latest?.apy7d??null)} note="Annualized NAV growth · actual elapsed time"/><Kpi label="APY · 30D" value={percent(latest?.apy30d??null)} note="Annualized NAV growth · excludes route incentives"/></div>
     <div className="analytics-grid">
@@ -45,6 +48,7 @@ export function FinanceAnalyticsDashboard({snapshot,options,action}:{snapshot:Ob
       <AnalyticsChart title="Net flows · underlying strategy" description="Public vault deposits minus withdrawals. Positive bars indicate net capital entering this shared pool." rows={strategy.flows} bucketCoverage={strategy.flowSelection?.bucketCoverage} series={[{key:'netFlows',label:'Net flow',color:C.u}]} type="bar" unit="USDu" precision={2} source={flowSource}/>
       <AnalyticsChart title="Deposits & withdrawals · underlying strategy" description="ERC-4626 asset amounts, with participants excluded from this dataset." rows={strategy.flows} bucketCoverage={strategy.flowSelection?.bucketCoverage} series={[{key:'deposits',label:'Deposits',color:C.u},{key:'withdrawals',label:'Withdrawals',color:C.usdt}]} type="bar" unit="USDu" precision={2} source={flowSource}/>
     </div>
+    <PeriodComparison title="Primus operations · period comparison" data={comparison.routeOperations} snapshotId={snapshot.snapshotId} source={"Public registered BSC aggregator events · "+(options.routeId??'all registered Primus routes')+'.'}/>
     <div className="analytics-section-heading"><h2>Primus route operations</h2><span className="muted">Public batch evidence · {ops.missingTimestampCount} events without sampled times</span></div>
     <div className="analytics-kpis"><Kpi label="Dispatch events" value={ops.hasCoverage?count(total(ops.series,'AggregateDispatched')):'—'} note="Selected calendar period"/><Kpi label="Finalization events" value={ops.hasCoverage?count(total(ops.series,'AggregateFinalized')):'—'} note="Batch finalization is separate from user claims"/><Kpi label="Dispatch → finalization · median" value={seconds(ops.dispatchToFinalized.p50Seconds)} note={`${ops.dispatchToFinalized.count} fully observed pairs; censored pairs excluded`}/><Kpi label="Dispatch → finalization · p90" value={seconds(ops.dispatchToFinalized.p90Seconds)} note="Observed public batch interval"/></div>
     <div className="analytics-grid">
@@ -63,6 +67,7 @@ export function NetworkAnalyticsDashboard({snapshot,options,preservedFields=[]}:
   return <div className="analytics-dashboard" data-snapshot-id={snapshot.snapshotId}><Toolbar action="/network" options={options} scope="zkTLS Network analytics" preservedFields={preservedFields}/>
     <div className="analytics-scope-note"><strong>Traffic, response coverage and observed latency.</strong><p>Request cohorts and attestor reports are measured separately. A report is not a native SUCCESS state or a cryptographic proof check. Time series use block timestamps; {data.missingTimestampCount} untimed events are excluded.</p></div>
     <div className="analytics-coverage-grid"><SelectionCoverage title="Network event history" complete={data.historyComplete} from={data.coveredFrom} to={data.coveredTo} requestedFrom={data.requestedFrom} requestedTo={data.requestedTo} empty={!data.hasCoverage}/></div>
+    <PeriodComparison title="Network activity · period comparison" data={buildNetworkComparison(snapshot,options)} snapshotId={snapshot.snapshotId} source="Registered Primus Network task contract · Base · requests and individual attestor reports are separate event measures."/>
     <div className="analytics-kpis"><Kpi label="Requests in selected period" value={data.hasCoverage?count(total(data.series,'SubmitTask')):'—'} note="Canonical SubmitTask events"/><Kpi label="Attestor reports" value={data.hasCoverage?count(total(data.series,'ReportResult')):'—'} note="Per-attestor ReportResult events"/><Kpi label="Requests with a later report" value={cohort.reportObservedRate===null?'—':percent(cohort.reportObservedRate*100)} note={`${cohort.requestsWithSubsequentReport} of ${cohort.requestCount} observed request-cohort tasks`}/><Kpi label="First report · median / p90" value={seconds(latency.p50Seconds)+' / '+seconds(latency.p90Seconds)} note={`${latency.count} matched request/report pairs`}/></div>
     <div className="analytics-grid">
       <AnalyticsChart title="Requests & reports over time" description="UTC traffic separates request creation from individual attestor responses." rows={rows(data.series)} bucketCoverage={data.bucketCoverage} series={[{key:'SubmitTask',label:'Requests',color:C.u},{key:'ReportResult',label:'Attestor reports',color:C.usdt}]} type="bar" source={source}/>

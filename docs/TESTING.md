@@ -52,7 +52,7 @@ URLs containing embedded credentials are rejected to keep them out of reports.
 
 ## Local indexed mode
 
-The default command above runs 55 recorded-mode checks. Run the separate
+The default command above runs 61 recorded-mode checks. Run the separate
 indexed-mode project after building the application:
 
 ```sh
@@ -86,7 +86,7 @@ E2E_DATA_MODE=hosted E2E_BASE_URL=https://primus-scope.vercel.app npm run test:e
 
 This uses the same desktop/mobile workflows with indexed-mode disclosures and
 coverage-aware API assertions, plus actual hosted database status, CSV and SDK
-diagnostic checks (52 hosted checks). Public analytics checks are read-only.
+diagnostic checks (58 hosted checks). Public analytics checks are read-only.
 The SDK API canary creates two temporary diagnostic projects, records explicitly
 marked test metadata, then deletes them in cleanup. No collector credentials
 are needed. Live keys and owner cookies are excluded from canary traces and
@@ -115,6 +115,17 @@ Developer Studio workflows, privacy boundaries and positive-verification gate
 are documented in [SDK_TOOLS.md](SDK_TOOLS.md). No public genuine Primus-signed
 fixture matches the pinned SDK signer, so negative-path and synthetic policy
 tests do not establish successful positive verification.
+
+## Period comparisons and saved-object reviews
+
+The daily-use workflows run at all three viewports. They reconcile exact
+comparison CSV values with the analytics API, preserve selected dates through
+saved links, suppress unsupported all-history comparisons, retain object alerts
+until review, recover after a failed read and delete baselines when the watchlist
+is cleared. A public synthetic earlier baseline is used to exercise the alert
+workflow; it is never inserted into the hosted index. The local indexed test
+separately checks source publication advancement without a rebuild. See
+[DAILY_USE.md](DAILY_USE.md) for source and storage limits.
 
 The dashboard workflows run on desktop and both phone widths. They check the
 primary U/eU and USDT/eUSDT routes, measured strategy charts, legend visibility,

@@ -81,6 +81,8 @@ test.describe("isolated persistent indexed read model", () => {
     const path = `/api/v1/finance/vaults/${financeRouteIds[1]}/batches`;
     const first = await (await request.get(path, { params: { limit: "1" } })).json();
     expect(first.nextCursor).toEqual(expect.any(String));
+    const watchItems={items:[{id:'indexed-task-watch',href:knownTaskPath}]};
+    const watchBefore=await(await request.post('/api/v1/workspace/check',{data:watchItems})).json();
 
     await fixtureAction("advance");
     await expect.poll(async () => (await overview(request)).snapshotId).not.toBe(before.snapshotId);
@@ -88,6 +90,10 @@ test.describe("isolated persistent indexed read model", () => {
     expect(after.finance.coverage.toBlock).toBe((BigInt(before.finance.coverage.toBlock) + 1n).toString());
     expect(after.finance.eventCount).toBe(before.finance.eventCount);
     expect(after.network.requestCount).toBe(before.network.requestCount);
+    const watchAfter=await(await request.post('/api/v1/workspace/check',{data:watchItems})).json();
+    expect(watchAfter.snapshotId).not.toBe(watchBefore.snapshotId);
+    expect(watchAfter.items[0].scopeKey).toBe(watchBefore.items[0].scopeKey);
+    expect(watchAfter.items[0].contentHash).toBe(watchBefore.items[0].contentHash);
     expect(after.network.reportEventCount).toBe(before.network.reportEventCount);
     expect(await fixtureAction("repeat")).toMatchObject({
       idempotent: true, insertedEvents: 0, snapshotId: after.snapshotId, eventCount: 9,

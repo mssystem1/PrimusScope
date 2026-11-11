@@ -66,6 +66,8 @@ collector. See [HOSTED_INDEXER.md](docs/HOSTED_INDEXER.md) for permissions,
   event explorer with shareable/saved views, pagination and matching CSV.
 - `/explore`: type-aware lookup across recorded public identifiers.
 - `/workspace`: public objects saved in this browser, with remove/clear controls.
+  Review baselines highlight changed public observations until acknowledged;
+  saved views report source updates. See [daily-use analytics](docs/DAILY_USE.md).
 - `/developers`: API playground, integration references and verification limits.
 - `/developers/verify`: local inspector for the supported Page Core signed-attestation format.
 - `/developers/apps`: opt-in Developer Studio pilot for app metadata and bounded diagnostics.

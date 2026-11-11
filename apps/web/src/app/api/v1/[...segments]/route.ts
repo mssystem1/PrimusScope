@@ -8,11 +8,13 @@ import {
   getOverview, getObservationSet, getSources, getFinanceVaults, getFinanceVault,
   getFinanceBatches, getFinanceBatch, getNetworkSummary, getNetworkEvents, getNetworkTask,
   lookupIdentifier, exportMetricsCsv, getServingState, getServingMode, getIndexerStatus, PublicIndexerStatusSchema,
-  buildFinanceAnalytics, buildNetworkAnalytics, buildStrategyAnalytics,
+  buildFinanceAnalytics, buildNetworkAnalytics, buildStrategyAnalytics, buildFinanceComparison, buildNetworkComparison,
 } from "@primusscope/data";
 import { HttpError, errorResponse, jsonResponse, readJson, readQuery } from "../../../../lib/http";
 import { networkFiltersQuery, networkPageQuery } from '../../../../lib/network-query';
 import { analyticsQuery, networkAnalyticsQuery } from '../../../../lib/analytics-query';
+import {WatchRequestSchema,WatchResponseSchema} from '../../../../lib/workspace-schema';
+import {observeSavedObjects} from '../../../../lib/workspace-observations';
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -60,6 +62,7 @@ function openApi() {
     servers: [{url: "/api/v1"}],
     paths: {
       "/overview": get("Separate Finance and Network summaries"),
+      '/workspace/check':{post:{summary:'Read minimal public observations for up to 50 saved local objects; baselines stay in the browser',requestBody:{required:true,content:{'application/json':{schema:z.toJSONSchema(WatchRequestSchema)}}},responses:{'200':{description:'Source-scoped event counts, native-state labels and fingerprints; no private positions or server-side watchlist'},'400':{description:'Invalid references'},'413':{description:'Body exceeds 48 KiB'}}}},
       "/finance/vaults": get("Supported Finance routes and source availability"),
       "/finance/vaults/{routeId}/batches": {get: {
         summary: "Observed batches scoped to one supported vault route",
@@ -119,12 +122,12 @@ export async function GET(request: NextRequest, context: Context) {
       if(query.routeId&&!snapshot.finance.contracts.some(c=>c.routeId===query.routeId))throw new HttpError('UNSUPPORTED_SCOPE','Select a registered Finance route.',422);
       const options={range:'30d' as const,interval:'day' as const,...query};
       return jsonResponse({mode,snapshotId:snapshot.snapshotId,coverage:snapshot.finance.coverage,
-        operations:buildFinanceAnalytics(snapshot,options),strategy:buildStrategyAnalytics(snapshot,options)});
+        operations:buildFinanceAnalytics(snapshot,options),strategy:buildStrategyAnalytics(snapshot,options),comparison:buildFinanceComparison(snapshot,options)});
     }
     if(path==='network/analytics'){
       const query=readQuery(url,networkAnalyticsQuery),{snapshot,mode}=await getServingState();
       return jsonResponse({mode,snapshotId:snapshot.snapshotId,coverage:snapshot.network.coverage,
-        analytics:buildNetworkAnalytics(snapshot,{range:'24h',interval:'hour',...query})});
+        analytics:buildNetworkAnalytics(snapshot,{range:'24h',interval:'hour',...query}),comparison:buildNetworkComparison(snapshot,{range:'24h',interval:'hour',...query})});
     }
     if (path === "health") {
       readQuery(url, emptyQuery); const {snapshot,mode} = await getServingState();
@@ -179,6 +182,11 @@ export async function GET(request: NextRequest, context: Context) {
 export async function POST(request: NextRequest, context: Context) {
   try {
     const {segments}=await context.params;
+    if(segments.join('/')==='workspace/check'){
+      readQuery(request.nextUrl,emptyQuery);const {items}=WatchRequestSchema.parse(await readJson(request,49152)),{snapshot,mode}=await getServingState();
+      const result=WatchResponseSchema.parse({snapshotId:snapshot.snapshotId,mode,checkedAt:new Date().toISOString(),items:observeSavedObjects(snapshot,items,mode)});
+      const response=jsonResponse(result);response.headers.set('Cache-Control','private, no-store');return response;
+    }
     if (segments.join("/")!=="explore/lookup") throw new HttpError("METHOD_NOT_ALLOWED","This resource accepts read-only GET requests.",405);
     readQuery(request.nextUrl,emptyQuery);
     return jsonResponse(await lookupIdentifier(lookupSchema.parse(await readJson(request))));

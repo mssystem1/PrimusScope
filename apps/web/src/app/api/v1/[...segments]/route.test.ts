@@ -11,6 +11,22 @@ function get(path: string, query = "") {
 }
 
 describe("public observations API routes", () => {
+  it('returns source-bound period comparisons without manufacturing growth from missing history',async()=>{
+    const finance=await(await get('finance/analytics','?range=custom&from=2026-10-01&to=2026-10-07')).json();
+    expect(finance.comparison.strategyFlows.status).toBe('available');expect(finance.comparison.routeOperations.status).toBe('unavailable');
+    expect(finance.comparison.strategyFlows.previous).toMatchObject({from:'2026-09-24T00:00:00.000Z',to:'2026-09-30T23:59:59.999Z',complete:true});
+    const network=await(await get('network/analytics','?range=7d')).json();expect(network.comparison.reason).toBe('INCOMPLETE_COVERAGE');expect(network.comparison.metrics.every((m:{delta:null})=>m.delta===null)).toBe(true);
+  });
+  it('checks public saved objects without storing the watchlist or exposing raw event payloads',async()=>{
+    const snapshot=await getObservationSet(),task=snapshot.network.stateSamples[0]!.taskId;
+    const response=await POST(new NextRequest('https://example.test/api/v1/workspace/check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:[{id:'task',href:`/network/tasks/8453/${snapshot.network.taskContract}/${task}`}]})}),{params:Promise.resolve({segments:['workspace','check']})});
+    expect(response.status).toBe(200);expect(response.headers.get('cache-control')).toBe('private, no-store');const result=await response.json();expect(result.snapshotId).toBe(snapshot.snapshotId);expect(result.items[0]).toMatchObject({id:'task',availability:'available'});expect(result.items[0]).not.toHaveProperty('events');expect(result.items[0]).not.toHaveProperty('signatures');
+  });
+  it('rejects private fields and oversized saved-object check bodies before serving them',async()=>{
+    const request=(body:unknown)=>POST(new NextRequest('https://example.test/api/v1/workspace/check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),{params:Promise.resolve({segments:['workspace','check']})});
+    const privateField=await request({items:[],attestation:'PRIVATE_WORKSPACE_INPUT'});expect(privateField.status).toBe(400);expect(await privateField.text()).not.toContain('PRIVATE_WORKSPACE_INPUT');
+    expect((await request({items:[],extra:'x'.repeat(50000)})).status).toBe(413);
+  });
   it('supports exact inclusive UTC dates without substituting present-day KPIs',async()=>{
     const response=await get('finance/analytics','?range=custom&from=2026-10-01&to=2026-10-15&interval=day');
     expect(response.status).toBe(200);const body=await response.json();

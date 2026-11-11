@@ -4,28 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { ArrowRight, Bookmark, Check, Copy, ExternalLink, Play, RefreshCw, Search, Trash2 } from "lucide-react";
+import {readSaved,writeSaved,WORKSPACE_EVENT as EVENT,type SavedItem} from '../lib/public-workspace';
+import {SavedChanges} from './saved-changes';
+export type {SavedItem} from '../lib/public-workspace';
 
 export function RefreshObservations() {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   return <button className="button button-secondary" disabled={pending} onClick={() => startTransition(() => router.refresh())} aria-label="Refresh view from stored observations"><RefreshCw size={15} aria-hidden="true" />{pending ? "Refreshing…" : "Refresh view"}</button>;
-}
-
-export type SavedItem = { id: string; title: string; href: string; domain: "finance" | "network" | "view"; savedAt: string };
-const STORAGE = "primusscope.public-workspace.v1";
-const EVENT = "primusscope-workspace-change";
-
-function readSaved(): SavedItem[] {
-  try {
-    const value: unknown = JSON.parse(localStorage.getItem(STORAGE) ?? "[]");
-    if (!Array.isArray(value)) return [];
-    return value.slice(0, 100).filter((item): item is SavedItem => typeof item === "object" && item !== null && typeof item.id === "string" && item.id.length <= 256 && typeof item.title === "string" && item.title.length <= 200 && typeof item.href === "string" && item.href.length <= 512 && /^\/(finance|network|explore)(\/|$|\?|#)/.test(item.href) && ["finance", "network", "view"].includes(item.domain) && typeof item.savedAt === "string" && Number.isFinite(Date.parse(item.savedAt))).slice(0, 50).map(({ id, title, href, domain, savedAt }) => ({ id, title, href, domain, savedAt }));
-  } catch { return []; }
-}
-
-function writeSaved(items: SavedItem[]) {
-  localStorage.setItem(STORAGE, JSON.stringify(items));
-  window.dispatchEvent(new Event(EVENT));
 }
 
 export function SaveButton({ item, compact = false }: { item: Omit<SavedItem, "savedAt">; compact?: boolean }) {
@@ -67,7 +53,7 @@ export function PublicWorkspace() {
   }
   return <section className="panel workspace-panel"><div className="panel-heading"><div><h2>Saved in this browser</h2><p>Public objects and views you choose to follow.</p></div><button className="button button-secondary button-small" onClick={() => remove()} disabled={!items.length}><Trash2 size={14} />Clear saved items</button></div>
     {!ready ? <p className="empty-copy">Loading your saved views…</p> : items.length === 0 ? <div className="empty-state"><div className="empty-icon"><Bookmark size={26} /></div><h3>Your next visit starts here.</h3><p>Save a vault, a task or a network view to keep it close. No wallet connection is needed.</p><div className="button-row"><Link className="button button-primary" href="/finance">Explore finance <ArrowRight size={15} /></Link><Link className="button button-secondary" href="/network">Explore network</Link></div></div> : <div className="saved-list">{items.map((item) => <div className="saved-item" key={item.id}><span className={`domain-icon ${item.domain}`}><Bookmark size={17} /></span><div><span className="eyebrow">{item.domain === "view" ? "SAVED VIEW" : item.domain.toUpperCase()}</span><Link href={item.href}>{item.title}</Link><small>Saved {new Date(item.savedAt).toLocaleDateString("en-GB", { timeZone: "UTC", day: "numeric", month: "short", year: "numeric" })} · This browser only</small></div><button className="icon-button" aria-label={`Remove ${item.title}`} onClick={() => remove(item.id)}><Trash2 size={16} /></button></div>)}</div>}
-    <p className="muted small" role="status">{message}</p><div className="panel-footnote">Saved preferences contain public object identifiers only. Private balances, signatures and proof payloads are never saved here.</div>
+    {ready&&items.length>0&&<SavedChanges items={items}/>}<p className="muted small" role="status">{message}</p><div className="panel-footnote">Saved preferences and review baselines contain public object identifiers, counts, state labels and source fingerprints only. Private balances, signatures and proof payloads are never saved here.</div>
   </section>;
 }
 
