@@ -17,7 +17,7 @@ function code(promise: Promise<unknown>) {
 describe('FetchRpc', () => {
   it('accepts only registered provider endpoints and validates finite budgets', () => {
     expect(() => new FetchRpc('https://attacker.example', limits)).toThrowError('UNREGISTERED_RPC_ENDPOINT');
-    expect(() => new FetchRpc(endpoint, { ...limits, maxRequests: 1001 })).toThrowError('INVALID_LIMITS');
+    expect(() => new FetchRpc(endpoint, { ...limits, maxRequests: 2001 })).toThrowError('INVALID_LIMITS');
   });
 
   it('enforces the request budget and permits only registered read methods', async () => {

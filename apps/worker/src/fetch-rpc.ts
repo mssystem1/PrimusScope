@@ -12,7 +12,7 @@ export class FetchRpc implements Rpc {
   constructor(private readonly endpoint: string, private readonly limits: RpcLimits = DEFAULT_RPC_LIMITS,
     private readonly request: typeof fetch = fetch) {
     if (!endpoints.has(endpoint)) throw new WorkerError('UNREGISTERED_RPC_ENDPOINT');
-    if (!Number.isInteger(limits.maxRequests) || limits.maxRequests < 1 || limits.maxRequests > 1000
+    if (!Number.isInteger(limits.maxRequests) || limits.maxRequests < 1 || limits.maxRequests > 2000
       || !Number.isInteger(limits.maxSeconds) || limits.maxSeconds < 1 || limits.maxSeconds > 600
       || limits.timeoutSeconds < 1 || limits.timeoutSeconds > 30 || limits.maxResponseBytes < 1
       || limits.maxResponseBytes > 5_000_000 || limits.minIntervalMs < 0 || limits.minIntervalMs > 5000) {

@@ -45,7 +45,8 @@ describe('scheduled collection route', () => {
   it('uses Blob for new publications and performs no Neon writes or retention mutations',async()=>{
     process.env.PRIMUSSCOPE_PUBLICATION_STORE='blob';delete process.env.WORKER_DATABASE_URL;
     const store={read:vi.fn().mockResolvedValue({revision:'1'})};mocks.BlobPublicationStore.mockImplementation(function(){return store;});mocks.collectHosted.mockResolvedValueOnce({outcome:'completed'});const prune=vi.spyOn(SDKDiagnosticsStore.prototype,'prune');
-    const response=await GET(request());expect(response.status).toBe(200);expect(response.headers.get('x-primusscope-diagnostics-retention')).toBe('history_read_only');expect(mocks.collectHosted.mock.calls[0][0]).toMatchObject({store,commitOnce:true,collector:{intervalMinutes:60}});expect(mocks.neonClient).not.toHaveBeenCalled();expect(prune).not.toHaveBeenCalled();
+    const response=await GET(request());expect(response.status).toBe(200);expect(response.headers.get('x-primusscope-diagnostics-retention')).toBe('history_read_only');expect(mocks.collectHosted.mock.calls[0][0]).toMatchObject({store,commitOnce:true,limits:{maxBlocks:40000,chunkSize:5000},collector:{intervalMinutes:60}});expect(mocks.neonClient).not.toHaveBeenCalled();expect(prune).not.toHaveBeenCalled();
+    mocks.collectHosted.mock.calls[0][0].rpcFor("network");expect(mocks.FetchRpc.mock.calls[0][1]).toMatchObject({maxRequests:2000,minIntervalMs:125});
   });
   it('prunes expired diagnostic metadata after completed collection and reports the retention outcome',async()=>{
     mocks.collectHosted.mockResolvedValueOnce({outcome:'completed'});

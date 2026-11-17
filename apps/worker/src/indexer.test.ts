@@ -69,6 +69,18 @@ class FakeRpc implements Rpc {
 const limits={...DEFAULT_SCAN_LIMITS,maxBlocks:3,chunkSize:2};
 
 describe('incremental worker with durable SQLite commits',()=>{
+  it('bounds hourly catch-up to 40,000 contiguous blocks and rejects larger scans before RPC work',async()=>{
+    const {store,snapshot}=fixture();const rpc=new FakeRpc(sourceFactory('finance',snapshot));rpc.finalized=50010;
+    try{
+      const result=await runOnce(store,rpc,'finance',{...limits,maxBlocks:40000,chunkSize:5000},sourceFactory);
+      expect(result).toMatchObject({outcome:'advanced',fromBlock:'11',toBlock:'40010',remainingBlocks:'10000',committedRanges:8});
+      const queries=rpc.calls.filter(c=>c.method==='eth_getLogs').map(c=>c.params[0]as {fromBlock:string;toBlock:string});
+      expect(queries.every(q=>BigInt(q.toBlock)-BigInt(q.fromBlock)+1n<=5000n)).toBe(true);
+      const count=rpc.requestsMade;
+      await expect(runOnce(store,rpc,'finance',{...limits,maxBlocks:40001},sourceFactory)).rejects.toThrow('INVALID_LIMITS');
+      expect(rpc.requestsMade).toBe(count);
+    }finally{store.close();}
+  });
   it('rejects a changed retained seed hash even when its timestamp is unchanged',async()=>{
     const snapshot=ObservationSetSchema.parse(recorded);
     const rpc:Rpc={requestsMade:0,call:async(method:string)=>{

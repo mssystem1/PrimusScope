@@ -77,7 +77,7 @@ function reconcileReceipt(receipt:unknown,values:ParsedLog[]):void{
 
 export async function runOnce(store:Store,rpc:Rpc,domain:Domain,limits:ScanLimits=DEFAULT_SCAN_LIMITS,sourceFactory:(domain:Domain,snapshot:ObservationSet)=>Source=sourceFor):Promise<RunReport>{
   for(const [key,value] of Object.entries(limits))if(!Number.isInteger(value)||value<1)throw new WorkerError('INVALID_LIMITS');
-  if(limits.maxBlocks>10_000||limits.chunkSize>10_000||limits.maxEventsPerChunk>1000||limits.leaseMs<30_000||limits.leaseMs>600_000)throw new WorkerError('INVALID_LIMITS');
+  if(limits.maxBlocks>40_000||limits.chunkSize>10_000||limits.maxEventsPerChunk>1000||limits.leaseMs<30_000||limits.leaseMs>600_000)throw new WorkerError('INVALID_LIMITS');
   const snapshot=store.readSnapshot();const source=sourceFactory(domain,snapshot);
   const report:RunReport={domain,chainId:source.chainId,evidencePolicy:EVIDENCE_POLICY,outcome:'idle',code:null,fromBlock:null,toBlock:null,targetFinalizedBlock:null,remainingBlocks:null,committedRanges:0,eventsAdded:0,rpcRequests:0,retryAfterSeconds:null,completedAt:now(),compatibility:source.compatibility};
   const lease=store.acquireLease(domain,'worker:'+randomUUID(),limits.leaseMs);

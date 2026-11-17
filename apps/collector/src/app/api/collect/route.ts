@@ -32,7 +32,15 @@ export async function GET(request: Request) {
   try {
     const store = blob?new BlobPublicationStore({token:process.env.BLOB_READ_WRITE_TOKEN}):new PostgresPublicationStore(neonClient(connection!));
     const collector={mode:'scheduled' as const,provider:'vercel_cron' as const,intervalMinutes:blob?60:15,runUrl:null};
-    const rpcFor=(domain:'finance'|'network')=>new FetchRpc(domain==='finance'?'https://bsc-rpc.publicnode.com':'https://base-rpc.publicnode.com',{maxRequests:600,maxSeconds:Math.max(15,Math.min(strategyEnabled&&domain==='finance'?110:220,Math.floor((240000-(Date.now()-started))/1000))),timeoutSeconds:10,maxResponseBytes:2000000,minIntervalMs:350});
+    const rpcFor=(domain:'finance'|'network')=>new FetchRpc(
+      domain==='finance'?'https://bsc-rpc.publicnode.com':'https://base-rpc.publicnode.com', {
+        // Hourly collection must cover more than 10,000 Base blocks. Keep the
+        // shared deadline and response limits; pace reads at at most 8/sec.
+        maxRequests:blob?2000:600,
+        maxSeconds:Math.max(15,Math.min(strategyEnabled&&domain==='finance'?110:220,
+          Math.floor((240000-(Date.now()-started))/1000))),
+        timeoutSeconds:10,maxResponseBytes:2000000,minIntervalMs:blob?125:350,
+      });
     if(blob&&!await store.read()){
       const seed=await freshPublication(ObservationSetSchema.parse(recorded),rpcFor,collector);
       try{await (store as BlobPublicationStore).initialize(seed);}catch(error){if(!(error instanceof StorageError)||error.code!=='SEED_MISMATCH')throw error;}
@@ -41,12 +49,8 @@ export async function GET(request: Request) {
       commitOnce:blob,
       ...(strategyEnabled ? { collectStrategy: collectPublicStrategy } : {}),
       collector,
-      rpcFor: domain => new FetchRpc(domain === 'finance' ? 'https://bsc-rpc.publicnode.com' : 'https://base-rpc.publicnode.com', {
-        // Reserve strategy reads and a Network attempt inside the shared job budget.
-        maxRequests: 600, maxSeconds: Math.max(15, Math.min(strategyEnabled && domain === 'finance' ? 110 : 220,
-          Math.floor((240_000 - (Date.now() - started)) / 1000))),
-        timeoutSeconds: 10, maxResponseBytes: 2_000_000, minIntervalMs: 350,
-      }),
+      ...(blob?{limits:{maxBlocks:40000,chunkSize:5000,maxEventsPerChunk:250,leaseMs:600000}}:{}),
+      rpcFor,
     });
     // Independent metadata retention must not roll back completed chain work.
     let retention=blob?'history_read_only':'unavailable';

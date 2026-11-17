@@ -54,6 +54,12 @@ revision and releases the lease atomically. A stale collector cannot overwrite
 a newer publication or erase its lease. The 600-second lease exceeds the
 300-second job limit; local freshness checks avoid extra renewal writes.
 
+Hourly jobs can scan up to 40,000 blocks per domain in at most 5,000-block
+chunks. Native reads have a 2,000-request ceiling, at most eight starts per
+second and the existing shared 240-second budget. These limits accommodate
+Base block production better than the earlier 10,000-block cap. A busy or
+limited source may still leave a visible backlog; no caught-up SLA is implied.
+
 Cron runs **hourly** (`0 * * * *`, UTC). At two writes per successful job this is
 1,440 writes in 30 days, against the documented Hobby allowance of 2,000 advanced
 operations. Initialization, failed-job release and manual invocations also count.
