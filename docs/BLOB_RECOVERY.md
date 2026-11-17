@@ -71,7 +71,11 @@ of about 1.90 MB raw occupied about 686 KB in the compressed envelope.
 Readers share concurrent requests and cache validated Blob publications in each
 server process for five minutes; Blob edge caching can add up to 60 seconds.
 Cold starts and independent server instances still consume reads and transfer.
-Traffic is not guaranteed to remain within the free allowances. Failed uploads
+Traffic is not guaranteed to remain within the free allowances. The existing
+validated-publication limits also remain: 16 MB and 100,000 events per domain.
+Reaching a capacity limit refuses advancement and retains the last publication;
+this release does not implement an unbounded warehouse or automatic history
+deletion. Failed uploads
 leave the prior object intact. Provider quota can still prevent object reads.
 
 ## Outage behavior

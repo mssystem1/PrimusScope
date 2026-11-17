@@ -12,8 +12,8 @@ function timeLabel(value:string,full=false){
   return new Intl.DateTimeFormat('en-GB',{timeZone:'UTC',day:'numeric',month:'short',...(full?{year:'numeric',hour:'2-digit',minute:'2-digit'}:{})}).format(new Date(value))+(full?' UTC':'');
 }
 
-export function AnalyticsChart({ title, description, rows, series, type='line', unit='events', precision=0, startAtZero=true, source, bucketCoverage }: {
-  title:string; description:string; rows:ChartRow[]; series:ChartSeries[]; type?:'line'|'bar';unit?:string; precision?:number;startAtZero?:boolean;source:string;bucketCoverage?:BucketCoverage[];
+export function AnalyticsChart({ title, description, rows, series, type='line', unit='events', precision=0, startAtZero=true, source, bucketCoverage, maxGapHours }: {
+  title:string; description:string; rows:ChartRow[]; series:ChartSeries[]; type?:'line'|'bar';unit?:string; precision?:number;startAtZero?:boolean;source:string;bucketCoverage?:BucketCoverage[];maxGapHours?:number;
 }){
   const bucketByTime=new Map(bucketCoverage?.map(bucket=>[bucket.at,bucket]));
   const id=useId(),[visible,setVisible]=useState(series.map(s=>s.key)),[active,setActive]=useState(Math.max(0,rows.length-1));
@@ -52,7 +52,7 @@ export function AnalyticsChart({ title, description, rows, series, type='line', 
           {low<0&&<line x1="0" x2="800" y1={y(0)} y2={y(0)} stroke="#8da4b1" vectorEffect="non-scaling-stroke"/>}
           {selected.map((s,si)=>{
             if(type==='bar')return <g key={s.key}>{rows.map((r,i)=>{const value=numeric(r[s.key]);if(value===null)return null;const group=800/Math.max(1,rows.length),width=Math.max(1,group*.7/selected.length);return <rect key={i} x={i*group+group*.15+si*width} y={Math.min(y(0),y(value))} width={width} height={Math.max(value===0?0:1,Math.abs(y(value)-y(0)))} fill={s.color} opacity=".88"/>;})}</g>;
-            let path='',pen=false;for(let i=0;i<rows.length;i++){const value=numeric(rows[i]![s.key]);if(value===null){pen=false;continue;}if(timeAxis&&i>0&&times[i]!-times[i-1]!>36*3600000)pen=false;path+=(pen?' L':' M')+x(i)+' '+y(value);pen=true;}
+            let path='',pen=false;for(let i=0;i<rows.length;i++){const value=numeric(rows[i]![s.key]);if(value===null){pen=false;continue;}if(maxGapHours!==undefined&&timeAxis&&i>0&&times[i]!-times[i-1]!>maxGapHours*3600000)pen=false;path+=(pen?' L':' M')+x(i)+' '+y(value);pen=true;}
             return <g key={s.key}><path d={path} fill="none" stroke={s.color} strokeWidth="2.25" strokeLinejoin="round" vectorEffect="non-scaling-stroke"/>{rows.length===1&&numeric(rows[0]![s.key])!==null&&<circle cx="400" cy={y(Number(rows[0]![s.key]))} r="4" fill={s.color}/>}</g>;
           })}
           {row&&<line x1={type==='bar'?(index+.5)*800/rows.length:x(index)} x2={type==='bar'?(index+.5)*800/rows.length:x(index)} y1="0" y2="220" stroke="#a1b6c2" strokeDasharray="3 4" opacity=".6" vectorEffect="non-scaling-stroke"/>}

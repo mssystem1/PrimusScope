@@ -26,6 +26,7 @@ export async function GET(request: Request) {
   if (new URL(request.url).search) return Response.json({ code: 'INVALID_REQUEST' }, { status: 400, headers });
   const connection = process.env.WORKER_DATABASE_URL;
   const blob=process.env.PRIMUSSCOPE_PUBLICATION_STORE==='blob';
+  if (!blob&&process.env.PRIMUSSCOPE_NEON_HISTORY_ONLY==='1') return Response.json({code:'HISTORY_READ_ONLY'},{status:503,headers});
   if (!blob&&!connection) return Response.json({ code: 'DATABASE_NOT_CONFIGURED' }, { status: 503, headers });
   const started = Date.now();
   const strategyEnabled = process.env.PRIMUSSCOPE_STRATEGY_ENABLED === '1';

@@ -35,6 +35,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllEnvs();
   if (oldSecret === undefined) delete process.env.CRON_SECRET; else process.env.CRON_SECRET = oldSecret;
   if (oldDatabase === undefined) delete process.env.WORKER_DATABASE_URL; else process.env.WORKER_DATABASE_URL = oldDatabase;
   if (oldStrategyFlag === undefined) delete process.env.PRIMUSSCOPE_STRATEGY_ENABLED; else process.env.PRIMUSSCOPE_STRATEGY_ENABLED = oldStrategyFlag;
@@ -42,6 +43,12 @@ afterEach(() => {
 });
 
 describe('scheduled collection route', () => {
+  it('never falls back to Neon writes if Blob mode is missing while history-only is enabled',async()=>{
+    vi.stubEnv('PRIMUSSCOPE_NEON_HISTORY_ONLY','1');
+    const response=await GET(request());
+    expect(response.status).toBe(503);expect(await response.json()).toEqual({code:'HISTORY_READ_ONLY'});
+    expect(mocks.neonClient).not.toHaveBeenCalled();expect(mocks.collectHosted).not.toHaveBeenCalled();
+  });
   it('uses Blob for new publications and performs no Neon writes or retention mutations',async()=>{
     process.env.PRIMUSSCOPE_PUBLICATION_STORE='blob';delete process.env.WORKER_DATABASE_URL;
     const store={read:vi.fn().mockResolvedValue({revision:'1'})};mocks.BlobPublicationStore.mockImplementation(function(){return store;});mocks.collectHosted.mockResolvedValueOnce({outcome:'completed'});const prune=vi.spyOn(SDKDiagnosticsStore.prototype,'prune');
