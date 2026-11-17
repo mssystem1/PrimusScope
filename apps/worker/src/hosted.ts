@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { SQLiteStore, StorageError } from '@primusscope/storage';
-import { PostgresPublicationStore } from '@primusscope/storage/postgres';
+import type {PublicationStore} from '@primusscope/storage/postgres';
 import type { HostedPublication } from '@primusscope/storage/publication';
 import type { FinanceStrategy } from '@primusscope/api-schema';
 import { runOnce, DEFAULT_SCAN_LIMITS, type ScanLimits } from './indexer';
@@ -11,7 +11,9 @@ import { CurlRpc, DEFAULT_RPC_LIMITS, type Rpc } from './rpc';
 import { sourceFor, WorkerError, type Domain } from './registry';
 
 type HostedOptions = {
-  store: PostgresPublicationStore;
+  store: PublicationStore;
+  /** Blob commits both domains once; failed jobs keep the previous publication. */
+  commitOnce?:boolean;
   collector: HostedPublication['collector'];
   limits?: ScanLimits;
   rpcFor?: (domain: Domain) => Rpc;
@@ -55,10 +57,10 @@ export async function collectHosted(options: HostedOptions) {
       }
       // Also publish safe failed-run status and completed ranges; never conceal quarantine.
       const publication = local.exportPublication(options.collector);
-      await options.store.renewLease(token);
-      revision = await options.store.publish(token, revision, publication);
+      if(!options.commitOnce){await options.store.renewLease(token);revision = await options.store.publish(token, revision, publication);}
       if (publication.checkpoints.some(c => c.quarantined)) break;
     }
+    if(options.commitOnce){await options.store.renewLease(token);revision=await options.store.publish(token,revision,local.exportPublication(options.collector));}
     return { outcome: reports.some(r => r.outcome === 'failed') ? 'partial' : 'completed', revision, reports };
   } finally {
     local?.close();

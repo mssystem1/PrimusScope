@@ -38,6 +38,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - run: npm run test:e2e:indexed
+      - run: npm run test:e2e:recovery
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -45,6 +46,8 @@ jobs:
           path: |
             .local/test-results
             .local/test-results-indexed
+            .local/test-results-recovery
             .local/playwright-report
             .local/playwright-report-indexed
+            .local/playwright-report-recovery
           retention-days: 7

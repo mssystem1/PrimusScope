@@ -42,6 +42,11 @@ const advance: typeof runOnce = async (store, _rpc, domain) => {
   store.releaseLease(token);
   return { domain, outcome: 'advanced', toBlock } as RunReport;
 };
+it('commits both domains once when using the Blob write budget',async()=>{
+ const store=await fixture(),publish=vi.spyOn(store,'publish'),before=(await store.read())!;
+ const result=await collectHosted({store,collector:{...collector,intervalMinutes:60},commitOnce:true,rpcFor,runDomain:advance});
+ expect(result.outcome).toBe('completed');expect(publish).toHaveBeenCalledTimes(1);const after=(await store.read())!;for(const domain of ['finance','network']as const)expect(BigInt(after.publication.snapshot[domain].coverage.toBlock)).toBe(BigInt(before.publication.snapshot[domain].coverage.toBlock)+1n);
+});
 
 it('retains strategy observations through the next domain commit and a fresh collector job',async()=>{
   const store=await fixture(),strategy=FinanceStrategySchema.parse(strategyJson);

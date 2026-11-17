@@ -3,7 +3,7 @@
 Independent analytics for the Primus ecosystem: Confidential Finance, zkTLS
 Network, public task exploration, developer interfaces and a personal workspace.
 
-The application defaults to **recorded, source-traceable observations**. Optional indexed modes read local SQLite or a hosted PostgreSQL publication
+The application defaults to **recorded, source-traceable observations**. Optional indexed modes read local SQLite or a hosted private Blob publication
 updated by bounded incremental jobs. Finance covers four registered aggregators on BNB Smart
 Chain (chain 56); the separate Network sample covers one task contract on Base
 (chain 8453). Every dataset carries its contract and block scope, observation time
@@ -52,9 +52,10 @@ managed cloud settings. A completed worker range becomes visible on the next
 request. The Sources page distinguishes validated coverage, collector attempts,
 provider-finalized targets, lag and retry timing.
 
-The hosted deployment uses read-only PostgreSQL serving and a separate scheduled
-collector. See [HOSTED_INDEXER.md](docs/HOSTED_INDEXER.md) for permissions,
-15-minute collection, failure behavior and capacity limits.
+The hosted deployment collects new observations hourly into private Vercel Blob.
+Neon is preserved as separate read-only history; the app remains readable when
+storage is unavailable. See [BLOB_RECOVERY.md](docs/BLOB_RECOVERY.md) for source
+boundaries, outage behavior, credentials and free-tier limits.
 
 ## Application and API
 
@@ -72,6 +73,8 @@ collector. See [HOSTED_INDEXER.md](docs/HOSTED_INDEXER.md) for permissions,
 - `/developers/verify`: local inspector for the supported Page Core signed-attestation format.
 - `/developers/apps`: opt-in Developer Studio pilot for app metadata and bounded diagnostics.
 - `/sources`: source links, exact coverage and recorded-data freshness.
+- `/history`: explicit read-only Neon history; provider failure stays separate
+  from current Blob dashboards.
 
 Public reads live under `/api/v1`; the machine-readable interface is at
 `/api/v1/openapi.json`. Public identifier lookup uses
@@ -113,6 +116,7 @@ public fixture matches the pinned signer. See [SDK_TOOLS.md](docs/SDK_TOOLS.md),
 [verification](https://primus-scope.vercel.app/developers/verify) and
 [Developer Studio](https://primus-scope.vercel.app/developers/apps). Private wallet authorization,
 broader history and provider backup/restore drills remain later stages. SQLite
-indexed mode is local; Vercel uses the external PostgreSQL serving adapter.
+indexed mode is local; Vercel uses private Blob for new collection and PostgreSQL
+only for explicit historical reads.
 [ENVIRONMENT_SETUP.md](ENVIRONMENT_SETUP.md) records configuration needs. Local
 validation does not replace tests against a deployed Vercel instance.

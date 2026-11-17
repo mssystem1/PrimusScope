@@ -3,8 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": {"./hosted":"./src/hosted.ts", "./fetch-rpc":"./src/fetch-rpc.ts", "./strategy":"./src/strategy.ts"},
-  "scripts": {"indexer": "tsx src/cli.ts"},
+  "exports": {
+    "./hosted": "./src/hosted.ts",
+    "./fetch-rpc": "./src/fetch-rpc.ts",
+    "./strategy": "./src/strategy.ts",
+    "./seed": "./src/indexer.ts"
+  },
+  "scripts": {
+    "indexer": "tsx src/cli.ts"
+  },
   "dependencies": {
     "@primusscope/api-schema": "0.1.0",
     "@primusscope/storage": "0.1.0",

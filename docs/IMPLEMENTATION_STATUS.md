@@ -1,4 +1,22 @@
-# Implementation status — 11 November 2026
+# Implementation status
+
+## Storage recovery — 17 November 2026
+
+The app now keeps serving validated observations during primary storage outages.
+New collection uses private Vercel Blob hourly; Neon is unchanged and read-only,
+with explicit `/history` access. No Neon publication was exported into Blob.
+The new current source epoch begins at freshly verified finalized chain heads;
+older Neon coverage is not claimed in Blob. Provider quota currently prevents
+Neon history reads, without blocking the current app. Hosted SDK diagnostic
+writes are paused; local official SDK inspection remains available.
+Local validation passes 281 unit tests, typecheck, both production builds and
+69 production-server browser checks (61 recorded, five indexed, three outage).
+The real Blob conditional-write conflict test preserved the stored bytes.
+HTTPS deployment checks are recorded separately after release.
+See [BLOB_RECOVERY.md](BLOB_RECOVERY.md) for tests, publication fencing, quota
+budgets and the remaining history-access limitation.
+
+## Retained implementation evidence — 11 November 2026
 
 Finance and zkTLS Network now have calendar analytics dashboards, interactive
 charts, exact chart CSV and accessible data tables. Finance preserves U/eU and

@@ -8,6 +8,12 @@ import { handleDeveloperRequest } from './developer-api';
 const dbs:PGlite[]=[];
 const oldSecret=process.env.DIAGNOSTICS_RATE_LIMIT_SECRET;
 const secret='test-only-rate-limit-secret-0123456789abcdef';
+it('refuses new diagnostic writes when Neon is designated read-only history',async()=>{
+ const old=process.env.PRIMUSSCOPE_NEON_HISTORY_ONLY;process.env.PRIMUSSCOPE_NEON_HISTORY_ONLY='1';
+ try{const response=await handleDeveloperRequest(new Request('https://example.test/api/v1/developer/apps',{method:'POST',headers:{Origin:'https://example.test','Content-Type':'application/json'},body:JSON.stringify({name:'test',origin:'https://example.test',consent:true})}),['apps']);expect(response.status).toBe(503);expect(await response.json()).toEqual({code:'HISTORY_READ_ONLY'});
+ const read=await handleDeveloperRequest(new Request('https://example.test/api/v1/developer/apps'),['apps']);expect(read.status).toBe(200);
+ }finally{if(old===undefined)delete process.env.PRIMUSSCOPE_NEON_HISTORY_ONLY;else process.env.PRIMUSSCOPE_NEON_HISTORY_ONLY=old;}
+});
 afterEach(async()=>{
   for(const db of dbs.splice(0))await db.close();
   if(oldSecret===undefined)delete process.env.DIAGNOSTICS_RATE_LIMIT_SECRET;else process.env.DIAGNOSTICS_RATE_LIMIT_SECRET=oldSecret;

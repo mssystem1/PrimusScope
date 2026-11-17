@@ -8,7 +8,7 @@ const config: NextConfig = {
   outputFileTracingRoot: root,
   outputFileTracingIncludes: {"/*": ["../../data/observations/current.json"]},
   outputFileTracingExcludes: {"/*": [
-    "../../.local/**", "../../.env*", "../../docs/**", "../../scripts/**",
+    "../../.local/**", "../../.env*", "../../apps/*/.env*", "../../docs/**", "../../scripts/**",
     "../../tests/**", "../../apps/worker/**",
   ]},
   turbopack: {root},

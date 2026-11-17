@@ -1,6 +1,7 @@
 import { resolve } from 'node:path';
 import { SQLiteStore } from '@primusscope/storage';
 import { neonClient, PostgresPublicationStore, type PublishedState } from '@primusscope/storage/postgres';
+import{BlobPublicationStore}from'@primusscope/storage/blob';
 import type { HostedPublication } from '@primusscope/storage/publication';
 import { z } from 'zod';
 import {
@@ -31,13 +32,14 @@ export const PublicIndexerDomainStatusSchema = z.object({
   retryAfterSeconds: z.number().int().min(0).max(86400).nullable(), nextRetryAt: nullableTime,
 }).strict();
 export const PublicIndexerStatusSchema = z.object({
-  mode: ServingModeSchema, storage: z.enum(['bundled_snapshot', 'local_sqlite', 'hosted_postgres']),
+  mode: ServingModeSchema, storage: z.enum(['bundled_snapshot', 'local_sqlite', 'hosted_postgres','hosted_blob']),
   publication: z.enum(['available', 'quarantined', 'empty']), snapshotId: Sha256Schema.nullable(),
   continuousWorker: z.literal(false), domains: z.array(PublicIndexerDomainStatusSchema).max(2),
   collectionMode: z.enum(['manual', 'scheduled']).optional(),
   intervalMinutes: z.number().int().min(5).max(1440).nullable().optional(),
   lastRunUrl: z.string().regex(/^https:\/\/github\.com\/mssystem1\/PrimusScope\/actions\/runs\/[0-9]+$/).nullable().optional(),
   recovery: z.object({source:z.enum(['process_cache','bundled_snapshot']),issue:z.literal('PRIMARY_STORE_UNAVAILABLE')}).strict().optional(),
+  historical:z.boolean().optional(),
 }).strict();
 export type PublicIndexerStatus = z.infer<typeof PublicIndexerStatusSchema>;
 export type ServingContext = { mode: ServingMode; indexerStatus: PublicIndexerStatus | null };
@@ -65,7 +67,7 @@ const safeIssueCodes = new Set([
 export function getServingMode(): ServingMode {
   const value = process.env.PRIMUSSCOPE_DATA_MODE ?? 'recorded';
   if (value === 'recorded') return 'recorded_observations';
-  if (value === 'indexed' || value === 'hosted') return 'indexed_observations';
+  if (value === 'indexed' || value === 'hosted'||value==='blob') return 'indexed_observations';
   throw new DataAccessError('UNSUPPORTED_CONFIGURATION', 'The configured observation serving mode is unsupported.', 503);
 }
 
@@ -114,7 +116,7 @@ function publicStatus(raw: ReturnType<SQLiteStore['getStatus']>): PublicIndexerS
 
 /** Status remains readable when publication is quarantined. */
 export async function getIndexerStatus(): Promise<PublicIndexerStatus> {
-  if (process.env.PRIMUSSCOPE_DATA_MODE === 'hosted') {
+  if (['hosted','blob'].includes(process.env.PRIMUSSCOPE_DATA_MODE??'')) {
     const state=await recoverableHostedState(true);return state.indexerStatus!;
   }
   if (getServingMode() === 'recorded_observations') {
@@ -130,7 +132,7 @@ export async function getIndexerStatus(): Promise<PublicIndexerStatus> {
 export async function getServingState(): Promise<ServingState> {
   const mode = getServingMode();
   if (mode === 'recorded_observations') return { snapshot: bundledSnapshot(), mode, indexerStatus: null };
-  if (process.env.PRIMUSSCOPE_DATA_MODE === 'hosted') {
+  if (['hosted','blob'].includes(process.env.PRIMUSSCOPE_DATA_MODE??'')) {
     return recoverableHostedState();
   }
   const store = openReadOnlyStore();
@@ -158,6 +160,10 @@ export async function getServingState(): Promise<ServingState> {
 
 let hostedCache: { connection: string; state: PublishedState } | undefined;
 let hostedFailure: {connection:string;retryAt:number}|undefined;
+let blobCheckedAt=0;
+let blobInFlight:{key:string;promise:Promise<PublishedState>}|undefined;
+function usesBlob(){return process.env.PRIMUSSCOPE_DATA_MODE==='blob'||process.env.PRIMUSSCOPE_PUBLICATION_STORE==='blob';}
+function primaryKey(){return usesBlob()?'blob:'+(process.env.BLOB_STORE_ID??process.env.BLOB_READ_WRITE_TOKEN??'runtime'):process.env.WEB_DATABASE_URL;}
 async function recoverableHostedState(statusOnly=false):Promise<ServingState>{
   try{
     const {publication}=await hostedPublication(),indexerStatus=hostedStatus(publication);
@@ -165,17 +171,23 @@ async function recoverableHostedState(statusOnly=false):Promise<ServingState>{
     return{snapshot:ObservationSetSchema.parse(publication.snapshot),mode:'indexed_observations',indexerStatus};
   }catch(error){
     if(error instanceof DataAccessError&&error.code==='PUBLICATION_QUARANTINED')throw error;
-    const cached=hostedCache&&hostedCache.connection===process.env.WEB_DATABASE_URL?hostedCache.state:null;
+    const cached=hostedCache&&hostedCache.connection===primaryKey()?hostedCache.state:null;
     if(!statusOnly&&cached?.publication.checkpoints.some(c=>c.quarantined))throw new DataAccessError('PUBLICATION_QUARANTINED','Indexed observations are awaiting source reconciliation. Inspect indexer status.',503);
     if(cached)return{snapshot:ObservationSetSchema.parse(cached.publication.snapshot),mode:'indexed_observations',indexerStatus:{...hostedStatus(cached.publication),recovery:{source:'process_cache',issue:'PRIMARY_STORE_UNAVAILABLE'}}};
     const snapshot=bundledSnapshot();return{snapshot,mode:'recorded_observations',indexerStatus:{mode:'recorded_observations',storage:'bundled_snapshot',publication:'available',snapshotId:snapshot.snapshotId,continuousWorker:false,domains:[],recovery:{source:'bundled_snapshot',issue:'PRIMARY_STORE_UNAVAILABLE'}}};
   }
 }
 async function hostedPublication() {
-  const connection = process.env.WEB_DATABASE_URL;
+  const connection = primaryKey(),blob=usesBlob();
   if (!connection) throw new DataAccessError('SOURCE_UNAVAILABLE', 'The hosted observation store is not configured.', 503);
   if(hostedFailure?.connection===connection&&hostedFailure.retryAt>Date.now())throw new DataAccessError('SOURCE_UNAVAILABLE','The hosted observation store is unavailable.',503);
   try {
+    if(blob){
+      if(hostedCache?.connection===connection&&Date.now()-blobCheckedAt<300000)return hostedCache.state;
+      if(blobInFlight?.key===connection)return blobInFlight.promise;
+      const promise=(async()=>{const store=new BlobPublicationStore({token:process.env.BLOB_READ_WRITE_TOKEN,readOnly:true,useCache:true});const state=await readDeadline(store.read());if(!state)throw new Error('EMPTY_BLOB');hostedCache={connection,state};blobCheckedAt=Date.now();hostedFailure=undefined;return state;})();
+      blobInFlight={key:connection,promise};try{return await promise;}finally{if(blobInFlight?.promise===promise)blobInFlight=undefined;}
+    }
     const client=neonClient(connection);
     const store = new PostgresPublicationStore({async query(text,values){let timer:ReturnType<typeof setTimeout>|undefined;try{return await Promise.race([client.query(text,values),new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('READ_TIMEOUT')),3000);})]);}finally{clearTimeout(timer);}}}, true);
     const cached = hostedCache?.connection === connection ? hostedCache.state : null;
@@ -192,8 +204,19 @@ function hostedStatus(publication: HostedPublication): PublicIndexerStatus {
   const status = publicStatus({ storage: 'sqlite',
     publication: publication.checkpoints.some(c => c.quarantined) ? 'quarantined' : 'available',
     snapshotId: publication.snapshot.snapshotId, domains: publication.checkpoints });
-  return { ...status, storage: 'hosted_postgres', collectionMode: publication.collector.mode,
+  return { ...status, storage: usesBlob()?'hosted_blob':'hosted_postgres', collectionMode: publication.collector.mode,
     intervalMinutes: publication.collector.intervalMinutes, lastRunUrl: publication.collector.runUrl };
+}
+
+async function readDeadline<T>(work:Promise<T>):Promise<T>{let timer:ReturnType<typeof setTimeout>|undefined;try{return await Promise.race([work,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('READ_TIMEOUT')),3000);})]);}finally{clearTimeout(timer);}}
+/** Explicit read-only history; never copied into the current Blob publication. */
+export async function getNeonHistoryState():Promise<ServingState>{
+  const connection=process.env.WEB_DATABASE_URL;if(!connection)throw new DataAccessError('SOURCE_UNAVAILABLE','Neon history is not configured. Current Blob observations remain separate.',503);
+  try{const state=await readDeadline(new PostgresPublicationStore(neonClient(connection),true).read());if(!state)throw new Error();
+    const indexerStatus={...hostedStatus(state.publication),storage:'hosted_postgres' as const,historical:true};
+    if(indexerStatus.publication!=='available')throw new DataAccessError('PUBLICATION_QUARANTINED','Historical observations are awaiting source reconciliation.',503);
+    return{snapshot:ObservationSetSchema.parse(state.publication.snapshot),mode:'indexed_observations',indexerStatus};
+  }catch(error){if(error instanceof DataAccessError)throw error;throw new DataAccessError('SOURCE_UNAVAILABLE','Neon history is currently unavailable. No historical data has been removed; current Blob observations remain separate.',503);}
 }
 
 export async function getObservationSet(): Promise<ObservationSet> { return (await getServingState()).snapshot; }

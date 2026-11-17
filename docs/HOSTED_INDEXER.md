@@ -1,5 +1,11 @@
 # Hosted observation collection
 
+**Current production, 17 November:** new collection uses private Vercel Blob
+hourly; Neon is read-only history. See [BLOB_RECOVERY.md](BLOB_RECOVERY.md) for
+current configuration, outage recovery and CAS behavior. The PostgreSQL
+implementation below describes the earlier deployment and remains available
+for isolated tests; its cadence and failure behavior are not current production.
+
 The hosted adapter uses Neon Free PostgreSQL for durable publications and a
 separate Vercel project, `primus-scope-collector`, for bounded collection. The
 public application is `primus-scope`; both projects use the existing Vercel team.
@@ -47,9 +53,9 @@ successor's lease. Temporary SQLite is deleted after the job; it is not durable
 Vercel storage. Completed ranges survive a later domain failure or job restart.
 
 The web reader checks the current database revision on each request and reuses a
-validated in-memory publication only while that revision matches. Database
-failures return an unavailable response; hosted mode never silently substitutes
-the recorded artifact. Quarantine status stays readable while observation reads
+validated in-memory publication only while that revision matches. The original deployment returned unavailable on database failures. The current
+reader serves a clearly labeled validated process cache or bundled recovery
+snapshot, preserving the original source dates. Quarantine status stays readable while observation reads
 are paused. Readers do not initiate upstream chain requests.
 
 ## Operational limits

@@ -6,6 +6,11 @@ import {buildStrategyAnalytics,decimalUnits} from './strategy-analytics';
 
 const snapshot=ObservationSetSchema.parse(recorded),strategy=FinanceStrategySchema.parse(source);
 describe('public shared-strategy financial analytics',()=>{
+  it('preserves missing observation days as a coverage gap after collection resumes',()=>{
+    const input=structuredClone(snapshot),last=strategy.samples.at(-1)!;
+    input.finance.strategy={...strategy,samples:[...strategy.samples,{...last,blockNumber:String(BigInt(last.blockNumber)+1000000n),timestamp:new Date(Date.parse(last.timestamp)+7*86400000).toISOString(),observedAt:new Date(Date.parse(last.observedAt)+7*86400000).toISOString()}]};
+    const data=buildStrategyAnalytics(input,{range:'30d'});expect(data.sampleHistoryComplete).toBe(false);expect(data.sampleGaps).toHaveLength(1);expect(data.sampleGaps[0]?.from).toBe(last.timestamp);
+  });
   it('preserves raw token precision, signed net flows and token units',()=>{
     expect(decimalUnits('123456789012345678901')).toBe('123.456789012345678901');
     expect(decimalUnits('-1000000000000000001')).toBe('-1.000000000000000001');

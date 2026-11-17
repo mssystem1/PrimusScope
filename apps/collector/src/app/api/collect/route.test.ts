@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   FetchRpc: vi.fn(),
   neonClient: vi.fn(),
   PostgresPublicationStore: vi.fn(),
+  BlobPublicationStore:vi.fn(),
 }));
 vi.mock('@primusscope/worker/hosted', () => ({ collectHosted: mocks.collectHosted }));
 vi.mock('@primusscope/worker/fetch-rpc', () => ({ FetchRpc: mocks.FetchRpc }));
@@ -12,6 +13,7 @@ vi.mock('@primusscope/storage/postgres', () => ({
   neonClient: mocks.neonClient,
   PostgresPublicationStore: mocks.PostgresPublicationStore,
 }));
+vi.mock('@primusscope/storage/blob',()=>({BlobPublicationStore:mocks.BlobPublicationStore}));
 vi.mock('@primusscope/storage', () => ({ StorageError: class StorageError extends Error { code = 'STORAGE_FAILED'; } }));
 
 import { GET } from './route';
@@ -20,6 +22,7 @@ import {SDKDiagnosticsStore} from '@primusscope/storage/diagnostics';
 const oldSecret = process.env.CRON_SECRET;
 const oldDatabase = process.env.WORKER_DATABASE_URL;
 const oldStrategyFlag = process.env.PRIMUSSCOPE_STRATEGY_ENABLED;
+const oldStoreFlag=process.env.PRIMUSSCOPE_PUBLICATION_STORE;
 const secret = 's'.repeat(48);
 function request(url = 'https://collector.example/api/collect', authorization = `Bearer ${secret}`) {
   return new Request(url, { headers: { authorization } });
@@ -35,9 +38,15 @@ afterEach(() => {
   if (oldSecret === undefined) delete process.env.CRON_SECRET; else process.env.CRON_SECRET = oldSecret;
   if (oldDatabase === undefined) delete process.env.WORKER_DATABASE_URL; else process.env.WORKER_DATABASE_URL = oldDatabase;
   if (oldStrategyFlag === undefined) delete process.env.PRIMUSSCOPE_STRATEGY_ENABLED; else process.env.PRIMUSSCOPE_STRATEGY_ENABLED = oldStrategyFlag;
+  if(oldStoreFlag===undefined)delete process.env.PRIMUSSCOPE_PUBLICATION_STORE;else process.env.PRIMUSSCOPE_PUBLICATION_STORE=oldStoreFlag;
 });
 
 describe('scheduled collection route', () => {
+  it('uses Blob for new publications and performs no Neon writes or retention mutations',async()=>{
+    process.env.PRIMUSSCOPE_PUBLICATION_STORE='blob';delete process.env.WORKER_DATABASE_URL;
+    const store={read:vi.fn().mockResolvedValue({revision:'1'})};mocks.BlobPublicationStore.mockImplementation(function(){return store;});mocks.collectHosted.mockResolvedValueOnce({outcome:'completed'});const prune=vi.spyOn(SDKDiagnosticsStore.prototype,'prune');
+    const response=await GET(request());expect(response.status).toBe(200);expect(response.headers.get('x-primusscope-diagnostics-retention')).toBe('history_read_only');expect(mocks.collectHosted.mock.calls[0][0]).toMatchObject({store,commitOnce:true,collector:{intervalMinutes:60}});expect(mocks.neonClient).not.toHaveBeenCalled();expect(prune).not.toHaveBeenCalled();
+  });
   it('prunes expired diagnostic metadata after completed collection and reports the retention outcome',async()=>{
     mocks.collectHosted.mockResolvedValueOnce({outcome:'completed'});
     const prune=vi.spyOn(SDKDiagnosticsStore.prototype,'prune').mockResolvedValueOnce();

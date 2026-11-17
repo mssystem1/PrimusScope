@@ -6,6 +6,13 @@ import { validatePublication, type HostedPublication } from './publication';
 export type SqlResult = { rows: Record<string, unknown>[] };
 export interface SqlClient { query(text: string, values?: unknown[]): Promise<SqlResult> }
 export type PublishedState = { revision: string; publication: HostedPublication };
+export interface PublicationStore {
+  read():Promise<PublishedState|null>;
+  acquireLease(owner:string,seconds?:number):Promise<string|null>;
+  renewLease(token:string,seconds?:number):Promise<void>;
+  publish(token:string,expectedRevision:string,publication:HostedPublication):Promise<string>;
+  releaseLease(token:string):Promise<void>;
+}
 
 const migration = [
   'CREATE SCHEMA IF NOT EXISTS primusscope',

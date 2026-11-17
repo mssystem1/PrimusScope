@@ -3,13 +3,16 @@ import { resolve } from "node:path";
 
 const indexed = process.env.E2E_DATA_MODE === "indexed";
 const hosted = process.env.E2E_DATA_MODE === "hosted";
+const blob=process.env.E2E_DATA_MODE==='blob',recovery=process.env.E2E_DATA_MODE==='recovery';
 const externalBaseUrl = process.env.E2E_BASE_URL;
 if (hosted && !externalBaseUrl) throw new Error('Hosted validation requires E2E_BASE_URL.');
+if(blob&&!externalBaseUrl)throw new Error('Blob validation requires E2E_BASE_URL.');
+if(recovery&&externalBaseUrl)throw new Error('Recovery tests use an isolated local server.');
 if (indexed && externalBaseUrl) {
   throw new Error("Indexed fixture tests use their isolated local database and server; unset E2E_BASE_URL.");
 }
-const baseURL = indexed ? "http://127.0.0.1:3001" : externalBaseUrl || "http://127.0.0.1:3000";
-const artifacts = indexed ? ".local/test-results-indexed" : hosted ? ".local/test-results-hosted" : ".local/test-results";
+const baseURL = indexed ? "http://127.0.0.1:3001" : recovery?'http://127.0.0.1:3002':externalBaseUrl || "http://127.0.0.1:3000";
+const artifacts = indexed ? ".local/test-results-indexed" : recovery?'.local/test-results-recovery':blob?'.local/test-results-blob':hosted ? ".local/test-results-hosted" : ".local/test-results";
 function externalProxy() {
   if (!externalBaseUrl) return undefined;
   const value = process.env.HTTPS_PROXY || process.env.https_proxy
@@ -49,7 +52,7 @@ export default defineConfig({
   reporter: [
     ["list"],
     ["json", { outputFile: `${artifacts}/results.json` }],
-    ["html", { outputFolder: indexed ? ".local/playwright-report-indexed" : hosted ? ".local/playwright-report-hosted" : ".local/playwright-report", open: "never" }],
+    ["html", { outputFolder: indexed ? ".local/playwright-report-indexed" : recovery?".local/playwright-report-recovery":blob?".local/playwright-report-blob":hosted ? ".local/playwright-report-hosted" : ".local/playwright-report", open: "never" }],
   ],
   use: {
     baseURL,
@@ -58,7 +61,10 @@ export default defineConfig({
     screenshot: "only-on-failure",
     video: "off",
   },
-  projects: indexed ? [
+  projects:blob||recovery?[
+    ...(blob?[{name:'blob-api',testMatch:'blob-api.spec.ts'}]:[]),
+    ...[1440,360,390].map(width=>({name:(blob?'blob-':'recovery-')+width,testMatch:blob?['blob-ui.spec.ts','sdk-tools.spec.ts']:['recovery.spec.ts'],use:{...chromium,viewport:{width,height:width===1440?1000:844},...(width<800?{isMobile:true,hasTouch:true}:{})}})),
+  ]:indexed ? [
     { name: "indexed-chromium", testMatch: "indexed.spec.ts", use: chromium },
   ] : [
     { name: "api", testMatch: hosted ? ["hosted-api.spec.ts","sdk-hosted.spec.ts"] : "api.spec.ts" },
@@ -93,7 +99,10 @@ export default defineConfig({
       PRIMUSSCOPE_DB_PATH: indexedDbPath,
       PRIMUSSCOPE_E2E_DB_PATH: indexedDbPath,
     },
-  } : externalBaseUrl
+  } : recovery?{
+    command:'npm run start --workspace @primusscope/web -- --hostname 127.0.0.1 --port 3002',url:baseURL,reuseExistingServer:false,gracefulShutdown:{signal:'SIGTERM',timeout:10000},timeout:120000,
+    env:{NEXT_TELEMETRY_DISABLED:'1',PRIMUSSCOPE_DATA_MODE:'blob',BLOB_READ_WRITE_TOKEN:'intentionally-invalid-for-offline-recovery-test',WEB_DATABASE_URL:'intentionally-invalid-history-url',PRIMUSSCOPE_NEON_HISTORY_ONLY:'1'},
+  }:externalBaseUrl
     ? undefined
     : {
         command:

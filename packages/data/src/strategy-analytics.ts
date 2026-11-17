@@ -63,6 +63,7 @@ export function buildStrategyAnalytics(snapshot:ObservationSet,options:Analytics
   const points=samples.map((sample,index)=>({label:sample.timestamp,blockNumber:sample.blockNumber,blockHash:sample.blockHash,
     assets:decimalUnits(sample.totalAssetsRaw),shares:decimalUnits(sample.totalSupplyRaw),nav:decimalUnits(sample.exchangeRateRaw),
     apy7d:apy(samples,index,7),apy30d:apy(samples,index,30)})).filter(point=>Date.parse(point.label)>=from&&Date.parse(point.label)<=end);
+  const sampleGaps=samples.slice(1).flatMap((sample,index)=>{const previous=samples[index]!,a=Date.parse(previous.timestamp),b=Date.parse(sample.timestamp);return b-a>36*3600000&&a<=end&&b>=from?[{from:previous.timestamp,to:sample.timestamp}]:[];});
   const step=window.step,buckets=new Map<number,{deposits:bigint;withdrawals:bigint}>();
   const coverage=strategy.flowCoverage;
   const flowSelection=coverage?analyticsWindow(Date.parse(coverage.fromTime),Date.parse(coverage.toTime),{range:'30d',...selection},coverage.complete,{from:Date.parse(window.requestedFrom),to:Date.parse(window.requestedTo)}):null;
@@ -84,7 +85,7 @@ export function buildStrategyAnalytics(snapshot:ObservationSet,options:Analytics
       apy7d:apy(samples,latestIndex,7),apy30d:apy(samples,latestIndex,30)}:null,
     points,flows,flowCoverage:coverage,from:window.from,to:window.to,
     requestedFrom:window.requestedFrom,requestedTo:window.requestedTo,coveredFrom:window.coveredFrom,coveredTo:window.coveredTo,
-    hasCoverage:window.hasCoverage,historyComplete:window.historyComplete,sampleHistoryComplete:window.historyComplete,
+    hasCoverage:window.hasCoverage,historyComplete:window.historyComplete,sampleHistoryComplete:window.historyComplete&&sampleGaps.length===0,sampleGaps,
     availableAsOf:availableLatest?.timestamp??null,flowHistoryComplete:flowSelection?.historyComplete??false,
     flowSelection:flowSelection?{from:flowSelection.from,to:flowSelection.to,hasCoverage:flowSelection.hasCoverage,historyComplete:flowSelection.historyComplete,bucketCoverage:flowSelection.bucketCoverage}:null,
     definition:{assets:'StakedUSDu.totalAssets(): USDu backing shares, excluding unvested rewards; not Primus-only TVL.',

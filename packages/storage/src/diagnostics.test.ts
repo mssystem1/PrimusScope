@@ -38,7 +38,7 @@ describe('hosted SDK diagnostics storage',()=>{
     await db.query('RESET ROLE');
     const privileges=await db.query<{apps:boolean;events:boolean;runtime_append:boolean;stranger_append:boolean}>(`SELECT has_table_privilege('diag_runtime','primusscope_diagnostics.apps','SELECT') AS apps,has_table_privilege('diag_runtime','primusscope_diagnostics.events','SELECT') AS events,has_function_privilege('diag_runtime','primusscope_diagnostics.append_events(uuid,text,text,jsonb)','EXECUTE') AS runtime_append,has_function_privilege('diag_stranger','primusscope_diagnostics.append_events(uuid,text,text,jsonb)','EXECUTE') AS stranger_append`);
     expect(privileges.rows[0]).toEqual({apps:false,events:false,runtime_append:true,stranger_append:false});
-  });
+  },15000); // This is the first SQL test and includes the PostgreSQL/WASM cold start.
   it('stores only strict event metadata and applies dedupe and conflict atomically',async()=>{
     const {store,db}=await fixture();await create(store);
     const e=event();

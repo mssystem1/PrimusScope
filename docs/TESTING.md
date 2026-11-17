@@ -76,7 +76,23 @@ handoff; they do not establish live-chain indexing or remote database support.
 Indexed results are kept separately in `.local/test-results-indexed/` and
 `.local/playwright-report-indexed/`, preserving the recorded-mode reports.
 
-## Hosted deployment
+## Current Blob deployment and outage recovery
+
+```sh
+npm run test:e2e:recovery
+E2E_DATA_MODE=blob E2E_BASE_URL=https://primus-scope.vercel.app npm run test:e2e
+```
+
+Recovery runs three isolated desktop/phone checks with unavailable storage. Blob
+runs 13 live checks: one API check and four UI/SDK workflows at each viewport.
+Neon history may return a separate unavailable response; current dashboards must
+still load. Developer Studio writes must return `HISTORY_READ_ONLY`. Reports
+are separated by mode beneath `.local/`. See [BLOB_RECOVERY.md](BLOB_RECOVERY.md).
+
+## Earlier PostgreSQL deployment
+
+The following suite describes the earlier source epoch and writable diagnostics.
+Do not run this mutation canary against history-only Neon production.
 
 After deploying hosted serving, run:
 

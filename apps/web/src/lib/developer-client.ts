@@ -20,6 +20,7 @@ export const deleteDiagnosticApp=(id:string)=>request<{deleted:true}>('/apps/'+e
 export const recordInspection=(id:string,result:InspectionResult,isTest:boolean)=>request<{accepted:number;duplicates:number}>('/apps/'+encodeURIComponent(id)+'/record','POST',{events:[diagnosticFromResult(result,isTest)]});
 export function diagnosticError(error:unknown){
   const code=error instanceof DeveloperApiError?error.code:'UNAVAILABLE';
+  if(code==='HISTORY_READ_ONLY')return 'Diagnostic history is read-only during storage recovery. Local SDK signature checks remain available without recording.';
   if(code==='QUOTA_EXCEEDED')return 'This project reached its event limit, or this browser reached its project limit. Clear old data before retrying.';
   if(code==='NOT_FOUND')return 'This project is unavailable to this browser. Open Developer Studio to choose or create a project.';
   if(code==='RATE_LIMITED')return 'Too many requests. Wait before trying again.';

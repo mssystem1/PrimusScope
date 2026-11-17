@@ -1,6 +1,8 @@
-import { randomUUID } from 'node:crypto';
+import { createHash,randomUUID } from 'node:crypto';
+import{join}from'node:path';
+import{tmpdir}from'node:os';
 import type { ObservationSet } from '@primusscope/api-schema';
-import { StorageError, type Checkpoint, type CompletedRange, type Domain, type Lease, type RunRecord } from '@primusscope/storage';
+import { SQLiteStore,StorageError, type Checkpoint, type CompletedRange, type Domain, type Lease, type RunRecord } from '@primusscope/storage';
 import { EVIDENCE_POLICY, IMPLEMENTATION_SLOT, WorkerError, bytes, codeHash, hash, header, hexQuantity, projectLog, sourceFor, type Header, type ParsedLog, type Source } from './registry';
 import type { Rpc } from './rpc';
 
@@ -163,4 +165,24 @@ export async function seedAnchors(snapshot:ObservationSet,rpcFor:(domain:Domain)
     anchors[domain]=anchor.hash;
   }
   return anchors;
+}
+
+/** New Blob history starts from freshly validated chain heads; no Neon rows are read. */
+export async function freshPublication(template:ObservationSet,rpcFor:(domain:Domain)=>Rpc,collector:import('@primusscope/storage/publication').HostedPublication['collector'],sourceFactory=sourceFor){
+  const snapshot=structuredClone(template),anchors={finance:'',network:''};
+  for(const domain of ['finance','network']as const){
+    const rpc=rpcFor(domain),source=sourceFactory(domain,snapshot);
+    if(hexQuantity(await rpc.call('eth_chainId',[]))!==BigInt(source.chainId))throw new WorkerError('WRONG_CHAIN');
+    const target=header(await rpc.call('eth_getBlockByNumber',['finalized',false]));if(target.number<BigInt(source.seedBlock))throw new WorkerError('FINALIZED_HEAD_BEHIND_CHECKPOINT');await verifyPins(rpc,source,target.number);
+    const additions=distinctLogs(await rpc.call('eth_getLogs',[{fromBlock:quantity(target.number),toBlock:quantity(target.number),address:source.contracts.map(pin=>pin.address),topics:[source.topics]}]),source,target.number,target.number,1000);
+    for(const addition of additions){if(addition.event.blockHash!==target.hash)throw new WorkerError('BLOCK_HASH_MISMATCH');addition.event.timestamp=target.time;}
+    for(const transaction of new Set(additions.map(a=>a.event.transactionHash)))reconcileReceipt(await rpc.call('eth_getTransactionReceipt',[transaction]),additions.filter(a=>a.event.transactionHash===transaction));
+    if((await getHeader(rpc,target.number)).hash!==target.hash)throw new WorkerError('CHECKPOINT_HASH_CHANGED');
+    const observedAt=now();snapshot[domain].coverage={...snapshot[domain].coverage,fromBlock:String(target.number),toBlock:String(target.number),fromTime:target.time,toTime:target.time,observedAt,completeForRegisteredContracts:true};
+    if(domain==='finance'){snapshot.finance.events=additions.map(a=>a.event)as typeof snapshot.finance.events;snapshot.finance.stateSamples=[];snapshot.finance.latencySamples=[];}else{snapshot.network.events=additions.map(a=>a.event)as typeof snapshot.network.events;snapshot.network.stateSamples=[];}
+    anchors[domain]=target.hash;
+  }
+  snapshot.generatedAt=now();const{snapshotId:_old,...body}=snapshot;snapshot.snapshotId=createHash('sha256').update(JSON.stringify(body)).digest('hex');
+  const directory=await import('node:fs/promises').then(fs=>fs.mkdtemp(join(tmpdir(),'primusscope-blob-seed-')));const local=new SQLiteStore(join(directory,'seed.sqlite'));
+  try{local.initialize(snapshot,anchors);return local.exportPublication(collector);}finally{local.close();await import('node:fs/promises').then(fs=>fs.rm(directory,{recursive:true,force:true}));}
 }

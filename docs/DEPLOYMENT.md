@@ -3,8 +3,10 @@
 Public application: **https://primus-scope.vercel.app**. The Vercel project is
 `primus-scope`, connected to `mssystem1/PrimusScope`, production branch `main`.
 
-The release supports hosted PostgreSQL observations and a separate scheduled
-collector, alongside the default recorded mode used in local fixtures. No
+Current production uses private Blob for new observations, read-only Neon
+history and a separate hourly collector. See [BLOB_RECOVERY.md](BLOB_RECOVERY.md)
+for the 17 November outage change and limits. Recorded mode remains the local
+fixture default. No
 deployment uses ephemeral Vercel files as a durable database. Exact coverage,
 collection times and remaining backlog stay visible in Sources.
 
@@ -21,7 +23,9 @@ Use Node 24 and the settings in `apps/web/vercel.json`:
   repository workspace lockfile and root TypeScript/build dependencies.
 - Build: `npm run build` in the web workspace.
 - Output: `.next`.
-- Production serving: `PRIMUSSCOPE_DATA_MODE=hosted` and read-only `WEB_DATABASE_URL`.
+- Production serving: `PRIMUSSCOPE_DATA_MODE=hosted`,
+  `PRIMUSSCOPE_PUBLICATION_STORE=blob`, native private Blob settings and
+  `PRIMUSSCOPE_NEON_HISTORY_ONLY=1`. Keep read-only `WEB_DATABASE_URL` for `/history`.
 
 No Etherscan, RPC or wallet credential is required by the public web app. Its
 public-data database role can only read the serving publication. The SDK tools
@@ -43,7 +47,7 @@ repeats the recorded/indexed checks on the main branch.
 After hosted deployment and an authorized collector invocation, run:
 
 ```sh
-E2E_DATA_MODE=hosted E2E_BASE_URL=https://primus-scope.vercel.app npm run test:e2e
+E2E_DATA_MODE=blob E2E_BASE_URL=https://primus-scope.vercel.app npm run test:e2e
 ```
 
 Inspect desktop and phone screenshots as well as automated accessibility
@@ -58,13 +62,13 @@ successful homepage request alone does not establish workflow correctness.
 ## Collector project
 
 `primus-scope-collector` uses Root Directory `apps/collector`, Node 24 and the
-same workspace install command. Its production-only settings are
-`WORKER_DATABASE_URL` and `CRON_SECRET`. Vercel Cron calls `/api/collect` every
-15 minutes; the function limit is 300 seconds. The web project receives neither
-credential. Both projects are connected to the repository's main branch.
-The worker role also has permission to prune expired SDK diagnostic metadata;
-this separate retention task runs after chain collection and reports its status
-in `X-PrimusScope-Diagnostics-Retention`.
+same workspace install command. Its Production settings include the native
+private Blob settings, `PRIMUSSCOPE_PUBLICATION_STORE=blob`,
+`PRIMUSSCOPE_NEON_HISTORY_ONLY=1`, `CRON_SECRET` and the strategy flag. Vercel Cron
+calls `/api/collect` hourly; the function limit is 300 seconds. The web project
+receives no collector authentication. Both projects track main. The Blob path
+does not write Neon or prune diagnostics; its retention response header reports
+`history_read_only`.
 
 See [HOSTED_INDEXER.md](HOSTED_INDEXER.md) for provisioning, permissions,
 publication fencing, restart behavior and operational limits. Scheduling does

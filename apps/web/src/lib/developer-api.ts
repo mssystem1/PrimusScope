@@ -27,6 +27,7 @@ export async function handleDeveloperRequest(request:Request,segments:string[],i
   if(url.search||segments.length>3||segments.some(part=>part.length>80))throw new ApiFailure('INVALID_INPUT',400);
   const owner=ownerToken(request),hash=owner?tokenHash(owner):null;
   if(segments[0]!=='apps')throw new ApiFailure('NOT_FOUND',404);
+  if(process.env.PRIMUSSCOPE_NEON_HISTORY_ONLY==='1'&&!['GET','OPTIONS'].includes(method))return json({code:'HISTORY_READ_ONLY'},503);
   const appId=segments[1],action=segments[2];
   if(appId&&!uuid.test(appId))throw new ApiFailure('NOT_FOUND',404);
   if(!appId&&method==='GET'){
