@@ -22,12 +22,12 @@ function seed() {
 beforeEach(() => { vi.stubEnv('PRIMUSSCOPE_DATA_MODE', 'hosted'); mocks.neonClient.mockReset(); });
 afterEach(() => vi.unstubAllEnvs());
 
-it('requires only the reader credential and never falls back to the bundled snapshot or admin DSN', async () => {
+it('uses a clearly labelled retained recovery snapshot when the reader is unavailable and never uses admin credentials', async () => {
   vi.stubEnv('WEB_DATABASE_URL', ''); vi.stubEnv('DATABASE_URL', 'private-admin-value');
-  await expect(getServingState()).rejects.toMatchObject({ code: 'SOURCE_UNAVAILABLE', status: 503 });
+  expect(await getServingState()).toMatchObject({mode:'recorded_observations',indexerStatus:{recovery:{source:'bundled_snapshot',issue:'PRIMARY_STORE_UNAVAILABLE'}}});
   expect(mocks.neonClient).not.toHaveBeenCalled();
 });
-it('checks revisions on warm reads, isolates caller mutations, and refuses stale cache on database failure', async () => {
+it('checks revisions, isolates caller mutations, and preserves known quarantine during a database outage', async () => {
   vi.stubEnv('WEB_DATABASE_URL', 'test-reader-1');
   let publication = seed(), revision = '0', fullReads = 0;
   const query = vi.fn(async (sql: string) => {
@@ -42,7 +42,7 @@ it('checks revisions on warm reads, isolates caller mutations, and refuses stale
   expect((await getIndexerStatus()).publication).toBe('quarantined'); expect(fullReads).toBe(2);
   await expect(getServingState()).rejects.toMatchObject({ code: 'PUBLICATION_QUARANTINED' });
   query.mockRejectedValue(new Error('private-connection-string') as never);
-  await expect(getServingState()).rejects.toMatchObject({ code: 'SOURCE_UNAVAILABLE' });
+  await expect(getServingState()).rejects.toMatchObject({ code: 'PUBLICATION_QUARANTINED' });
   await expect(getServingState()).rejects.not.toThrow('private-connection-string');
 });
 it('projects safe operational status and rejects private fields in the stored payload', async () => {
@@ -55,5 +55,11 @@ it('projects safe operational status and rejects private fields in the stored pa
   expect(JSON.stringify(status)).not.toContain('blockHash');
   vi.stubEnv('WEB_DATABASE_URL', 'test-reader-3');
   Object.assign(publication, { privateKey: 'must-not-escape' });
-  await expect(getServingState()).rejects.toMatchObject({ code: 'SOURCE_UNAVAILABLE' });
+  expect(await getServingState()).toMatchObject({mode:'recorded_observations',indexerStatus:{recovery:{source:'bundled_snapshot'}}});
+});
+it('keeps the last validated publication available when later reads fail, without renewing its source dates',async()=>{
+  vi.stubEnv('WEB_DATABASE_URL','outage-reader');const publication=seed();const query=vi.fn().mockResolvedValue({rows:[{revision:'0',state:publication}]});mocks.neonClient.mockReturnValue({query});
+  const before=await getServingState();query.mockRejectedValue(new Error('quota-private-value'));
+  const after=await getServingState();expect(after.snapshot).toEqual(before.snapshot);expect(after.indexerStatus?.recovery?.source).toBe('process_cache');expect(after.snapshot.network.coverage.observedAt).toBe(before.snapshot.network.coverage.observedAt);
+  const attempts=query.mock.calls.length;await getServingState();expect(query.mock.calls).toHaveLength(attempts);expect(JSON.stringify(after.indexerStatus)).not.toContain('quota-private-value');
 });

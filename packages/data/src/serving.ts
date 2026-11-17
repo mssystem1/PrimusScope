@@ -37,6 +37,7 @@ export const PublicIndexerStatusSchema = z.object({
   collectionMode: z.enum(['manual', 'scheduled']).optional(),
   intervalMinutes: z.number().int().min(5).max(1440).nullable().optional(),
   lastRunUrl: z.string().regex(/^https:\/\/github\.com\/mssystem1\/PrimusScope\/actions\/runs\/[0-9]+$/).nullable().optional(),
+  recovery: z.object({source:z.enum(['process_cache','bundled_snapshot']),issue:z.literal('PRIMARY_STORE_UNAVAILABLE')}).strict().optional(),
 }).strict();
 export type PublicIndexerStatus = z.infer<typeof PublicIndexerStatusSchema>;
 export type ServingContext = { mode: ServingMode; indexerStatus: PublicIndexerStatus | null };
@@ -114,7 +115,7 @@ function publicStatus(raw: ReturnType<SQLiteStore['getStatus']>): PublicIndexerS
 /** Status remains readable when publication is quarantined. */
 export async function getIndexerStatus(): Promise<PublicIndexerStatus> {
   if (process.env.PRIMUSSCOPE_DATA_MODE === 'hosted') {
-    return hostedStatus((await hostedPublication()).publication);
+    const state=await recoverableHostedState(true);return state.indexerStatus!;
   }
   if (getServingMode() === 'recorded_observations') {
     return { mode: 'recorded_observations', storage: 'bundled_snapshot', publication: 'available',
@@ -130,11 +131,7 @@ export async function getServingState(): Promise<ServingState> {
   const mode = getServingMode();
   if (mode === 'recorded_observations') return { snapshot: bundledSnapshot(), mode, indexerStatus: null };
   if (process.env.PRIMUSSCOPE_DATA_MODE === 'hosted') {
-    const { publication } = await hostedPublication();
-    const indexerStatus = hostedStatus(publication);
-    if (indexerStatus.publication !== 'available') throw new DataAccessError('PUBLICATION_QUARANTINED',
-      'Indexed observations are awaiting source reconciliation. Inspect indexer status.', 503);
-    return { snapshot: ObservationSetSchema.parse(publication.snapshot), mode, indexerStatus };
+    return recoverableHostedState();
   }
   const store = openReadOnlyStore();
   try {
@@ -160,18 +157,35 @@ export async function getServingState(): Promise<ServingState> {
 }
 
 let hostedCache: { connection: string; state: PublishedState } | undefined;
+let hostedFailure: {connection:string;retryAt:number}|undefined;
+async function recoverableHostedState(statusOnly=false):Promise<ServingState>{
+  try{
+    const {publication}=await hostedPublication(),indexerStatus=hostedStatus(publication);
+    if(!statusOnly&&indexerStatus.publication!=='available')throw new DataAccessError('PUBLICATION_QUARANTINED','Indexed observations are awaiting source reconciliation. Inspect indexer status.',503);
+    return{snapshot:ObservationSetSchema.parse(publication.snapshot),mode:'indexed_observations',indexerStatus};
+  }catch(error){
+    if(error instanceof DataAccessError&&error.code==='PUBLICATION_QUARANTINED')throw error;
+    const cached=hostedCache&&hostedCache.connection===process.env.WEB_DATABASE_URL?hostedCache.state:null;
+    if(!statusOnly&&cached?.publication.checkpoints.some(c=>c.quarantined))throw new DataAccessError('PUBLICATION_QUARANTINED','Indexed observations are awaiting source reconciliation. Inspect indexer status.',503);
+    if(cached)return{snapshot:ObservationSetSchema.parse(cached.publication.snapshot),mode:'indexed_observations',indexerStatus:{...hostedStatus(cached.publication),recovery:{source:'process_cache',issue:'PRIMARY_STORE_UNAVAILABLE'}}};
+    const snapshot=bundledSnapshot();return{snapshot,mode:'recorded_observations',indexerStatus:{mode:'recorded_observations',storage:'bundled_snapshot',publication:'available',snapshotId:snapshot.snapshotId,continuousWorker:false,domains:[],recovery:{source:'bundled_snapshot',issue:'PRIMARY_STORE_UNAVAILABLE'}}};
+  }
+}
 async function hostedPublication() {
   const connection = process.env.WEB_DATABASE_URL;
   if (!connection) throw new DataAccessError('SOURCE_UNAVAILABLE', 'The hosted observation store is not configured.', 503);
+  if(hostedFailure?.connection===connection&&hostedFailure.retryAt>Date.now())throw new DataAccessError('SOURCE_UNAVAILABLE','The hosted observation store is unavailable.',503);
   try {
-    const store = new PostgresPublicationStore(neonClient(connection), true);
+    const client=neonClient(connection);
+    const store = new PostgresPublicationStore({async query(text,values){let timer:ReturnType<typeof setTimeout>|undefined;try{return await Promise.race([client.query(text,values),new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('READ_TIMEOUT')),3000);})]);}finally{clearTimeout(timer);}}}, true);
     const cached = hostedCache?.connection === connection ? hostedCache.state : null;
     if (cached && await store.revision() === cached.revision) return cached;
     const state = await store.read();
     if (!state) throw new Error();
     hostedCache = { connection, state };
+    hostedFailure=undefined;
     return state;
-  } catch { throw new DataAccessError('SOURCE_UNAVAILABLE', 'The hosted observation store is unavailable.', 503); }
+  } catch { hostedFailure={connection,retryAt:Date.now()+60000};throw new DataAccessError('SOURCE_UNAVAILABLE', 'The hosted observation store is unavailable.', 503); }
 }
 
 function hostedStatus(publication: HostedPublication): PublicIndexerStatus {
