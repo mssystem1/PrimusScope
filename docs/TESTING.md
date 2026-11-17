@@ -7,6 +7,7 @@ create transactions or call upstream RPC and explorer services.
 Run the production build and local application checks from the repository root:
 
 ```sh
+npm run test:sdk-positive
 npm run typecheck
 npm test
 npm run build
@@ -84,9 +85,10 @@ E2E_DATA_MODE=blob E2E_BASE_URL=https://primus-scope.vercel.app npm run test:e2e
 ```
 
 Recovery runs three isolated desktop/phone checks with unavailable storage. Blob
-runs 13 live checks: one API check and four UI/SDK workflows at each viewport.
+runs live API, ownership/ingest and browser diagnostics checks, plus responsive
+current-data/SDK workflows at each viewport.
 Neon history may return a separate unavailable response; current dashboards must
-still load. Developer Studio writes must return `HISTORY_READ_ONLY`. Reports
+still load. New Developer Studio writes use private Blob while Neon stays read-only. Reports
 are separated by mode beneath `.local/`. See [BLOB_RECOVERY.md](BLOB_RECOVERY.md).
 
 ## Earlier PostgreSQL deployment
@@ -123,14 +125,16 @@ CSV selection/snapshot consistency, paging, stale-cursor recovery, empty and
 uncovered scopes, and accessible chart drill-down. Run them alone with
 `npm run test:e2e -- --grep 'event filters|pagination, changed|chart intervals'`.
 
-## Official SDK tools pilot
+## Official SDK tools
 
-The pilot's local evidence is 242 tests across 28 files; typecheck and
-web build pass. Release-specific HTTPS checks are recorded separately. The inspector and
-Developer Studio workflows, privacy boundaries and positive-verification gate
-are documented in [SDK_TOOLS.md](SDK_TOOLS.md). No public genuine Primus-signed
-fixture matches the pinned SDK signer, so negative-path and synthetic policy
-tests do not establish successful positive verification.
+Run `npm run test:sdk-positive` before application checks. It verifies the
+pinned official Core reference and eight positive/negative/policy groups; no
+raw reference is committed or logged. Browser checks repeat the genuine Core
+positive and legacy/tampering failures on desktop and both phone widths.
+The inspector and restored Blob diagnostics are documented in
+[SDK_TOOLS.md](SDK_TOOLS.md). Genuine-positive legacy Page Core verification
+remains unclaimed. Production checks create only temporary test projects and
+remove them in cleanup, with credentials/proof input excluded from artifacts.
 
 ## Period comparisons and saved-object reviews
 

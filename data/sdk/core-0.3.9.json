@@ -1,0 +1,22 @@
+{
+  "package": "@primuslabs/zktls-core-sdk",
+  "version": "0.3.9",
+  "integrity": "sha512-FUXhQFjYFLm9BJvstAVSSKAj+dEWptFbB4RwSNhhPAMkK+GMN2teG4Orsx/5PyYqCIecZgY4gocv+JaomoM06Q==",
+  "registry": "https://registry.npmjs.org/@primuslabs%2fzktls-core-sdk/0.3.9",
+  "repository": "https://github.com/primus-labs/zktls-core-sdk/tree/24b1944f1c53154420649ae9cbe13865d41ab6de",
+  "method": "PrimusCoreTLS.prototype.verifyAttestation",
+  "signer": "0x5Ed3176045F68617B0958a61ac1868875C98C14d",
+  "integration": "Verification-only extraction; unchanged SDK method and helpers. Not a browser import of the Node/native SDK.",
+  "upstreamIndexSha256": "3b728410d46bd7cca7310a8931b49c560695100931f9a6622b96a4e5670c21d7",
+  "sourceHashes": {
+    "vendor/primus-core-0.3.9/verify-method.txt": "f77b589fd83d20d8d7cfb7e901e31cc7ccac88f7514d480533761b599e4c5118",
+    "vendor/primus-core-0.3.9/utils.cjs": "55af2dc5722758cb1c10e905de678fde49ad9c0af39166239fe55104628f84e8",
+    "vendor/primus-core-0.3.9/env.cjs": "a3cc4996ff68ded99cec0435d07b533295621381e76fd5b39f898fbd521da235",
+    "vendor/primus-core-0.3.9/verify.cjs": "dff7bf6957aa353a11577f329c027edb96a5f2e1ae808d0d418642047015a5bb"
+  },
+  "publicFixture": {
+    "url": "https://raw.githubusercontent.com/primus-labs/tip-contracts/5945b4e45339fc3785a731d996b9b6273b2bff5b/test/fixtures/ClaimBySourceAttestation.sol",
+    "sha256": "62c119e1d85a25bbd3553112a37cd15df481512ae344ddb29c08c7185df00366",
+    "source": "Official published Base claim diagnostic fixture. Input stays out of application source and reports."
+  }
+}

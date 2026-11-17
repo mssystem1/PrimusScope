@@ -93,11 +93,10 @@ While the provider rejects reads, it displays an unavailable message. Existing
 Neon contents have not been removed, but restoring provider access remains
 necessary to browse that historical period.
 
-`PRIMUSSCOPE_NEON_HISTORY_ONLY=1` also blocks Developer Studio metadata mutations
-and diagnostics ingestion/retention with `HISTORY_READ_ONLY`. Local official SDK
-signature inspection still works; hosted diagnostic writes are paused. This
-storage change does not establish the pilot's outstanding genuine-positive
-attestation verification gate.
+During recovery, SDK metadata writes were paused. Task 3 now stores new SDK
+metadata under a separate private Blob prefix. Neon stays history-only; removing
+Blob mode still blocks mutations with `HISTORY_READ_ONLY`. See
+[SDK_TOOLS.md](SDK_TOOLS.md) for the restored workflow and genuine Core reference.
 
 ## Verification
 

@@ -9,7 +9,7 @@ test('official SDK inspection is local, rejects the example and exports no priva
  page.on('request',request=>{if(request.url().includes(marker)||(request.postData()??'').includes(marker))leaked=true;if(request.method()==='POST')privatePosts.push(new URL(request.url()).pathname);});
  await page.goto('/developers');await page.getByRole('link',{name:/Local attestation inspector/}).click();
  await expect(page.getByRole('heading',{name:'Local attestation inspector',exact:true})).toBeVisible();
- const input=page.getByLabel('Attestation JSON',{exact:true});
+ await page.getByLabel('Verification SDK').selectOption('page');const input=page.getByLabel('Attestation JSON',{exact:true});
  const privateAtt={...fixture,data:marker,request:{...fixture.request,header:'Authorization: '+marker}};
  await input.fill(JSON.stringify(privateAtt));
  await page.getByText('Compare your application’s expected context',{exact:true}).click();
@@ -35,7 +35,7 @@ test('official SDK inspection is local, rejects the example and exports no priva
 });
 
 test('unsigned, malformed and unsupported multi-signature inputs remain unsupported',async({page})=>{
- await page.goto('/developers/verify');const input=page.getByLabel('Attestation JSON',{exact:true});
+ await page.goto('/developers/verify');await page.getByLabel('Verification SDK').selectOption('page');const input=page.getByLabel('Attestation JSON',{exact:true});
  for(const raw of ['not JSON',JSON.stringify({...fixture,signatures:[]}),JSON.stringify({...fixture,signatures:[fixture.signatures[0],fixture.signatures[0]]})]){
   await input.fill(raw);await page.getByRole('button',{name:'Run local checks',exact:true}).click();await expect(page.getByRole('heading',{name:'Unsupported input',exact:true})).toBeVisible();await expect(page.locator('.sdk-checks')).toContainText('Use a supported Page Core');
  }

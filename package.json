@@ -28,7 +28,9 @@
     "indexer:once": "tsx apps/worker/src/cli.ts once",
     "indexer:status": "tsx apps/worker/src/cli.ts status",
     "indexer:hosted": "node --use-env-proxy --import tsx apps/worker/src/hosted-cli.ts",
-    "data:import": "tsx scripts/import-observations.ts"
+    "data:import": "tsx scripts/import-observations.ts",
+    "test:sdk-positive": "node scripts/build-sdk-worker.mjs && node --use-env-proxy scripts/fetch-sdk-reference.mjs && node --import tsx tests/sdk-positive.ts",
+    "pretest:e2e": "node --use-env-proxy scripts/fetch-sdk-reference.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",

@@ -1,171 +1,174 @@
-# Official Primus SDK tools — step 3
+# Official Primus SDK tools — task 3
 
-The implementation has two independent workflows: a local Page Core signature
-inspector, and opt-in application diagnostics for that same supported SDK mode.
-It does not generate attestations, submit transactions, connect a wallet, or
-read encrypted wallet positions.
+Task 3 provides local attestation checks and an opt-in Developer Studio. No
+wallet, Primus app secret, extension, transaction or proof-generation service
+is needed for these supported workflows.
 
-## Local inspector
+## Inspect an attestation
 
-Open `/developers/verify`, paste or open a JSON file up to 64 KiB, optionally
-enter expected values, then run local checks. Clear private input or leave the
-page to discard it. Input and expected values are held in tab memory, never in
-storage, URLs, server requests, shared links, or exported reports. Cancel/clear
-terminates the worker and prevents stale results from appearing. Clear also
-turns diagnostic recording off.
+Open `/developers/verify`, choose the SDK that issued the attestation, then
+paste or open a JSON file up to 64 KiB. Core is the default. Run local checks;
+optionally compare the expected recipient, exact request URL/method, signed
+context and age. Choose timestamp units explicitly before checking age.
 
-The actual method is
-`PrimusPageCoreTLS.prototype.verifyAttestation` from
-`@primuslabs/zktls-page-core-sdk@0.2.1`. The package version, npm integrity and
-three verification-source hashes are pinned in
-[SDK provenance](../data/sdk/page-core-0.2.1.json). The build checks those pins
-and bundles a versioned, hashed worker locally; no runtime CDN is involved.
+| Profile | Pinned production signer | Implementation |
+| --- | --- | --- |
+| Core 0.3.9 | `0x5Ed3176045F68617B0958a61ac1868875C98C14d` | Unchanged official verification method and encoding helpers, isolated from the Node/native runtime |
+| Legacy Page Core 0.2.1 | `0xDB736B13E2f522dBE18B2015d0291E4b193D8eF6` | Official `PrimusPageCoreTLS.prototype.verifyAttestation` without construction or initialization |
 
-The browser constructor creates `AlgorithmUrls`, which starts remote node
-discovery and WebSocket work. PrimusScope deliberately does not construct or
-initialize the class. The audited method uses no instance state and is invoked
-directly on the official prototype inside an ephemeral Worker. Its response
-sets `connect-src 'none'` and `worker-src 'none'`; fetch is also disabled inside
-the worker. Proof-generation globals, extension flows and WASM are not loaded.
+Core is a verification-only extraction from the maintained official
+`@primuslabs/zktls-core-sdk@0.3.9`, not a claim that its complete Node/native
+package supports browsers. The unchanged method block, helper/environment
+files, npm integrity and source hashes are pinned in
+[Core provenance](../data/sdk/core-0.3.9.json) and
+[the attributed extraction](../vendor/primus-core-0.3.9/NOTICE.md).
+[Page Core provenance](../data/sdk/page-core-0.2.1.json) remains separate.
+A build fails if pinned sources change.
 
-### Supported wire format and checks
+Each profile runs in an ephemeral, locally bundled Worker with
+`connect-src 'none'`. The Core worker excludes the native SDK runtime,
+AlgorithmUrls, node discovery, sockets and the Page Core package. No SDK client
+is constructed. Inputs and expected values stay in tab/Worker memory; they are
+not put in requests, URLs, storage, saved views or report exports. Clear, cancel
+or navigation terminates the worker and prevents stale results from appearing.
 
-Only the Page Core single-signature format is accepted. It uses the legacy
-field `reponseResolve`, string `request.header` and `request.body`, response
-entries with string `keyName`, `parseType`, `parsePath`, and one
-`{attestorAddr,url}` attestor entry. The returned attestation format is distinct
-from SDK request-generation options and other Network/extension schemas.
-Unknown fields, multiple signatures, unsigned input, oversized values and
-unsupported formats do not receive a signer-match result.
+Both profiles support the narrowly validated single-signature wire format:
+`reponseResolve`, string request header/body, one attestor entry and one
+65-byte signature. Multiple signatures, unsigned input, unknown fields and
+other SDK formats remain unsupported.
 
-Results separate:
+Results distinguish format, signature recovery, the selected SDK's signer pin,
+application expectations and age. A signer match is not a universal verified
+proof, live trust-registry/revocation check, eligibility decision or replay
+protection. These SDK methods do not authenticate attestor-list metadata.
+Their packed string encoding does not establish unambiguous field boundaries.
+Expected-value comparisons concern the supplied input; integrating applications
+must still enforce their own authorization, context and replay policy. No full
+zk-proof computation or source-response revalidation runs here.
 
-| Check | What it establishes |
-| --- | --- |
-| Format | Input meets the narrowly supported wire schema |
-| Signature recovery | The SDK/ECDSA recovery operation completed |
-| SDK pinned signer | Recovered signer matches the address compiled in 0.2.1 |
-| Expected recipient | Exact address comparison with a user-provided expectation |
-| Expected request | Exact comparisons for the supplied URL and/or method |
-| Expected context | Exact nonempty `additionParams` comparison |
-| Selected age policy | Browser-clock comparison using explicitly selected seconds/milliseconds and maximum age |
+## Genuine positive reference
 
-No check is described as a universal verified proof. The SDK pin is
-`0xDB736B13E2f522dBE18B2015d0291E4b193D8eF6`, not a live trust-registry or
-revocation check. The SDK reads only the first signature and does not authenticate
-the attestor list. Its legacy packed encoding concatenates variable-length
-strings: field boundaries are not an independent application-authorization
-guarantee. Tests demonstrate this encoding ambiguity so an SDK signer match is
-never promoted to a general data-integrity, eligibility or authorization badge.
+Primus publishes an exact signed reference for its Base claim diagnostic in
+[ClaimBySourceAttestation.sol](https://github.com/primus-labs/tip-contracts/blob/5945b4e45339fc3785a731d996b9b6273b2bff5b/test/fixtures/ClaimBySourceAttestation.sol).
+The integration pins that commit and source SHA-256. It verifies with Core
+0.3.9 and is correctly rejected by the unchanged legacy Page Core pin.
+Tampered data/context and mismatched application expectations are also tested.
+This closes the positive-reference gate for Core; no genuine positive result
+is claimed for the legacy Page Core profile.
 
-No full zk-proof computation, source-response revalidation, application nonce
-store or replay prevention runs here. Contract examples imply Unix seconds,
-but the SDK type does not declare timestamp units; freshness is unrun until
-the user explicitly selects their application's convention.
+```sh
+npm run test:sdk-positive
+```
 
-The rejection example is self-signed with a public test key and is explicitly
-not issued by Primus. It must fail the official SDK pin check. No official
-public signed fixture matching that pin was found in the package, repository
-test, demo, or contract tests. **A genuine positive production-path validation
-remains unverified.** Rejection/source checks and synthetic unit-policy tests
-are not presented as that evidence. Users can inspect their own supported
-attestations locally without sharing them with PrimusScope or in chat.
+This fetches only the deliberately published reference, validates its hash and
+prepares a local ignored input. The raw reference is not bundled in the app,
+committed to the repository or printed in reports. Browser positive checks have
+traces/screenshots disabled and verify that input is absent from network traffic
+and sanitized exports. The reference contains public account/claim context;
+it is not used as a default example shown to users. The built-in rejection
+example remains explicitly self-signed with a public test key.
 
-## Developer Studio pilot
+## Developer Studio
 
-Open `/developers/apps`, enter a name and allowed HTTPS origin (localhost is
-allowed for development), and accept the explicit metadata consent before
-creating a project. A browser-owned, opaque, HttpOnly/SameSite=Strict cookie
-authorizes management; it is Secure on HTTPS and scoped to the developer API.
-There is no linked account or cross-device recovery. Losing the cookie loses
-management access; retained projects expire automatically.
+Open `/developers/apps`, supply a name and allowed HTTPS origin (localhost is
+allowed), and consent to the displayed metadata. Create a project and keep its
+one-time ingest key. An opaque HttpOnly/SameSite=Strict owner cookie authorizes
+management; HTTPS uses Secure. There is no account or cross-device recovery.
+Losing that cookie loses management access.
 
-Each browser owner may have three active projects. Projects and events expire
-after seven days. Each project is capped at 1,000 retained events; batches have
-at most 25 events and 32 KiB. Registration is limited to ten requests per UTC
-day and requester bucket. The server stores a daily keyed hash for that rate
-limit, not the requester IP. Counts/outcomes are an opt-in client-reported
-sample, separate from public Network statistics and cryptographic evidence.
-Test events are excluded from the default summary. Median/p90 durations require
-at least five eligible verifier invocations and reflect local inspector/device
-execution, not protocol or network latency.
+New projects and reports use private Blob. They do not read, copy or modify
+Neon history. Under `/developers/verify`, opt in, select your project and run a
+check. Only sanitized metadata is recorded. Mark examples/tests explicitly;
+they are excluded from default summaries. Developer Studio shows reported
+outcomes, SDK versions and measured execution durations. Median/p90 need five
+eligible calls and describe device execution, not Network latency or uptime.
+Client reports remain untrusted and are separate from public chain analytics.
 
-An ingest key is displayed once. It can submit events to its project, but
-cannot read or administer it. Browser-embedded ingest keys are not treated as
-secrets that make reports authoritative. Rotate revokes the old key. Clear
-deletes events; Delete removes the project, key and events. Exports contain
-only app-owned sanitized metadata and never keys, cookies or proof input.
+A browser workspace has up to three projects and expires within seven days of
+its first project. Later projects share that expiry; each project's exact UTC
+expiry is shown. Each project holds at most 1,000 events; batches have at most
+25 events and 32 KiB. Registration has a persistent ten-attempt daily limit per
+keyed requester bucket. The raw requester IP is never stored.
 
-### Exact event allowlist
+Rotate revokes the previous ingest key. Clear deletes project events. Delete
+removes the project, key hash and events. Exports include app-owned metadata,
+never keys, cookies, proof input or expectations. A key can submit only to its
+project; it cannot read or administer it. CORS does not make embedded client
+keys secret or reports authoritative.
 
-Only these ten fields are accepted: `eventId` (random UUID), `sdk`, `version`,
-`operation`, `durationMs`, `outcome`, `sdkInvoked`, `isTest`, `errorCode`,
-`runtime`. Package/version/operation/runtime are pinned to the supported
-browser verification mode; outcomes/error codes are finite enums and duration
-is bounded. Server receipt time is added separately. Extra/nested fields,
-proof contents, wallet/recipient identifiers, signatures, URLs, cookies,
-headers, source responses, raw errors and caller timestamps are rejected.
+### Event contract and integration
 
-Reporting from the local inspector is off by default. Explicitly choose an
-owned project to enable it. Only the fixed diagnostic projection crosses the
-network boundary; proof input and expected values never enter the API call.
+Exactly ten fields are accepted: `eventId`, `sdk`, `version`, `operation`,
+`durationMs`, `outcome`, `sdkInvoked`, `isTest`, `errorCode`, `runtime`.
+Package/version must be a supported pair: Core/0.3.9 or Page Core/0.2.1.
+Operation/runtime and outcome/error enums are bounded; server receipt time is
+added separately. Extra/nested fields, proof contents, wallet/recipient
+identifiers, signatures, source URLs/responses, cookies, headers, raw exceptions
+and client timestamps are rejected. Project name/origin are separate,
+explicitly consented configuration metadata.
 
-For an integrating app, copy
-[the measured SDK adapter](../examples/primus-verifier-diagnostics.ts), install
-the pinned official SDK, and call the returned verifier. Reporting defaults to
-off. Enable it only after consent and project configuration. It invokes the
-real official method, measures its duration and reports safe outcomes without
-serializing SDK inputs or exceptions. A telemetry failure does not change the
-verification result; missing reports remain missing samples.
-
-### Private API
+[The measured wrapper](../examples/primus-verifier-diagnostics.ts) invokes the
+real selected verifier, times it and optionally reports that fixed projection.
+Reporting is off by default and requires consent, an app ID and ingest key.
+Use `profile: 'core'` with the attributed verification extraction, or `'page'`
+with the pinned Page Core SDK. Copy the relative extraction files as well when
+using Core. Telemetry failure does not change the local verifier result.
 
 | Method | Path under `/api/v1/developer` | Authorization |
 | --- | --- | --- |
-| GET / POST | `/apps` | Owner cookie for reads; same-origin consented registration for creation |
-| GET / DELETE | `/apps/:appId` | Owner cookie; CSRF origin check for deletion |
-| POST | `/apps/:appId/rotate` | Owner cookie + same-origin request |
-| POST | `/apps/:appId/record` | Owner cookie + same-origin request; local-inspector metadata only |
-| POST / OPTIONS | `/apps/:appId/events` | Scoped bearer ingest key for POST; registered-origin CORS for browser clients |
-| DELETE | `/apps/:appId/events` | Owner cookie + same-origin request |
+| GET / POST | `/apps` | Owner cookie for reads; same-origin consent for creation |
+| GET / DELETE | `/apps/:appId` | Owner cookie; same-origin deletion |
+| POST | `/apps/:appId/rotate` | Owner cookie + same origin |
+| POST | `/apps/:appId/record` | Owner cookie + same origin; local-inspector metadata |
+| POST / OPTIONS | `/apps/:appId/events` | Scoped ingest key; registered-origin CORS |
+| DELETE | `/apps/:appId/events` | Owner cookie + same origin |
 
-Same event ID and same event metadata are idempotent. Conflicting reuse is
-rejected atomically. Origin validation/CORS does not replace owner or bearer
-authorization. App IDs alone do not authorize reads or writes. Responses are
-`private, no-store`; unknown/unauthorized projects do not disclose their data.
+Same event ID and metadata are idempotent. Conflicting reuse is rejected
+atomically. App IDs do not authorize reads or writes. All responses are
+`private, no-store`; unauthorized projects disclose no records.
 
-## Hosted isolation and retention
+## Storage, expiry and configuration
 
-The additive `primusscope_diagnostics` schema is independent of the public
-publication and collector checkpoint tables. The web uses a new restricted
-`DIAGNOSTICS_DATABASE_URL`; its role has schema usage and explicit function
-EXECUTE permissions, no table reads/writes and no public-publication access.
-SECURITY DEFINER functions enforce owner/key checks, quotas, strict SQL-level
-event types, deduplication and row/advisory locks. PUBLIC execution is revoked.
+Production selects Blob through the existing
+`PRIMUSSCOPE_PUBLICATION_STORE=blob`. No extra account or environment entry is
+required. Server-only `BLOB_READ_WRITE_TOKEN` and
+`DIAGNOSTICS_RATE_LIMIT_SECRET` already exist. Neon remains history-only under
+`PRIMUSSCOPE_NEON_HISTORY_ONLY=1`; if Blob mode is absent, that flag blocks
+metadata mutations instead of falling back to Neon writes. The PostgreSQL
+adapter remains for isolated tests and legacy deployments, not production
+history mutation.
 
-`DIAGNOSTICS_RATE_LIMIT_SECRET` is server-only and configured alongside that
-URL. No Primus app secret, wallet key, new paid API, or managed cloud publication
-is required. Administrative Neon credentials are used only by the bootstrap
-script; runtime roles stay separated.
+Blob metadata uses a private prefix separate from the public publication.
+UUIDv8 IDs carry an opaque owner namespace as a routing hint; authorization
+checks the full owner hash or scoped ingest-key hash. Each bounded workspace is
+compressed, strictly validated and replaced with an origin ETag conditional
+write. Concurrent changes are retried finitely; failed writes preserve the last
+stored state. Ingest keys are stored only as hashes.
 
-The existing 15-minute collector receives permission only to prune expired
-diagnostic metadata. It prunes after chain collection and reports
-`X-PrimusScope-Diagnostics-Retention: pruned|unavailable`. A retention failure
-does not roll back completed chain work. Expired events are hidden immediately;
-physical deletion occurs at the next successful prune (not a guaranteed time
-during collector outages). Project creation also prunes old data.
+Expired workspaces are immediately hidden/refused by the API. Native Blob TTL
+also schedules physical deletion; its whole-day rounding and provider lifecycle
+processing can lag logical expiry. No exact physical deletion time is promised.
+Clear/Delete remove the relevant records from the current private object.
+No raw attestation is ever stored. Existing Neon diagnostic records are not
+imported into these new workspaces.
 
-## Validation and remaining evidence
+Blob usage follows the existing Vercel account plan/credits and provider limits.
+This adds no paid external proof/data API, but is not unlimited free hosting.
+Storage failure leaves local inspection usable and reports diagnostics as
+unavailable rather than inventing a successful delivery.
 
-Tests exercise the actual SDK's known-negative signature path, unsupported,
-malformed/tampered inputs, policy comparisons, no constructor/network/logging,
-private-value-free reports, exact SQL/API allowlists, owner isolation, CORS,
-CSRF, key revocation, quotas, physical retention and deletion. PGlite executes
-real SQL and role grants. Browser checks cover the worker CSP, no proof data in
-traffic/storage/URLs/exports, clear/reset, responsive layout and accessibility.
-Hosted checks create temporary projects and remove them afterward. Live
-credentials/cookies are excluded from traces and screenshots.
+## Validation
 
-The genuine signed positive fixture remains the explicit unverified gate.
-Package metadata does not include a license field/LICENCE file; provenance
-records that observation. SDK use is not official endorsement or certification.
+The mandatory CI positive gate exercises the pinned genuine Core reference,
+legacy rejection, tampering, policy/format failures and sanitized reporting.
+Unit checks cover source pins, actual verifier rejection, strict metadata,
+SQL/API permissions and the Blob lifecycle, CAS conflicts, owner isolation,
+quotas, expiry, deduplication, rotation and deletion. Browser checks cover both
+profiles, Worker CSP, privacy, clear/navigation, accessibility and phone reflow.
+
+Live API checks create temporary projects and verify authorization, CORS, key
+revocation and deletion. A browser workflow creates a temporary project, records
+a real local Core reference check with test labeling, reviews the version row,
+clears events and deletes the project. Keys, cookies and proof input are excluded
+from traces, screenshots and reports. HTTPS results are recorded separately
+from local checks; SDK use implies no Primus endorsement or certification.

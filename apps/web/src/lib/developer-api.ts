@@ -1,6 +1,7 @@
 import {createHash,createHmac,randomBytes,randomUUID} from 'node:crypto';
 import {isIP} from 'node:net';
 import {SDKDiagnosticsStore,DiagnosticStorageError,diagnosticsNeonClient} from '@primusscope/storage/diagnostics';
+import {BlobDiagnosticsStore,blobDiagnosticAppId,type DiagnosticsStore} from '@primusscope/storage/blob-diagnostics';
 import {DiagnosticBatchSchema,RegisterDiagnosticAppSchema} from '@primusscope/api-schema/sdk-diagnostics';
 import {readJson,HttpError} from './http';
 
@@ -14,20 +15,22 @@ class ApiFailure extends Error{constructor(readonly code:string,readonly status:
 const headers={'Cache-Control':'private, no-store','Vary':'Origin, Cookie'};
 const json=(body:unknown,status=200,extra:Record<string,string>={})=>Response.json(body,{status,headers:{...headers,...extra}});
 function sameOrigin(request:Request){if(request.headers.get('origin')!==new URL(request.url).origin||request.headers.get('sec-fetch-site')==='cross-site')throw new ApiFailure('FORBIDDEN',403);}
-function runtimeStore(){const connection=process.env.DIAGNOSTICS_DATABASE_URL;if(!connection)throw new ApiFailure('UNAVAILABLE',503);return new SDKDiagnosticsStore(diagnosticsNeonClient(connection));}
+export function diagnosticsUseBlob(){return process.env.PRIMUSSCOPE_PUBLICATION_STORE==='blob';}
+export function diagnosticsReadOnly(){return process.env.PRIMUSSCOPE_NEON_HISTORY_ONLY==='1'&&!diagnosticsUseBlob();}
+function runtimeStore():DiagnosticsStore{if(diagnosticsUseBlob())return new BlobDiagnosticsStore({token:process.env.BLOB_READ_WRITE_TOKEN});const connection=process.env.DIAGNOSTICS_DATABASE_URL;if(!connection)throw new ApiFailure('UNAVAILABLE',503);return new SDKDiagnosticsStore(diagnosticsNeonClient(connection));}
 export function registrationBucket(request:Request,secret:string,now=new Date()){
  const forwarded=process.env.VERCEL==='1'?(request.headers.get('x-vercel-forwarded-for')??request.headers.get('x-forwarded-for')??'unknown'):'local';
  const candidate=forwarded.split(',')[0]!.trim(),ip=isIP(candidate)?candidate:'unknown';
  return createHmac('sha256',secret).update('sdk-register-v1:'+now.toISOString().slice(0,10)+':'+ip).digest('hex');
 }
-export async function handleDeveloperRequest(request:Request,segments:string[],injectedStore?:SDKDiagnosticsStore){
+export async function handleDeveloperRequest(request:Request,segments:string[],injectedStore?:DiagnosticsStore){
  let cors:Record<string,string>={};
  try{
   const url=new URL(request.url),method=request.method;
   if(url.search||segments.length>3||segments.some(part=>part.length>80))throw new ApiFailure('INVALID_INPUT',400);
   const owner=ownerToken(request),hash=owner?tokenHash(owner):null;
   if(segments[0]!=='apps')throw new ApiFailure('NOT_FOUND',404);
-  if(process.env.PRIMUSSCOPE_NEON_HISTORY_ONLY==='1'&&!['GET','OPTIONS'].includes(method))return json({code:'HISTORY_READ_ONLY'},503);
+  if(diagnosticsReadOnly()&&!['GET','OPTIONS'].includes(method))return json({code:'HISTORY_READ_ONLY'},503);
   const appId=segments[1],action=segments[2];
   if(appId&&!uuid.test(appId))throw new ApiFailure('NOT_FOUND',404);
   if(!appId&&method==='GET'){
@@ -38,7 +41,7 @@ export async function handleDeveloperRequest(request:Request,segments:string[],i
     sameOrigin(request);const body=RegisterDiagnosticAppSchema.safeParse(await readJson(request,4096));if(!body.success)throw new ApiFailure('INVALID_INPUT',400);
     const secret=process.env.DIAGNOSTICS_RATE_LIMIT_SECRET;if(!secret||secret.length<40)throw new ApiFailure('UNAVAILABLE',503);
     const store=injectedStore??runtimeStore();if(!await store.allowRegistration(registrationBucket(request,secret)))return json({code:'RATE_LIMITED'},429,{'Retry-After':'86400'});
-    const owned=owner??token(),ingestToken=token();const app=await store.create(tokenHash(owned),{id:randomUUID(),name:body.data.name,origin:body.data.origin,ingestHash:tokenHash(ingestToken)});
+    const owned=owner??token(),ingestToken=token();const app=await store.create(tokenHash(owned),{id:diagnosticsUseBlob()?blobDiagnosticAppId(tokenHash(owned)):randomUUID(),name:body.data.name,origin:body.data.origin,ingestHash:tokenHash(ingestToken)});
     return json({app,ingestToken},201,{'Set-Cookie':`${COOKIE}=${owned}; HttpOnly; SameSite=Strict; Path=/api/v1/developer; Max-Age=604800${url.protocol==='https:'?'; Secure':''}`});
   }
   if(!appId)throw new ApiFailure('METHOD_NOT_ALLOWED',405);

@@ -6,8 +6,8 @@ for(const method of ['log','warn','error','debug','info'] as const)console[metho
 globalThis.fetch=()=>Promise.reject(new Error('OFFLINE_WORKER'));
 self.addEventListener('message',event=>{
   const message=event.data;
-  if(!message||typeof message.id!=='string'||!/^[a-zA-Z0-9-]{1,64}$/.test(message.id)||typeof message.raw!=='string'||message.raw.length>MAX_ATTESTATION_BYTES||!InspectionPolicySchema.safeParse(message.policy).success){self.postMessage({id:message?.id,failed:true});return;}
-  const result=inspectAttestation(message.raw,message.policy);
+  if(!message||typeof message.id!=='string'||!/^[a-zA-Z0-9-]{1,64}$/.test(message.id)||typeof message.raw!=='string'||message.raw.length>MAX_ATTESTATION_BYTES||!['page','core'].includes(message.profile)||!InspectionPolicySchema.safeParse(message.policy).success){self.postMessage({id:message?.id,failed:true});return;}
+  const result=inspectAttestation(message.raw,message.policy,Date.now(),message.profile);
   self.postMessage({id:message.id,result});
 });
 self.postMessage({ready:true});

@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {readFile,writeFile} from 'node:fs/promises';
+import {inspectAttestation} from '../apps/web/src/lib/primus-verifier';
+import {emptyInspectionPolicy,diagnosticFromResult} from '../apps/web/src/lib/sdk-tools';
+import {DiagnosticEventSchema,CORE_SDK_INFO} from '@primusscope/api-schema/sdk-diagnostics';
+const att=JSON.parse(await readFile('.local/sdk-reference/attestation.json','utf8')),raw=JSON.stringify(att),policy={...emptyInspectionPolicy};
+import {createMeasuredPrimusVerifier} from '../examples/primus-verifier-diagnostics';
+assert.equal(createMeasuredPrimusVerifier({profile:'core'})(att),true);
+const positive=inspectAttestation(raw,policy,Date.now(),'core');assert.equal(positive.outcome,'signer_matched');assert.equal(positive.checks.sdkSigner.status,'passed');assert.equal(positive.sdk.signer,CORE_SDK_INFO.signer);
+assert.equal(inspectAttestation(raw,policy).outcome,'rejected');
+assert.equal(inspectAttestation(JSON.stringify({...att,data:att.data+'tampered'}),policy,Date.now(),'core').outcome,'rejected');
+assert.equal(inspectAttestation(JSON.stringify({...att,additionParams:att.additionParams+'tampered'}),policy,Date.now(),'core').outcome,'rejected');
+const mismatch=inspectAttestation(raw,{...policy,recipient:'0x0000000000000000000000000000000000000001'},Date.now(),'core');assert.equal(mismatch.checks.sdkSigner.status,'passed');assert.equal(mismatch.errorCode,'POLICY_MISMATCH');
+assert.equal(inspectAttestation(raw,{...policy,timestampUnit:'milliseconds',maxAgeSeconds:1},Date.now(),'core').checks.freshness.status,'failed');
+assert.equal(inspectAttestation(JSON.stringify({...att,signatures:[...att.signatures,...att.signatures]}),policy,Date.now(),'core').outcome,'unsupported');
+const diagnostic=diagnosticFromResult(positive,true);assert.equal(diagnostic.sdk,CORE_SDK_INFO.package);assert.equal(diagnostic.version,CORE_SDK_INFO.version);assert.equal(DiagnosticEventSchema.safeParse({...diagnostic,version:'0.2.1'}).success,false);assert.equal(JSON.stringify(positive).includes(att.signatures[0]),false);
+await writeFile('.local/sdk-reference/validation.json',JSON.stringify({checks:8,officialCoreReferenceAccepted:true,legacyPageCoreRejected:true,tamperedInputsRejected:true,applicationPoliciesEnforced:true,rawInputExported:false,referenceSha256:'62c119e1d85a25bbd3553112a37cd15df481512ae344ddb29c08c7185df00366'},null,2));
+console.log('8 official-reference SDK checks passed; positive, legacy rejection, tampering, policy, format and sanitized diagnostics.');

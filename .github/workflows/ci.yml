@@ -30,6 +30,7 @@ jobs:
         with:
           python-version: "3.12"
       - run: npm ci
+      - run: npm run test:sdk-positive
       - run: npm run typecheck
       - run: npm test
       - run: npm run test:discovery

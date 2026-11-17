@@ -7,8 +7,8 @@ New collection uses private Vercel Blob hourly; Neon is unchanged and read-only,
 with explicit `/history` access. No Neon publication was exported into Blob.
 The new current source epoch begins at freshly verified finalized chain heads;
 older Neon coverage is not claimed in Blob. Provider quota currently prevents
-Neon history reads, without blocking the current app. Hosted SDK diagnostic
-writes are paused; local official SDK inspection remains available.
+Neon history reads, without blocking the current app. New SDK diagnostic
+writes now use private Blob; local official SDK inspection remains available.
 Local validation passes 281 unit tests, typecheck, both production builds and
 69 production-server browser checks (61 recorded, five indexed, three outage).
 The real Blob conditional-write conflict test preserved the stored bytes.
@@ -45,20 +45,16 @@ mobile workflows and four API tests. These results and explicit remaining
 backlog/operational limits are retained in
 [hosted-release-observation.json](hosted-release-observation.json).
 
-## Official SDK tools pilot
+## Official SDK tools — task 3
 
-Step 1, the hosted pipeline, is complete. Step 2 now includes coverage-aware
-previous-period comparisons and browser-local saved-object review tracking;
-see [DAILY_USE.md](DAILY_USE.md) for exact scope and limits. Step 3 implements a pilot
-with a local Page Core signature inspector at `/developers/verify` and opt-in
-Developer Studio diagnostics at `/developers/apps`. See [SDK_TOOLS.md](SDK_TOOLS.md)
-for supported formats, privacy boundaries and limits. Local verification is
-261 tests across 30 files, with typecheck and web build passing. Release-specific
-HTTPS and temporary-project checks are recorded separately from local evidence.
-
-No public genuine Primus-signed fixture matching the SDK's pinned signer is
-available, so positive production-path verification remains explicitly
-unverified. Negative-path and synthetic policy tests are not positive evidence.
+Task 3 now supports Core 0.3.9 through an unchanged, source-pinned verification
+extraction and keeps legacy Page Core 0.2.1 separate. The pinned genuine Primus
+Core reference passes, with legacy/tampering/policy failures retained. The
+inspector runs offline in isolated Workers. Developer Studio stores new
+opt-in metadata in private Blob and preserves Neon as read-only history.
+See [SDK_TOOLS.md](SDK_TOOLS.md) for workflows, privacy, expiry and validation.
+The older legacy Page Core profile has no claimed positive reference; it is
+not used to block the supported Core workflow.
 
 The local application and a durable incremental indexing slice are implemented
 and validated. Default recorded mode uses retained observations; optional local
@@ -158,9 +154,9 @@ implementation interval or independent consensus.
    refused as a Vercel persistence configuration.
 2. Establish deployment/history boundaries, production provider policies and
    independent reconciliation. Expand coverage only with validated sources.
-3. Obtain genuine positive signed-fixture evidence for the SDK tools pilot
-   before claiming successful positive
-   verification. See [SDK_TOOLS.md](SDK_TOOLS.md).
+3. Keep SDK version/source pins and genuine-positive Core regression checks
+   current. Legacy Page Core positive evidence remains unclaimed. See
+   [SDK_TOOLS.md](SDK_TOOLS.md).
 4. Expand validated financial stock/flow history and Network coverage. Public
    shared-strategy yield is implemented; private positions and Primus-attributable
    balances/returns remain gated by their integrations.

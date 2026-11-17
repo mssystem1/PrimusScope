@@ -62,20 +62,20 @@ export default defineConfig({
     video: "off",
   },
   projects:blob||recovery?[
-    ...(blob?[{name:'blob-api',testMatch:'blob-api.spec.ts'}]:[]),
-    ...[1440,360,390].map(width=>({name:(blob?'blob-':'recovery-')+width,testMatch:blob?['blob-ui.spec.ts','sdk-tools.spec.ts']:['recovery.spec.ts'],use:{...chromium,viewport:{width,height:width===1440?1000:844},...(width<800?{isMobile:true,hasTouch:true}:{})}})),
+    ...(blob?[{name:'blob-api',testMatch:['blob-api.spec.ts','sdk-hosted.spec.ts']},...[1440,390].map(width=>({name:'blob-sdk-workflow-'+width,testMatch:'sdk-integration.spec.ts',use:{...chromium,viewport:{width,height:width===1440?1000:844},...(width<800?{isMobile:true,hasTouch:true}:{})}}))]:[]),
+    ...[1440,360,390].map(width=>({name:(blob?'blob-':'recovery-')+width,testMatch:blob?['blob-ui.spec.ts','sdk-tools.spec.ts','sdk-positive.spec.ts']:['recovery.spec.ts'],use:{...chromium,viewport:{width,height:width===1440?1000:844},...(width<800?{isMobile:true,hasTouch:true}:{})}})),
   ]:indexed ? [
     { name: "indexed-chromium", testMatch: "indexed.spec.ts", use: chromium },
   ] : [
     { name: "api", testMatch: hosted ? ["hosted-api.spec.ts","sdk-hosted.spec.ts"] : "api.spec.ts" },
     {
       name: "chromium",
-      testMatch: ["app.spec.ts", "activity.spec.ts", "dashboards.spec.ts", "hydration.spec.ts", "sdk-tools.spec.ts", "daily-use.spec.ts"],
+      testMatch: ["app.spec.ts", "activity.spec.ts", "dashboards.spec.ts", "hydration.spec.ts", "sdk-tools.spec.ts", "sdk-positive.spec.ts", "daily-use.spec.ts"],
       use: chromium,
     },
     ...[360, 390].map((width) => ({
       name: `mobile-${width}`,
-      testMatch: ["mobile.spec.ts", "activity.spec.ts", "dashboards.spec.ts", "hydration.spec.ts", "sdk-tools.spec.ts", "daily-use.spec.ts"],
+      testMatch: ["mobile.spec.ts", "activity.spec.ts", "dashboards.spec.ts", "hydration.spec.ts", "sdk-tools.spec.ts", "sdk-positive.spec.ts", "daily-use.spec.ts"],
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width, height: 844 },

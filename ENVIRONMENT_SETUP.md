@@ -83,8 +83,8 @@ server-only `BLOB_READ_WRITE_TOKEN`, and `PRIMUSSCOPE_NEON_HISTORY_ONLY=1`.
 The web keeps `PRIMUSSCOPE_DATA_MODE=hosted` and SELECT-only `WEB_DATABASE_URL`
 for explicit history. The collector keeps `CRON_SECRET` and the strategy flag;
 its Blob path never opens the worker database. Native Blob access is private,
-and no `NEXT_PUBLIC_` variable contains a credential. Hosted diagnostics writes
-are paused while Neon is history-only; local SDK checks still work.
+and no `NEXT_PUBLIC_` variable contains a credential. New hosted diagnostics use a separate private Blob prefix while Neon remains
+history-only; local SDK checks run offline.
 See [BLOB_RECOVERY.md](docs/BLOB_RECOVERY.md). These Vercel variables are
 configured together; no additional Codex environment edit or publication is
 required.

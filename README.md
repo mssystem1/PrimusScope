@@ -71,7 +71,7 @@ boundaries, outage behavior, credentials and free-tier limits.
   saved views report source updates. See [daily-use analytics](docs/DAILY_USE.md).
 - `/developers`: API playground, integration references and verification limits.
 - `/developers/verify`: local inspector for the supported Page Core signed-attestation format.
-- `/developers/apps`: opt-in Developer Studio pilot for app metadata and bounded diagnostics.
+- `/developers/apps`: opt-in Developer Studio for app metadata and bounded diagnostics.
 - `/sources`: source links, exact coverage and recorded-data freshness.
 - `/history`: explicit read-only Neon history; provider failure stays separate
   from current Blob dashboards.
@@ -110,9 +110,9 @@ The current implemented scope and verified results are recorded in
 [docs/IMPLEMENTATION_STATUS.md](docs/IMPLEMENTATION_STATUS.md).
 
 The [planning package](docs/planning/README.md) defines the wider product and
-implementation sequence. Official SDK tools are implemented as a pilot;
-genuine positive verification remains unverified because no
-public fixture matches the pinned signer. See [SDK_TOOLS.md](docs/SDK_TOOLS.md),
+implementation sequence. Official SDK tools support Core 0.3.9 and legacy Page Core 0.2.1.
+The genuine signed Core reference passes; the legacy pin remains separate.
+New Developer Studio metadata uses private Blob, keeping Neon read-only. See [SDK_TOOLS.md](docs/SDK_TOOLS.md),
 [verification](https://primus-scope.vercel.app/developers/verify) and
 [Developer Studio](https://primus-scope.vercel.app/developers/apps). Private wallet authorization,
 broader history and provider backup/restore drills remain later stages. SQLite
