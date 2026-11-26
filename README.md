@@ -85,6 +85,12 @@ The retained public strategy baseline contains **61 daily samples and 4,098
 receipt-checked flows across 60 days**, from 11 September to 10 November 2026.
 New collection has its own watermarks. Gaps remain visible, and unreconciled
 flow ranges are not published as empty activity.
+Historical BSC flow reads use a [verified keyless public archive](docs/discovery/bsc-sentio-archive-2026-11-26.json),
+with 1,000-block pagination, receipt checks and exact share-supply reconciliation.
+The hourly collector needs no additional API key for that source.
+The [26 November recovery](docs/discovery/flow-recovery-2026-11-26.json) added
+766 validated flows and preserved the earlier observations; subsequent hourly
+collection advances its own source watermark.
 See [dashboard formulas and provenance](docs/ANALYTICS_DASHBOARDS.md) and
 [the historical reconstruction workflow](docs/STRATEGY_HISTORY.md).
 

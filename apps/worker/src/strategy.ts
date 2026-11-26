@@ -4,7 +4,7 @@ import { FinanceStrategySchema, type FinanceStrategy, type StrategySample } from
 import baselineData from '../../../data/strategy/unitas-history.json';
 import provenance from '../../../data/strategy/unitas-history-provenance.json';
 import { FetchRpc } from './fetch-rpc';
-import { SENTIO_BSC_RPC } from './strategy-archive-rpc';
+import { SENTIO_BSC_RPC, StrategyArchiveRpc } from './strategy-archive-rpc';
 import { WorkerError, bytes, hash, header, hexQuantity, type Header } from './registry';
 import type { Rpc } from './rpc';
 
@@ -376,11 +376,15 @@ export async function collectStrategyFlows(rpc: Rpc, stock: StrategySample, prev
     sourceUrls:[...new Set<NonNullable<FinanceStrategy['flowCoverage']>['sourceUrl']>([...(old?.sourceUrls??(old?[old.sourceUrl]:[])),sourceUrl,...(recoveredFromSecondary?[BLAST] as const:[])])], complete: true } };
 }
 
-export async function collectPublicStrategy(previous?: FinanceStrategy, rpcOverrides: { stockRpc?: Rpc; flowRpc?: Rpc; now?: () => Date } = {}): Promise<{ strategy: FinanceStrategy; flowIssueCode?: string }> {
+export async function collectPublicStrategy(previous?: FinanceStrategy, rpcOverrides: { stockRpc?: Rpc; flowRpc?: Rpc; flowSourceUrl?: NonNullable<FinanceStrategy['flowCoverage']>['sourceUrl']; now?: () => Date } = {}): Promise<{ strategy: FinanceStrategy; flowIssueCode?: string }> {
   const prior = FinanceStrategySchema.parse(previous ?? baseline());
   const now = rpcOverrides.now ?? (() => new Date());
   const stockRpc = rpcOverrides.stockRpc ?? new FetchRpc(BLAST, { maxRequests: 50, maxSeconds: 60, timeoutSeconds: 5, maxResponseBytes: 1_000_000, minIntervalMs: 350 });
-  const flowRpc = rpcOverrides.flowRpc ?? new FetchRpc(PUBLICNODE, { maxRequests: 150, maxSeconds: 60, timeoutSeconds: 5, maxResponseBytes: 2_000_000, minIntervalMs: 350 });
+  // Supplied transports retain the existing Publicnode provenance unless their
+  // caller names a different registered source. Production uses the keyless archive.
+  const flowSourceUrl = rpcOverrides.flowSourceUrl ?? (rpcOverrides.flowRpc ? PUBLICNODE : SENTIO_BSC_RPC);
+  const flowRpc = rpcOverrides.flowRpc ?? new StrategyArchiveRpc(new FetchRpc(SENTIO_BSC_RPC,
+    { maxRequests: 200, maxSeconds: 60, timeoutSeconds: 5, maxResponseBytes: 2_000_000, minIntervalMs: 125 }));
   const sample = await stockSample(stockRpc, now);
   const previousHead=prior.samples.reduce((latest,current)=>BigInt(current.blockNumber)>BigInt(latest.blockNumber)?current:latest,prior.samples[0]??sample);
   if(BigInt(sample.blockNumber)<BigInt(previousHead.blockNumber)||Date.parse(sample.timestamp)<Date.parse(previousHead.timestamp))throw new WorkerError('STRATEGY_HEAD_BEHIND');
@@ -395,7 +399,7 @@ export async function collectPublicStrategy(previous?: FinanceStrategy, rpcOverr
   }
   const common = { ...prior, samples };
   try {
-    const flow = await collectStrategyFlows(flowRpc, sample, prior, now, stockRpc);
+    const flow = await collectStrategyFlows(flowRpc, sample, prior, now, stockRpc, {sourceUrl:flowSourceUrl});
     return { strategy: FinanceStrategySchema.parse({ ...common, ...flow }) };
   } catch (error) {
     return { strategy: FinanceStrategySchema.parse(common), flowIssueCode: asCode(error) };

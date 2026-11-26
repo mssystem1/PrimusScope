@@ -160,11 +160,38 @@ contains the exact blocks, hashes and raw accounting values. A bounded rolling
 30-day anchor lookup maintains the existing two-hour APY lookback tolerance;
 it does not substitute approximate returns when historical reads fail.
 
-Flow recovery still requires a provider serving the historical logs. A strict
-secondary read can recover a partial primary response only when its union
-reconciles exactly and every recovered event passes the same block/receipt
-checks. Its provider is retained in source provenance. Provider limits or
-unreconciled share changes preserve the previous verified flow interval.
+Finance flow collection now uses the keyless public BSC archive at
+`https://bsc.rpc.sentio.xyz`, listed in the [public chain registry](https://chainlist.org/chain/56).
+[Archive verification evidence](discovery/bsc-sentio-archive-2026-11-26.json)
+matches a retained deposit and a post-cutoff withdrawal, including its header,
+receipt and exact historical share-supply change. No account, API key or new
+environment variable is required. The public endpoint enforces its own limits;
+this integration has no paid fallback or automatic upgrade.
+
+The transport partitions log requests into at most 1,000 blocks, preserving
+both topic and address reads. Logical recovery ranges are bounded at 100,000
+blocks; ordinary hourly flow collection uses 10,000 blocks, at most 60 events,
+200 RPC requests and 60 seconds. Result count and bytes remain bounded. Before
+advancing a historical interval, collection rechecks a known retained event by
+canonical transaction/log identity. Legacy baseline display IDs remain intact.
+Share-supply reconciliation, cross-provider accounting headers, per-event block
+and receipt checks and final boundary rechecks still apply. A strict secondary
+read can recover a partial primary response only when its union reconciles and
+passes those same checks. Provider limits or unreconciled changes preserve the
+previous verified interval.
+
+Sources shows strategy stock measurements and flow history separately, with
+their own counts, source times, blocks and flow providers. New stock samples do
+not establish newer deposits or withdrawals.
+
+The [26 November flow repair](discovery/flow-recovery-2026-11-26.json) published
+766 additional validated events across 32 contiguous ranges, extending the
+retained 4,098-flow baseline to 4,864 flows through block 135,901,316
+(26 November, 19:18:25 UTC). Publication revision 166 preserved every existing
+Finance event, Network event, stock sample and collector checkpoint. Both the
+initial and final flow boundaries were rechecked against the archive and the
+separate accounting provider before the fenced publication. Hourly collection
+continues from that boundary with the archive transport.
 
 ## Outage behavior
 
