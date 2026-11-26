@@ -88,8 +88,9 @@ function historicalStockRpc(blockNumber: string, options: { codeChanged?: boolea
 }
 
 describe('public strategy collector', () => {
-  it('refuses successful empty archive responses when a retained boundary event is missing', async () => {
+  it.each([false,true])('refuses archive recovery without a verifiable retained event (empty history: %s)', async emptyHistory => {
     const prior = structuredClone(baseline), boundary = prior.flowCoverage!;
+    if(emptyHistory)prior.flows=[];
     const stock = { ...prior.samples.at(-1)!, blockNumber: String(BigInt(boundary.toBlock) + 1n),
       blockHash: hash('e'), timestamp: '2026-11-10T06:30:00.000Z' };
     let accountingReads = 0, logReads = 0;
@@ -106,9 +107,9 @@ describe('public strategy collector', () => {
     const accounting = mockRpc(() => { accountingReads++; throw new Error('Unexpected accounting read'); });
     await expect(collectStrategyFlows(rpc, stock, prior, () => new Date(), accounting,
       { sourceUrl: 'https://bsc.rpc.sentio.xyz' })).rejects.toMatchObject({ code: 'FLOW_ARCHIVE_ANCHOR_MISSING' });
-    expect(logReads).toBe(1); expect(accountingReads).toBe(0);
+    expect(logReads).toBe(emptyHistory?0:1); expect(accountingReads).toBe(0);
     expect(prior.flowCoverage).toEqual(baseline.flowCoverage);
-    expect(prior.flows).toEqual(baseline.flows);
+    expect(prior.flows).toEqual(emptyHistory?[]:baseline.flows);
   });
   it('checks canonical boundary evidence while preserving legacy retained flow IDs', async () => {
     const prior = structuredClone(baseline), boundary = prior.flowCoverage!, sentinel = prior.flows.at(-1)!;

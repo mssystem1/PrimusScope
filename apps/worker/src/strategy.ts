@@ -238,6 +238,7 @@ export async function collectStrategyFlows(rpc: Rpc, stock: StrategySample, prev
       BigInt(flow.blockNumber) <= BigInt(old.toBlock) && (!last
         || BigInt(flow.blockNumber) > BigInt(last.blockNumber)
         || flow.blockNumber === last.blockNumber && BigInt(flow.logIndex) > BigInt(last.logIndex)) ? flow : last, null);
+    if (!sentinel) throw new WorkerError('FLOW_ARCHIVE_ANCHOR_MISSING');
     if (sentinel) {
       const block = BigInt(sentinel.blockNumber);
       const raw = await rpc.call('eth_getLogs', [{ address: VAULT, fromBlock: qty(block), toBlock: qty(block), topics: [ERC4626_TOPICS] }]);
