@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import type { PublicIndexerStatus } from '@primusscope/data';
 
 function fingerprint(status?: PublicIndexerStatus | null) {
@@ -11,9 +11,11 @@ function fingerprint(status?: PublicIndexerStatus | null) {
 
 /** Refresh public analytics when a newer publication exists; keep URL selections. */
 export function PublicationRefresh({ snapshotId, indexerStatus }: { snapshotId: string; indexerStatus?: PublicIndexerStatus | null }) {
-  const router = useRouter(), current = useRef({ snapshotId, fingerprint: fingerprint(indexerStatus) });
+  const router = useRouter(), pathname = usePathname(), current = useRef({ snapshotId, fingerprint: fingerprint(indexerStatus) });
   useEffect(() => { current.current = { snapshotId, fingerprint: fingerprint(indexerStatus) }; }, [snapshotId, indexerStatus]);
   useEffect(() => {
+    // Preserve private SDK inputs and deliberate developer diagnostics sessions.
+    if (pathname.startsWith('/developers')) return;
     let active = true, pending = false, controller: AbortController | undefined;
     async function check() {
       if (!active || pending || document.visibilityState !== 'visible') return;
@@ -38,6 +40,6 @@ export function PublicationRefresh({ snapshotId, indexerStatus }: { snapshotId: 
     function visible() { if (document.visibilityState === 'visible') void check(); }
     document.addEventListener('visibilitychange', visible);
     return () => { active = false; clearInterval(interval); controller?.abort(); document.removeEventListener('visibilitychange', visible); };
-  }, [router]);
+  }, [router, pathname]);
   return null;
 }

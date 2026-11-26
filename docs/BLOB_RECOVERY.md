@@ -139,14 +139,18 @@ starts when this workflow file changes on main and also supports a manual
 Actions dispatch; the normal Vercel hourly cron remains unchanged. The workflow
 waits for the matching collector deployment before starting.
 
-Overview, Finance and Network show coverage-through and collection timestamps
+Public data views show coverage-through and collection timestamps
 separately. Recently collected data with a known remaining head gap is
 `catching_up`, not `fresh`. Open public dashboards check for a new publication
 or changed source status every 60 seconds while visible, retaining the chosen
-URL filters. Server publication caching can add up to five minutes and Blob
+URL filters. Refresh runs once in the shared layout across public pages,
+including Sources, Explorer and Workspace. Developer sessions are excluded so
+private SDK inputs are preserved. Server publication caching can add up to five minutes and Blob
 edge caching up to one minute. Background reads never start RPC collection and
 an unavailable status response does not clear existing analytics. SDK proof
-input pages do not poll or refresh this way.
+input pages do not poll or refresh this way. Finance separately identifies flow
+history that trails its assets/share/NAV measurements; newer stock samples do
+not imply that missing deposits or withdrawals have been restored.
 
 ## Outage behavior
 

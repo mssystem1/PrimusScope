@@ -25,6 +25,16 @@ it('yields to a scheduled collector lease and resumes without concurrent writes'
   expect(pause).toHaveBeenCalledWith(30_000);
 });
 
+it('tolerates bounded initial deployment propagation but fails closed on a later authorization error', async () => {
+  const invoke=vi.fn().mockResolvedValueOnce({status:401,body:{code:'UNAUTHORIZED'}})
+    .mockResolvedValueOnce(response('0')),pause=vi.fn(async()=>{});
+  expect(await recoverIndexer({invoke,pause})).toMatchObject({outcome:'caught_up'});
+  expect(pause).toHaveBeenCalledWith(30_000);
+  const later=vi.fn().mockResolvedValueOnce(response('100')).mockResolvedValueOnce({status:401,body:{code:'UNAUTHORIZED'}});
+  expect(await recoverIndexer({invoke:later,pause})).toEqual({outcome:'failed',code:'COLLECTOR_REJECTED',status:401});
+  expect(later).toHaveBeenCalledTimes(2);
+});
+
 it('continues a budget-limited job only after validated progress', async () => {
   const invoke = vi.fn().mockResolvedValueOnce(response('50000', { outcome: 'failed', code: 'RUN_DEADLINE_EXHAUSTED' }))
     .mockResolvedValueOnce(response('0'));

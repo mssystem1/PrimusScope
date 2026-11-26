@@ -28,12 +28,17 @@ export async function recoverIndexer(options: {
   const maxInvocations = options.maxInvocations ?? 80, budgetMs = options.budgetMs ?? 150 * 60_000;
   if (!Number.isInteger(maxInvocations) || maxInvocations < 1 || maxInvocations > 80
     || !Number.isFinite(budgetMs) || budgetMs < 300_000 || budgetMs > 150 * 60_000) throw new Error('INVALID_RECOVERY_LIMITS');
+  let authorizedOnce = false, initialAuthRetries = 0;
   for (let invocation = 1; invocation <= maxInvocations; invocation++) {
     if (now() - started > budgetMs - 300_000) return { outcome: 'incomplete', code: 'RECOVERY_BUDGET_EXHAUSTED' };
     let response;
     try { response = await options.invoke(); }
     catch { return { outcome: 'failed', code: 'COLLECTOR_UNAVAILABLE' }; }
+    // Alias promotion can reach the health route before every function replica.
+    // Bound the startup retry; never hide a later authorization failure.
+    if (response.status === 401 && !authorizedOnce && initialAuthRetries++ < 3) { await pause(30_000); continue; }
     if (![200, 207].includes(response.status)) return { outcome: 'failed', code: 'COLLECTOR_REJECTED', status: response.status };
+    authorizedOnce = true;
     const parsed = Result.safeParse(response.body);
     if (!parsed.success) return { outcome: 'failed', code: 'INVALID_COLLECTOR_RESPONSE' };
     const result = parsed.data;
