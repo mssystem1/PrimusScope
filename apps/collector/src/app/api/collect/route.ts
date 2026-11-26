@@ -10,6 +10,7 @@ import{recordCollectorFailure}from'@primusscope/storage/collector-status';
 import{freshPublication}from'@primusscope/worker/seed';
 import recorded from'../../../../../../data/observations/current.json';
 import{ObservationSetSchema}from'@primusscope/api-schema';
+import { verifyRecoveryToken } from '../../../recovery-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -21,7 +22,10 @@ export async function GET(request: Request) {
   const expected = secret ? Buffer.from('Bearer ' + secret) : Buffer.alloc(0);
   const actual = Buffer.from(authorization);
   const headers = { 'Cache-Control': 'no-store' };
-  if (!secret || secret.length < 40 || actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
+  const cronAuthorized = !!secret && secret.length >= 40 && actual.length === expected.length && timingSafeEqual(actual, expected);
+  const recoveryIdentity = !cronAuthorized && authorization.startsWith('Bearer ')
+    ? await verifyRecoveryToken(authorization.slice(7)) : null;
+  if (!cronAuthorized && !recoveryIdentity) {
     return Response.json({ code: 'UNAUTHORIZED' }, { status: 401, headers });
   }
   if (new URL(request.url).search) return Response.json({ code: 'INVALID_REQUEST' }, { status: 400, headers });
@@ -33,7 +37,9 @@ export async function GET(request: Request) {
   const strategyEnabled = process.env.PRIMUSSCOPE_STRATEGY_ENABLED === '1';
   try {
     const store = blob?new BlobPublicationStore({token:process.env.BLOB_READ_WRITE_TOKEN}):new PostgresPublicationStore(neonClient(connection!));
-    const collector={mode:'scheduled' as const,provider:'vercel_cron' as const,intervalMinutes:blob?60:15,runUrl:null};
+    const recoveryRun=request.headers.get('x-primusscope-recovery-run');
+    const runUrl=recoveryIdentity?.runUrl??(recoveryRun&&/^https:\/\/github\.com\/mssystem1\/PrimusScope\/actions\/runs\/[0-9]+$/.test(recoveryRun)?recoveryRun:null);
+    const collector={mode:'scheduled' as const,provider:'vercel_cron' as const,intervalMinutes:blob?60:15,runUrl};
     const rpcFor=(domain:'finance'|'network')=>new FetchRpc(
       domain==='finance'?'https://bsc-rpc.publicnode.com':'https://base-rpc.publicnode.com', {
         // Hourly collection must cover more than 10,000 Base blocks. Keep the

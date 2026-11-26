@@ -120,6 +120,34 @@ Scheduled status becomes stale after its cadence plus 30 minutes of grace.
 After recovery, finite job budgets can leave a backlog while stored ranges
 advance; the last observed head does not establish the current chain head.
 
+### Catch-up recovery and dashboard refresh
+
+Restoring publication does not immediately fill the outage period. Each regular
+hourly run is bounded at 40,000 blocks per chain. The one-off
+[recovery workflow](../.github/workflows/recover-indexer.yml) invokes those same
+validated jobs consecutively until both observed finalized targets are reached.
+It stops after 80 invocations or 150 minutes, on capacity/quarantine/provider
+errors, or when no progress is possible. A busy scheduled collector gets its
+lease first; recovery waits and resumes. Separate shared-strategy flow
+reconciliation failures do not discard successfully validated chain ranges.
+
+The workflow uses a short-lived GitHub OIDC identity. The collector checks the
+RS256 signature against GitHub's public keys, exact issuer/audience, repository
+ID, main branch, recovery-workflow path, event and expiry. Fork/PR identities
+and other workflows are refused. No new stored secret is required. Recovery
+starts when this workflow file changes on main and also supports a manual
+Actions dispatch; the normal Vercel hourly cron remains unchanged. The workflow
+waits for the matching collector deployment before starting.
+
+Overview, Finance and Network show coverage-through and collection timestamps
+separately. Recently collected data with a known remaining head gap is
+`catching_up`, not `fresh`. Open public dashboards check for a new publication
+or changed source status every 60 seconds while visible, retaining the chosen
+URL filters. Server publication caching can add up to five minutes and Blob
+edge caching up to one minute. Background reads never start RPC collection and
+an unavailable status response does not clear existing analytics. SDK proof
+input pages do not poll or refresh this way.
+
 ## Outage behavior
 
 Primary reads have a three-second deadline and a 60-second failure cooldown.

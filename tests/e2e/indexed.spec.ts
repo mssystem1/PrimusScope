@@ -122,6 +122,25 @@ test.describe("isolated persistent indexed read model", () => {
     expect([...new Set(rows.map((row) => row[coverageColumn]))]).toEqual([after.finance.coverage.toBlock]);
   });
 
+  test("an open Network dashboard refreshes a new publication and keeps its selected period", async ({page,request}) => {
+    await page.clock.install();
+    await page.goto('/network?range=all&interval=day');
+    await expect(page.getByRole('heading',{name:'zkTLS Network',exact:true})).toBeVisible();
+    await expect(page.getByRole('button',{name:'Update dashboard',exact:true})).toBeEnabled();
+    const before=(await status(request)).snapshotId;
+    // This second, separate writer advances the existing fixture once without
+    // adding events. New snapshot identity must still reach an already open tab.
+    await fixtureAction('poll');
+    await expect.poll(async()=>(await status(request)).snapshotId).not.toBe(before);
+    const after=await status(request);
+    const refreshed=page.waitForResponse(response=>response.request().headers()['rsc']==='1'
+      &&new URL(response.url()).pathname==='/network'&&new URL(response.url()).searchParams.get('range')==='all');
+    await page.clock.runFor(60_100);
+    expect(await(await refreshed).text()).toContain(after.snapshotId);
+    await expect(page).toHaveURL(/range=all&interval=day/);
+    await expect(page.getByLabel('Period',{exact:true})).toHaveValue('all');
+  });
+
   test("a failed restarted writer preserves trusted coverage and reports stale data and backlog", async ({ request }) => {
     const before = await overview(request);
     await fixtureAction("fail");
@@ -180,9 +199,10 @@ test.describe("isolated persistent indexed read model", () => {
     await expect(finance.getByText("Last attempt failed", { exact: true })).toBeVisible();
     const before = await overview(request);
     await fixtureAction("recover");
-    await expect.poll(async () => (await overview(request)).snapshotId).not.toBe(before.snapshotId);
+    // The auto-refresh regression already committed this same retained range.
+    // Recovery must remain replay-safe while replacing failed-run status.
     const after = await overview(request);
-    expect(after.finance.coverage.toBlock).toBe((BigInt(before.finance.coverage.toBlock) + 1n).toString());
+    expect(after.finance.coverage.toBlock).toBe(before.finance.coverage.toBlock);
     expect(after.finance.eventCount).toBe(9);
     const recovered = (await status(request)).domains.find((domain) => domain.domain === "finance")!;
     expect(recovered.lastOutcome).toBe("advanced");

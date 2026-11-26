@@ -23,7 +23,7 @@ export default async function NetworkPage({ searchParams }: { searchParams: Prom
     error = caught instanceof DataAccessError ? { code: caught.code, message: caught.message }
       : { code: 'INVALID_FILTER', message: 'Use supported filters, canonical block numbers and an exact 32-byte task ID. Each field may appear only once.' };
   }
-  return <NetworkView snapshot={snapshot} mode={context.mode}
+  return <NetworkView snapshot={snapshot} mode={context.mode} indexerStatus={context.indexerStatus}
     dashboard={selected.error?<AnalyticsSelectionError action="/network"/>:<NetworkAnalyticsDashboard snapshot={snapshot} options={analyticsOptions} preservedFields={Array.from(networkViewQuery(filters))}/> }
     activity={<NetworkActivity coverage={snapshot.network.coverage} filters={filters} result={result} error={error} analyticsOptions={explicitAnalytics} />} />;
 }

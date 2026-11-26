@@ -32,10 +32,10 @@ export function seedFixture(): void {
   } finally { store.close(); }
 }
 
-export function mutateFixture(action: "advance" | "repeat" | "fail" | "recover") {
+export function mutateFixture(action: "advance" | "repeat" | "poll" | "fail" | "recover") {
   const path = fixtureDatabasePath();
   if (!existsSync(path)) throw new Error("The isolated indexed E2E database has not been seeded.");
-  const step = { advance: 1, repeat: 2, fail: 3, recover: 4 }[action];
+  const step = { advance: 1, repeat: 2, poll: 3, fail: 4, recover: 5 }[action];
   const store = new SQLiteStore(path, { clock: () => at(step) });
   let token: string | undefined;
   try {
@@ -44,7 +44,7 @@ export function mutateFixture(action: "advance" | "repeat" | "fail" | "recover")
     const lease = store.acquireLease("finance", `e2e.fixture.${action}`);
     if (!lease) throw new Error("The isolated fixture writer could not obtain its lease.");
     token = lease.token;
-    const committed = action === "fail" ? null : store.commitRange("finance", token, emptyRange(action === "recover" ? 2 : 1));
+    const committed = action === "fail" ? null : store.commitRange("finance", token, emptyRange(action === "recover" || action === "poll" ? 2 : 1));
     store.recordRun("finance", token, {
       outcome: action === "fail" ? "failed" : "advanced",
       at: at(step).toISOString(),

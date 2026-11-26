@@ -197,6 +197,9 @@ SQLite, Vercel Cron and private Blob, with Neon retained for history.
    Failed ranges preserve earlier coverage.
 3. Next.js serves the stored, validated publication. Public page/API reads do not
    initiate RPC collection. Coverage, source time, attempts and lag stay distinct.
+   Dashboards label incomplete coverage as catching up, show its source date
+   separately from collection time, and refresh open public views when a newer
+   publication becomes available.
 4. During a storage outage, a warm instance can serve its validated cache. A cold
    instance can serve the older bundled snapshot with a recovery notice and
    original dates. Quarantined observations remain blocked.

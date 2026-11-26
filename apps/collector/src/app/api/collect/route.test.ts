@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   PostgresPublicationStore: vi.fn(),
   BlobPublicationStore:vi.fn(),
   recordCollectorFailure:vi.fn(),
+  verifyRecoveryToken:vi.fn(),
 }));
 vi.mock('@primusscope/worker/hosted', () => ({ collectHosted: mocks.collectHosted }));
 vi.mock('@primusscope/worker/fetch-rpc', () => ({ FetchRpc: mocks.FetchRpc }));
@@ -16,6 +17,7 @@ vi.mock('@primusscope/storage/postgres', () => ({
 }));
 vi.mock('@primusscope/storage/blob',()=>({BlobPublicationStore:mocks.BlobPublicationStore}));
 vi.mock('@primusscope/storage/collector-status',()=>({recordCollectorFailure:mocks.recordCollectorFailure}));
+vi.mock('../../../recovery-auth',()=>({verifyRecoveryToken:mocks.verifyRecoveryToken}));
 vi.mock('@primusscope/storage', () => ({ StorageError: class StorageError extends Error { constructor(readonly code='STORAGE_FAILED'){super(code);} } }));
 
 import { GET } from './route';
@@ -35,6 +37,7 @@ beforeEach(() => {
   process.env.CRON_SECRET = secret;
   process.env.WORKER_DATABASE_URL = 'postgres://test.invalid/db';
   vi.clearAllMocks();
+  mocks.verifyRecoveryToken.mockResolvedValue(null);
 });
 afterEach(() => {
   vi.restoreAllMocks();
@@ -46,6 +49,23 @@ afterEach(() => {
 });
 
 describe('scheduled collection route', () => {
+  it('allows a verified recovery identity without an additional stored secret and ignores a spoofed run header',async()=>{
+    delete process.env.CRON_SECRET;
+    const run='https://github.com/mssystem1/PrimusScope/actions/runs/12345';
+    mocks.verifyRecoveryToken.mockResolvedValueOnce({runUrl:run});mocks.collectHosted.mockResolvedValueOnce({outcome:'completed'});
+    vi.spyOn(SDKDiagnosticsStore.prototype,'prune').mockResolvedValue();
+    const response=await GET(new Request('https://collector.example/api/collect',{headers:{authorization:'Bearer short-lived-identity','X-PrimusScope-Recovery-Run':'https://github.com/mssystem1/PrimusScope/actions/runs/999'}}));
+    expect(response.status).toBe(200);expect(mocks.collectHosted.mock.calls[0][0].collector.runUrl).toBe(run);
+  });
+  it('records only a validated repository recovery URL with an authenticated run',async()=>{
+    mocks.collectHosted.mockResolvedValue({outcome:'completed'});
+    vi.spyOn(SDKDiagnosticsStore.prototype,'prune').mockResolvedValue();
+    const run='https://github.com/mssystem1/PrimusScope/actions/runs/12345';
+    await GET(new Request('https://collector.example/api/collect',{headers:{authorization:`Bearer ${secret}`,'X-PrimusScope-Recovery-Run':run}}));
+    expect(mocks.collectHosted.mock.calls[0][0].collector.runUrl).toBe(run);
+    await GET(new Request('https://collector.example/api/collect',{headers:{authorization:`Bearer ${secret}`,'X-PrimusScope-Recovery-Run':'https://private.invalid/?token=secret'}}));
+    expect(mocks.collectHosted.mock.calls[1][0].collector.runUrl).toBeNull();
+  });
   it('never falls back to Neon writes if Blob mode is missing while history-only is enabled',async()=>{
     vi.stubEnv('PRIMUSSCOPE_NEON_HISTORY_ONLY','1');
     const response=await GET(request());

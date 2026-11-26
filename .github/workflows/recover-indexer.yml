@@ -1,0 +1,44 @@
+name: Recover indexer backlog
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/recover-indexer.yml']
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: indexer-backlog-recovery
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Wait for the matching collector deployment
+        env:
+          RECOVERY_SHA: ${{ github.sha }}
+        run: |
+          node --input-type=module - <<'JS'
+          for (let attempt = 0; attempt < 30; attempt++) {
+            try {
+              const response = await fetch('https://primus-scope-collector.vercel.app/api/health', { signal: AbortSignal.timeout(5000) });
+              const status = await response.json();
+              if (status.sha === process.env.RECOVERY_SHA && status.recoveryIdentity === 'github-oidc-v1') process.exit(0);
+            } catch {}
+            await new Promise(resolve => setTimeout(resolve, 10000));
+          }
+          throw new Error('COLLECTOR_DEPLOYMENT_NOT_READY');
+          JS
+      - name: Resume validated ranges until both observed heads are reached
+        run: node --import tsx scripts/recover-indexer.ts

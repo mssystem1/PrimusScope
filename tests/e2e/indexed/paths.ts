@@ -19,7 +19,7 @@ export function fixtureDatabasePath(): string {
 const execute = promisify(execFile);
 
 /** Each mutation is a fresh writer process; the web process only reads SQLite. */
-export async function fixtureAction(action: "advance" | "repeat" | "fail" | "recover"): Promise<unknown> {
+export async function fixtureAction(action: "advance" | "repeat" | "poll" | "fail" | "recover"): Promise<unknown> {
   fixtureDatabasePath();
   const result = await execute(process.execPath, [
     "--import", "tsx", resolve(import.meta.dirname, "writer.ts"), action,

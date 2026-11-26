@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildObservationSet } from '../../../scripts/import-observations';
 import {
-  createRepository, DataAccessError, getFreshness,
+  createRepository, DataAccessError, getFreshness, type ServingContext,
   getObservationSet, sanitizeCsvCell,
 } from './index';
 
@@ -83,6 +83,35 @@ describe('recorded real observation serving', () => {
       .toMatchObject({ mode: 'recorded_observations', state: 'recorded', ageSeconds: '0' });
     expect(getFreshness(snapshot.finance.coverage, new Date('2026-11-09T00:00:00Z')))
       .toMatchObject({ state: 'clock_skew', ageSeconds: '0' });
+  });
+
+  it('marks recently validated coverage as catching up when finalized source progress is ahead', () => {
+    const coverage={...snapshot.network.coverage,toTime:'2026-11-22T17:11:00.000Z',observedAt:'2026-11-26T10:00:00.000Z'};
+    const freshness=getFreshness(coverage,new Date('2026-11-26T10:01:00.000Z'),'indexed_observations',7200,
+      {lagBlocks:'1711335',sourceAsOf:'2026-11-26T09:58:00.000Z'});
+    expect(freshness).toMatchObject({state:'catching_up',catchingUp:true,lagBlocks:'1711335',
+      sourceAsOf:'2026-11-22T17:11:00.000Z',knownFinalizedSourceAsOf:'2026-11-26T09:58:00.000Z'});
+    expect(getFreshness(coverage,new Date('2026-11-26T10:01:00.000Z'),'indexed_observations',7200,
+      {lagBlocks:'0',sourceAsOf:'2026-11-26T09:58:00.000Z'})).toMatchObject({state:'catching_up',catchingUp:true});
+  });
+
+  it('keeps caught-up and normally inactive chains fresh when no meaningful lag exists', () => {
+    const coverage={...snapshot.network.coverage,toTime:'2026-11-26T09:50:00.000Z',observedAt:'2026-11-26T10:00:00.000Z'};
+    const caughtUp=getFreshness(coverage,new Date('2026-11-26T10:01:00.000Z'),'indexed_observations',7200,
+      {lagBlocks:'0',sourceAsOf:'2026-11-26T10:00:00.000Z'});
+    const inactive=getFreshness(coverage,new Date('2026-11-26T10:01:00.000Z'),'indexed_observations',7200,
+      {lagBlocks:'0',sourceAsOf:'2026-11-26T10:05:00.000Z'});
+    expect(caughtUp).toMatchObject({state:'fresh',catchingUp:false});
+    expect(inactive).toMatchObject({state:'fresh',catchingUp:false});
+  });
+
+  it('carries finalized-head lag into overview freshness despite a recent collection attempt',()=>{
+    const input=structuredClone(snapshot),now='2026-11-26T10:00:00.000Z';input.generatedAt=now;
+    input.network.coverage.toTime='2026-11-22T17:11:00.000Z';input.network.coverage.observedAt=now;
+    const context={mode:'indexed_observations',indexerStatus:{mode:'indexed_observations',storage:'hosted_blob',publication:'available',snapshotId:input.snapshotId,continuousWorker:false,
+      collectionMode:'scheduled',intervalMinutes:60,domains:[{domain:'network',chainId:8453,fromBlock:input.network.coverage.fromBlock,toBlock:input.network.coverage.toBlock,nextBlock:String(BigInt(input.network.coverage.toBlock)+1n),toTime:input.network.coverage.toTime,observedAt:now,quarantined:false,lastAttemptAt:now,lastSuccessAt:now,lastOutcome:'idle',lastErrorCode:null,targetFinalizedBlock:String(BigInt(input.network.coverage.toBlock)+1711335n),sourceAsOf:'2026-11-26T09:58:00.000Z',lagBlocks:'1711335',asObservedAt:now,retryAfterSeconds:null,nextRetryAt:null,stale:false}]}} as unknown as ServingContext;
+    const overview=createRepository(input,()=>new Date(now),context).getOverview();
+    expect(overview.network.freshness).toMatchObject({state:'catching_up',catchingUp:true,lagBlocks:'1711335'});
   });
 
   it('preserves the real block window and the reconciled block-header calendar times', () => {

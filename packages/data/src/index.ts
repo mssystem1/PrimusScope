@@ -25,24 +25,40 @@ const NETWORK_STATE_NAMES = ['INIT', 'SUCCESS', 'PARTIAL_SUCCESS', 'PARTIAL_SUCC
 
 export type Freshness = {
   mode: ServingMode;
-  state: 'recorded' | 'fresh' | 'stale' | 'clock_skew';
+  state: 'recorded' | 'fresh' | 'stale' | 'clock_skew' | 'catching_up';
   observedAt: string;
   sourceAsOf: string;
   ageSeconds: string;
   staleAfterSeconds: number;
+  catchingUp: boolean;
+  lagBlocks: string | null;
+  knownFinalizedSourceAsOf: string | null;
 };
 
-export function getFreshness(coverage: Coverage, now = new Date(), mode: ServingMode = 'recorded_observations', staleAfterSeconds = FRESHNESS_SECONDS): Freshness {
+export type CoverageProgress = { lagBlocks: string | null; sourceAsOf: string | null };
+const SIGNIFICANT_SOURCE_GAP_SECONDS = 30 * 60;
+export function getCoverageCatchUp(coverage:Coverage,progress?:CoverageProgress){
+  const lag=progress?.lagBlocks;
+  const positiveLag=typeof lag==='string'&&/^(0|[1-9][0-9]*)$/.test(lag)&&BigInt(lag)>0n;
+  const sourceGap=progress?.sourceAsOf?Date.parse(progress.sourceAsOf)-Date.parse(coverage.toTime):0;
+  return{catchingUp:positiveLag||(Number.isFinite(sourceGap)&&sourceGap>SIGNIFICANT_SOURCE_GAP_SECONDS*1000),lagBlocks:lag??null,sourceAsOf:progress?.sourceAsOf??null};
+}
+
+export function getFreshness(coverage: Coverage, now = new Date(), mode: ServingMode = 'recorded_observations', staleAfterSeconds = FRESHNESS_SECONDS, progress?:CoverageProgress): Freshness {
   const seconds = (now.getTime() - new Date(coverage.observedAt).getTime()) / 1000;
   if (!Number.isFinite(seconds)) throw new DataAccessError('INVALID_TIME', 'A valid observation clock is required.');
+  const catchUp=getCoverageCatchUp(coverage,mode==='indexed_observations'?progress:undefined);
   return {
     mode,
     state: seconds < -30 ? 'clock_skew' : seconds > staleAfterSeconds ? 'stale'
-      : mode === 'indexed_observations' ? 'fresh' : 'recorded',
+      : catchUp.catchingUp ? 'catching_up' : mode === 'indexed_observations' ? 'fresh' : 'recorded',
     observedAt: coverage.observedAt,
     sourceAsOf: coverage.toTime,
     ageSeconds: String(Math.max(0, Math.floor(seconds))),
     staleAfterSeconds,
+    catchingUp:catchUp.catchingUp,
+    lagBlocks:catchUp.lagBlocks,
+    knownFinalizedSourceAsOf:catchUp.sourceAsOf,
   };
 }
 
@@ -231,10 +247,10 @@ export function createRepository(input: ObservationSet, clock: () => Date = () =
   const staleWindow = context.indexerStatus?.collectionMode === 'scheduled' && context.indexerStatus.intervalMinutes
     ? context.indexerStatus.intervalMinutes * 120 + 120 : FRESHNESS_SECONDS;
   const financeMetadata = () => ({
-    coverage: snapshot.finance.coverage, freshness: getFreshness(snapshot.finance.coverage, clock(), context.mode, staleWindow),
+    coverage: snapshot.finance.coverage, freshness: getFreshness(snapshot.finance.coverage, clock(), context.mode, staleWindow, context.indexerStatus?.domains.find(d=>d.domain==='finance')),
   });
   const networkMetadata = () => ({
-    coverage: snapshot.network.coverage, freshness: getFreshness(snapshot.network.coverage, clock(), context.mode, staleWindow),
+    coverage: snapshot.network.coverage, freshness: getFreshness(snapshot.network.coverage, clock(), context.mode, staleWindow, context.indexerStatus?.domains.find(d=>d.domain==='network')),
   });
 
   function financeSelection(options: Pick<FinanceBatchFilters, 'routeId' | 'contractAddress'> = {}) {
@@ -270,7 +286,7 @@ export function createRepository(input: ObservationSet, clock: () => Date = () =
           ...source,
           status: coverage.length ? context.mode === 'indexed_observations' ? 'indexed' : 'recorded' : 'reference',
           coverage,
-          observations: coverage.map(scope => ({ chainId: scope.chainId, ...getFreshness(scope, clock(), context.mode, staleWindow) })),
+          observations: coverage.map(scope => ({ chainId: scope.chainId, ...getFreshness(scope, clock(), context.mode, staleWindow, context.indexerStatus?.domains.find(d=>d.chainId===scope.chainId) ) })),
         };
       }),
     };
