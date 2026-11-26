@@ -1,4 +1,5 @@
 name: Recover indexer backlog
+# The collector trusts this workflow's immutable owner/repository OIDC subject.
 
 on:
   workflow_dispatch:

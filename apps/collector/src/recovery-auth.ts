@@ -2,11 +2,12 @@ import { createRemoteJWKSet, decodeJwt, jwtVerify, type JWTVerifyGetKey, type JW
 
 export const RECOVERY_AUDIENCE = 'https://primus-scope-collector.vercel.app/recovery';
 const issuer = 'https://token.actions.githubusercontent.com';
+const subject = 'repo:mssystem1@227801797/PrimusScope@1450238573:ref:refs/heads/main';
 const keys = createRemoteJWKSet(new URL(issuer + '/.well-known/jwks'), { timeoutDuration: 2000, cooldownDuration: 60_000 });
 
 function allowed(payload: JWTPayload): boolean {
   return payload.repository === 'mssystem1/PrimusScope' && payload.repository_id === '1450238573'
-    && payload.ref === 'refs/heads/main' && payload.sub === 'repo:mssystem1/PrimusScope:ref:refs/heads/main'
+    && payload.ref === 'refs/heads/main' && payload.sub === subject
     && payload.workflow_ref === 'mssystem1/PrimusScope/.github/workflows/recover-indexer.yml@refs/heads/main'
     && ['workflow_dispatch', 'push'].includes(String(payload.event_name))
     && typeof payload.run_id === 'string' && /^[0-9]+$/.test(payload.run_id);

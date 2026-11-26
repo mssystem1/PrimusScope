@@ -3,6 +3,7 @@ import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT, type KeyLike } 
 import { RECOVERY_AUDIENCE, verifyRecoveryToken } from './recovery-auth';
 
 let privateKey: KeyLike, keys: ReturnType<typeof createLocalJWKSet>;
+const subject = 'repo:mssystem1@227801797/PrimusScope@1450238573:ref:refs/heads/main';
 const claims = { repository: 'mssystem1/PrimusScope', repository_id: '1450238573', ref: 'refs/heads/main',
   workflow_ref: 'mssystem1/PrimusScope/.github/workflows/recover-indexer.yml@refs/heads/main', event_name: 'push', run_id: '12345' };
 beforeAll(async () => {
@@ -12,7 +13,7 @@ beforeAll(async () => {
 function signed(overrides = {}, audience = RECOVERY_AUDIENCE, expired = false) {
   return new SignJWT({ ...claims, ...overrides }).setProtectedHeader({ alg: 'RS256', kid: 'trusted' })
     .setIssuer('https://token.actions.githubusercontent.com').setAudience(audience)
-    .setSubject('repo:mssystem1/PrimusScope:ref:refs/heads/main')
+    .setSubject(subject)
     .setIssuedAt().setExpirationTime(expired ? Math.floor(Date.now() / 1000) - 60 : '5m').sign(privateKey);
 }
 
@@ -36,10 +37,20 @@ it('rejects tampered payloads, untrusted signing keys and HMAC algorithm confusi
   const attacker = await generateKeyPair('RS256');
   const fake = await new SignJWT(claims).setProtectedHeader({ alg: 'RS256', kid: 'trusted' })
     .setIssuer('https://token.actions.githubusercontent.com').setAudience(RECOVERY_AUDIENCE)
-    .setSubject('repo:mssystem1/PrimusScope:ref:refs/heads/main').setIssuedAt().setExpirationTime('5m').sign(attacker.privateKey);
+    .setSubject(subject).setIssuedAt().setExpirationTime('5m').sign(attacker.privateKey);
   expect(await verifyRecoveryToken(fake, keys)).toBeNull();
   const hmac = await new SignJWT(claims).setProtectedHeader({ alg: 'HS256' })
     .setIssuer('https://token.actions.githubusercontent.com').setAudience(RECOVERY_AUDIENCE)
-    .setSubject('repo:mssystem1/PrimusScope:ref:refs/heads/main').setIssuedAt().setExpirationTime('5m').sign(new Uint8Array(32));
+    .setSubject(subject).setIssuedAt().setExpirationTime('5m').sign(new Uint8Array(32));
   expect(await verifyRecoveryToken(hmac, keys)).toBeNull();
+});
+
+it('rejects a subject with different immutable owner or repository identifiers', async () => {
+  for (const sub of ['repo:mssystem1@1/PrimusScope@1450238573:ref:refs/heads/main',
+    'repo:mssystem1@227801797/PrimusScope@1:ref:refs/heads/main', 'repo:mssystem1/PrimusScope:ref:refs/heads/main']) {
+    const token = await new SignJWT(claims).setProtectedHeader({ alg: 'RS256', kid: 'trusted' })
+      .setIssuer('https://token.actions.githubusercontent.com').setAudience(RECOVERY_AUDIENCE)
+      .setSubject(sub).setIssuedAt().setExpirationTime('5m').sign(privateKey);
+    expect(await verifyRecoveryToken(token, keys)).toBeNull();
+  }
 });
