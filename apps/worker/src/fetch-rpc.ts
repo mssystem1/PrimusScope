@@ -2,7 +2,7 @@ import { WorkerError } from './registry';
 import { DEFAULT_RPC_LIMITS, type Rpc, type RpcLimits } from './rpc';
 
 const methods = new Set(['eth_chainId', 'eth_getBlockByNumber', 'eth_getLogs', 'eth_getCode', 'eth_getStorageAt', 'eth_getTransactionReceipt', 'eth_call']);
-const endpoints = new Set(['https://bsc-rpc.publicnode.com', 'https://base-rpc.publicnode.com', 'https://bsc-mainnet.public.blastapi.io']);
+const endpoints = new Set(['https://bsc-rpc.publicnode.com', 'https://base-rpc.publicnode.com', 'https://bsc-mainnet.public.blastapi.io', 'https://bsc.rpc.sentio.xyz']);
 
 /** Serverless transport: native HTTPS, finite budgets, no child processes or raw response retention. */
 export class FetchRpc implements Rpc {

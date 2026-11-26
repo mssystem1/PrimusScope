@@ -190,8 +190,8 @@ export const FinanceStrategySchema = z.object({
   flowCoverage: z.object({fromBlock:DecimalStringSchema,toBlock:DecimalStringSchema,
     toBlockHash:HashSchema.optional(),
     fromTime:IsoTimestampSchema,toTime:IsoTimestampSchema,observedAt:IsoTimestampSchema,
-    sourceUrl:z.enum(['https://bsc-mainnet.public.blastapi.io','https://bsc-rpc.publicnode.com','https://bsc.api.pocket.network']),
-    sourceUrls:z.array(z.enum(['https://bsc-mainnet.public.blastapi.io','https://bsc-rpc.publicnode.com','https://bsc.api.pocket.network'])).min(1).max(3).optional(),complete:z.boolean()}).strict().nullable(),
+    sourceUrl:z.enum(['https://bsc-mainnet.public.blastapi.io','https://bsc-rpc.publicnode.com','https://bsc.api.pocket.network','https://bsc.rpc.sentio.xyz']),
+    sourceUrls:z.array(z.enum(['https://bsc-mainnet.public.blastapi.io','https://bsc-rpc.publicnode.com','https://bsc.api.pocket.network','https://bsc.rpc.sentio.xyz'])).min(1).max(4).optional(),complete:z.boolean()}).strict().nullable(),
 }).strict();
 export type FinanceStrategy = z.infer<typeof FinanceStrategySchema>;
 export type StrategySample = z.infer<typeof StrategySampleSchema>;

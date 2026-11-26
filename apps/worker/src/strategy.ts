@@ -208,13 +208,17 @@ export function reconcileStrategyLogReads(groups:unknown[],from:bigint,to:bigint
   return raw;
 }
 
-async function collectFlows(rpc: Rpc, stock: StrategySample, previous: FinanceStrategy, now: () => Date, accountingRpc:Rpc): Promise<Pick<FinanceStrategy, 'flows' | 'flowCoverage'>> {
+/** Reuses every flow/header/receipt/accounting guard for bounded historical recovery. */
+export async function collectStrategyFlows(rpc: Rpc, stock: StrategySample, previous: FinanceStrategy, now: () => Date, accountingRpc:Rpc,
+  options: { sourceUrl?: NonNullable<FinanceStrategy['flowCoverage']>['sourceUrl']; maxBlocks?: number } = {}): Promise<Pick<FinanceStrategy, 'flows' | 'flowCoverage'>> {
+  const maxBlocks = options.maxBlocks ?? 10_000, sourceUrl = options.sourceUrl ?? PUBLICNODE;
+  if (!Number.isInteger(maxBlocks) || maxBlocks < 1 || maxBlocks > 100_000) throw new WorkerError('INVALID_LIMITS');
   if (hexQuantity(await rpc.call('eth_chainId', [])) !== 56n) throw new WorkerError('FLOW_WRONG_CHAIN');
   const target = BigInt(stock.blockNumber);
   const old = previous.flowCoverage?.complete ? previous.flowCoverage : null;
   const from = strategyFlowStart(previous, target);
   if (from > target) return { flows: previous.flows, flowCoverage: previous.flowCoverage };
-  let to = from + 9_999n < target ? from + 9_999n : target;
+  let to = from + BigInt(maxBlocks - 1) < target ? from + BigInt(maxBlocks - 1) : target;
   const publicTarget = header(await rpc.call('eth_getBlockByNumber', [qty(target), false]), target);
   if (publicTarget.hash !== stock.blockHash) throw new WorkerError('FLOW_TARGET_HASH_MISMATCH');
   let previousBoundary:Header|null=null;
@@ -346,8 +350,8 @@ async function collectFlows(rpc: Rpc, stock: StrategySample, previous: FinanceSt
   if (flowsById.size > 20_000) throw new WorkerError('FLOW_CAPACITY');
   const flows = [...flowsById.values()].sort((a, b) => BigInt(a.blockNumber) < BigInt(b.blockNumber) ? -1 : BigInt(a.blockNumber) > BigInt(b.blockNumber) ? 1 : BigInt(a.logIndex) < BigInt(b.logIndex) ? -1 : BigInt(a.logIndex) > BigInt(b.logIndex) ? 1 : a.id.localeCompare(b.id));
   return { flows, flowCoverage: { fromBlock: old?.fromBlock ?? String(from), toBlock: String(to), toBlockHash:ending.hash,
-    fromTime: old?.fromTime ?? startHeader!.time, toTime: ending.time, observedAt: now().toISOString(), sourceUrl: PUBLICNODE,
-    sourceUrls:[...new Set<NonNullable<FinanceStrategy['flowCoverage']>['sourceUrl']>([...(old?.sourceUrls??(old?[old.sourceUrl]:[])),PUBLICNODE,...(recoveredFromSecondary?[BLAST] as const:[])])], complete: true } };
+    fromTime: old?.fromTime ?? startHeader!.time, toTime: ending.time, observedAt: now().toISOString(), sourceUrl,
+    sourceUrls:[...new Set<NonNullable<FinanceStrategy['flowCoverage']>['sourceUrl']>([...(old?.sourceUrls??(old?[old.sourceUrl]:[])),sourceUrl,...(recoveredFromSecondary?[BLAST] as const:[])])], complete: true } };
 }
 
 export async function collectPublicStrategy(previous?: FinanceStrategy, rpcOverrides: { stockRpc?: Rpc; flowRpc?: Rpc; now?: () => Date } = {}): Promise<{ strategy: FinanceStrategy; flowIssueCode?: string }> {
@@ -369,7 +373,7 @@ export async function collectPublicStrategy(previous?: FinanceStrategy, rpcOverr
   }
   const common = { ...prior, samples };
   try {
-    const flow = await collectFlows(flowRpc, sample, prior, now, stockRpc);
+    const flow = await collectStrategyFlows(flowRpc, sample, prior, now, stockRpc);
     return { strategy: FinanceStrategySchema.parse({ ...common, ...flow }) };
   } catch (error) {
     return { strategy: FinanceStrategySchema.parse(common), flowIssueCode: asCode(error) };
