@@ -2,6 +2,7 @@ import { recoverIndexer } from '../apps/worker/src/recovery-batch';
 
 const secret = process.env.PRIMUSSCOPE_COLLECTOR_SECRET;
 const audience = 'https://primus-scope-collector.vercel.app/recovery';
+let identityReported = false;
 async function authorization() {
   if (secret && secret.length >= 40) return 'Bearer ' + secret;
   const value = process.env.ACTIONS_ID_TOKEN_REQUEST_URL, requestToken = process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN;
@@ -13,6 +14,12 @@ async function authorization() {
   if (!response.ok) throw new Error('IDENTITY_UNAVAILABLE');
   const token = (await response.json()).value;
   if (typeof token !== 'string' || token.length > 8192) throw new Error('INVALID_IDENTITY');
+  if (!identityReported) {
+    const claims = JSON.parse(Buffer.from(token.split('.')[1]!, 'base64url').toString());
+    // Public workflow provenance only. Never log the token, signature or request credential.
+    console.log(JSON.stringify({ identity: Object.fromEntries(['iss', 'aud', 'sub', 'repository', 'repository_id', 'ref', 'workflow_ref', 'event_name', 'run_id'].map(key => [key, claims[key]])) }));
+    identityReported = true;
+  }
   return 'Bearer ' + token;
 }
 const run = process.env.GITHUB_RUN_ID;

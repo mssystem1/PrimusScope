@@ -17,10 +17,15 @@ export async function verifyRecoveryToken(token: string, trustedKeys: JWTVerifyG
   if (token.length > 8192 || token.split('.').length !== 3) return null;
   try {
     // Filtering claims is only an early rejection. Trust comes from signature verification below.
-    if (!allowed(decodeJwt(token))) return null;
+    if (!allowed(decodeJwt(token))) { console.warn(JSON.stringify({ event: 'recovery_identity_rejected', code: 'SCOPE_MISMATCH' })); return null; }
     const { payload } = await jwtVerify(token, trustedKeys, { issuer, audience: RECOVERY_AUDIENCE,
       algorithms: ['RS256'], maxTokenAge: '10m', clockTolerance: 10,
       requiredClaims: ['exp', 'iat', 'sub', 'repository', 'repository_id', 'workflow_ref', 'ref', 'event_name', 'run_id'] });
     return allowed(payload) ? { runUrl: 'https://github.com/mssystem1/PrimusScope/actions/runs/' + payload.run_id } : null;
-  } catch { return null; }
+  } catch (error) {
+    const candidate = (error as { code?: unknown })?.code;
+    const code = typeof candidate === 'string' && /^[A-Z0-9_]{1,64}$/.test(candidate) ? candidate : 'RECOVERY_IDENTITY_INVALID';
+    console.warn(JSON.stringify({ event: 'recovery_identity_rejected', code }));
+    return null;
+  }
 }

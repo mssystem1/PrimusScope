@@ -40,5 +40,5 @@ jobs:
           }
           throw new Error('COLLECTOR_DEPLOYMENT_NOT_READY');
           JS
-      - name: Resume validated ranges until both observed heads are reached
+      - name: Resume validated ranges and retain public workflow provenance
         run: node --import tsx scripts/recover-indexer.ts
