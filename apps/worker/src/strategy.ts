@@ -283,7 +283,9 @@ async function collectFlows(rpc: Rpc, stock: StrategySample, previous: FinanceSt
       } catch {
         throw error;
       }
-      rawLogs = reconcileStrategyLogReads([rawLogs, topicRead, addressRead], from, to, before, after);
+      const recovered = reconcileStrategyLogReads([rawLogs, topicRead, addressRead], from, to, before, after);
+      if (recovered.length > 60) throw new WorkerError('FLOW_EVENT_LIMIT');
+      rawLogs = recovered;
       recoveredFromSecondary = true;
       rawById.clear();
       logs = (rawLogs as Record<string, unknown>[]).map(raw => {

@@ -34,7 +34,10 @@ function mockRpc(run: (method: string, params: unknown[]) => unknown | Promise<u
 const hash = (digit: string) => `0x${digit.repeat(64)}`;
 const header = { number: '0x64', hash: hash('a'), parentHash: hash('b'), timestamp: '0x69000000' };
 function historicalStockRpc(blockNumber: string, options: { codeChanged?: boolean; headerChanged?: boolean; timestamp?: string; block?: bigint;
-  anchorHeader?: () => { number: bigint; hash: string; timestamp: string } | undefined } = {}) {
+  stockSupply?: bigint; boundaryBlock?: bigint; boundarySupply?: bigint;
+  anchorHeader?: () => { number: bigint; hash: string; timestamp: string } | undefined;
+  extraHeaders?: () => { number: bigint; hash: string; timestamp: string }[];
+  extraLogs?: (filter: Record<string, unknown>) => unknown } = {}) {
   const sample = baseline.samples.find(item => item.blockNumber === blockNumber)!;
   const blockTag = `0x${(options.block ?? BigInt(blockNumber)).toString(16)}`;
   const sampleTimestamp = options.timestamp ?? sample.timestamp;
@@ -48,9 +51,10 @@ function historicalStockRpc(blockNumber: string, options: { codeChanged?: boolea
       headerReads++;
       const anchor = options.anchorHeader?.();
       const tag = params[0];
-      const found = anchor && tag === `0x${anchor.number.toString(16)}` ? {
-        number: tag, hash: anchor.hash, parentHash: hash('b'), timestamp: `0x${Math.floor(Date.parse(anchor.timestamp) / 1000).toString(16)}`,
-      } : sampleHeader;
+      const extra = options.extraHeaders?.().find(item => tag === `0x${item.number.toString(16)}`);
+      const matching = anchor && tag === `0x${anchor.number.toString(16)}` ? anchor : extra;
+      const found = matching ? { number: tag, hash: matching.hash, parentHash: hash('b'),
+        timestamp: `0x${Math.floor(Date.parse(matching.timestamp) / 1000).toString(16)}` } : sampleHeader;
       return options.headerChanged && headerReads === 2 ? { ...found, hash: hash('f') } : found;
     }
     if (method === 'eth_getCode') {
@@ -61,18 +65,20 @@ function historicalStockRpc(blockNumber: string, options: { codeChanged?: boolea
       return code;
     }
     if (method === 'eth_getStorageAt') return `0x${'0'.repeat(24)}8d5e94c1eaae7d71ed4fcba2402e6b03380354f8`;
+    if (method === 'eth_getLogs' && options.extraLogs) return options.extraLogs(params[0] as Record<string, unknown>);
     if (method === 'eth_call') {
       const selector = (params[0] as { data: string }).data.slice(0, 10);
       const output = new Map([
         [toFunctionSelector('staked()'), `0x${'0'.repeat(24)}385c279445581a186a4182a5503094ebb652ec71`],
         [toFunctionSelector('usdu()'), `0x${'0'.repeat(24)}ea953ea6634d55dac6697c436b1e81a679db5882`],
         [toFunctionSelector('decimals()'), `0x${word(18n)}`],
-        [toFunctionSelector('totalAssets()'), `0x${word(90n)}`],
-        [toFunctionSelector('totalSupply()'), `0x${word(90n)}`],
-        [toFunctionSelector('getUnvestedAmount()'), `0x${word(10n)}`],
+        [toFunctionSelector('totalAssets()'), `0x${word(options.stockSupply ?? 90n)}`],
+        [toFunctionSelector('totalSupply()'), `0x${word(options.boundaryBlock !== undefined && params[1] === `0x${options.boundaryBlock.toString(16)}`
+          ? options.boundarySupply ?? options.stockSupply ?? 90n : options.stockSupply ?? 90n)}`],
+        [toFunctionSelector('getUnvestedAmount()'), `0x${word(options.stockSupply === undefined ? 10n : 0n)}`],
         [toFunctionSelector('convertToAssets(uint256)'), `0x${word(10n ** 18n)}`],
         [toFunctionSelector('calculateExchangeRate(uint256)'), `0x${word(10n ** 18n)}`],
-        [toFunctionSelector('balanceOf(address)'), `0x${word(100n)}`],
+        [toFunctionSelector('balanceOf(address)'), `0x${word(options.stockSupply ?? 100n)}`],
       ]);
       return output.get(selector as `0x${string}`) ?? `0x${word(0n)}`;
     }
@@ -238,6 +244,43 @@ describe('public strategy collector', () => {
     expect(Math.abs(Date.parse(anchor.timestamp) - targetTime)).toBeLessThanOrEqual(2 * 3600_000);
     expect(anchor.blockHash).toBe(selectedHeader?.hash);
     expect(flowRpc.requestsMade).toBeGreaterThan(3);
+  });
+
+  it('rejects a secondary union above the event cap before receipt reads or coverage advances', async () => {
+    const prior = structuredClone(baseline);
+    const from = BigInt(prior.flowCoverage!.toBlock) + 1n;
+    const target = from;
+    const currentTime = '2026-11-10T06:45:00.000Z';
+    const boundaryBlock = BigInt(prior.flowCoverage!.toBlock);
+    const boundaryHeader = { number: boundaryBlock, hash: prior.flowCoverage!.toBlockHash!, timestamp: prior.flowCoverage!.toTime };
+    const targetHeader = { number: target, hash: hash('e'), timestamp: currentTime };
+    const events = Array.from({ length: 61 }, (_, index) => ({
+      address: baseline.vaultAddress, removed: false,
+      topics: [getEventSelector('Deposit(address,address,uint256,uint256)'), hash('1'), hash('2')],
+      data: '0x' + word(1n) + word(1n), blockNumber: `0x${target.toString(16)}`, blockHash: targetHeader.hash,
+      transactionHash: `0x${(index + 1).toString(16).padStart(64, '0')}`, logIndex: `0x${index.toString(16)}`,
+    }));
+    const stock = historicalStockRpc(prior.samples.at(-1)!.blockNumber, { block: target, timestamp: currentTime,
+      stockSupply: 161n, boundaryBlock, boundarySupply: 100n, extraHeaders: () => [boundaryHeader], extraLogs: () => events });
+    let receiptReads = 0;
+    const flowRpc = mockRpc((method, params) => {
+      if (method === 'eth_chainId') return '0x38';
+      if (method === 'eth_getBlockByNumber') {
+        const block = BigInt(params[0] as string);
+        const found = block === boundaryBlock ? boundaryHeader : block === target ? targetHeader : null;
+        if (!found) throw new Error('unexpected block');
+        return { number: `0x${block.toString(16)}`, hash: found.hash, parentHash: hash('b'),
+          timestamp: `0x${Math.floor(Date.parse(found.timestamp) / 1000).toString(16)}` };
+      }
+      if (method === 'eth_getLogs') return events.slice(0, 1);
+      if (method === 'eth_getTransactionReceipt') { receiptReads++; throw new Error('receipt should not be requested'); }
+      throw new Error(`unexpected method ${method}`);
+    });
+    const result = await collectPublicStrategy(prior, { stockRpc: stock.rpc, flowRpc, now: () => new Date('2026-11-10T07:00:00.000Z') });
+    expect(result.flowIssueCode).toBe('FLOW_EVENT_LIMIT');
+    expect(result.strategy.flowCoverage).toEqual(prior.flowCoverage);
+    expect(result.strategy.flows).toEqual(prior.flows);
+    expect(receiptReads).toBe(0);
   });
 
   it('projects standard ERC-4626 event amounts without retaining participants', () => {
