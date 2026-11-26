@@ -1,0 +1,125 @@
+{
+  "observedAt": "2026-11-26T18:55:32.951Z",
+  "scope": "Public shared Unitas strategy on BSC; not Primus-only TVL or private positions",
+  "source": "https://bsc-mainnet.public.blastapi.io",
+  "validation": "Existing runtime, metadata, accounting and pinned-header checks; header bisection crosschecked with Publicnode",
+  "restoredSamples": 10,
+  "failedSamples": [],
+  "retainedFinanceEvents": true,
+  "retainedNetworkEvents": true,
+  "retainedFlows": true,
+  "publicationRevision": "138",
+  "neonReadOrExported": false,
+  "samples": [
+    {
+      "blockNumber": "130133622",
+      "blockHash": "0x4adc158d437e774e77f34d1fb285e551a3d67680788ef2b86b301b28e183ca00",
+      "timestamp": "2026-10-27T18:00:00.000Z",
+      "observedAt": "2026-11-26T18:48:33.231Z",
+      "sourceUrl": "https://bsc-mainnet.public.blastapi.io",
+      "totalAssetsRaw": "38639894043110297043733916",
+      "totalSupplyRaw": "35059400816834091854948889",
+      "exchangeRateRaw": "1102126480854088031",
+      "unvestedRaw": "3319112535069444444444"
+    },
+    {
+      "blockNumber": "132907964",
+      "blockHash": "0x1b5263a4d606054c54705ac4207491a70b54760a22754bc0697c140020c62715",
+      "timestamp": "2026-11-11T04:55:47.000Z",
+      "observedAt": "2026-11-26T18:48:45.765Z",
+      "sourceUrl": "https://bsc-mainnet.public.blastapi.io",
+      "totalAssetsRaw": "33641972822005123304422037",
+      "totalSupplyRaw": "30396404592976991221265212",
+      "exchangeRateRaw": "1106774741042169573",
+      "unvestedRaw": "1180482983750000000000"
+    },
+    {
+      "blockNumber": "133099898",
+      "blockHash": "0x6ecebc06165a645a763affbef59df61dfe21c4f94b387929dbfcfe25bb31e695",
+      "timestamp": "2026-11-12T04:55:47.000Z",
+      "observedAt": "2026-11-26T18:48:57.854Z",
+      "sourceUrl": "https://bsc-mainnet.public.blastapi.io",
+      "totalAssetsRaw": "33519140960708306665098568",
+      "totalSupplyRaw": "30277203449476807678894899",
+      "exchangeRateRaw": "1107075196579541427",
+      "unvestedRaw": "1175779207371527777777"
+    },
+    {
+      "blockNumber": "133291589",
+      "blockHash": "0x74408c32651d9cc2c52c74d47ff91c4e5455bb1694ef94e07007efd9ea6f4ec3",
+      "timestamp": "2026-11-13T04:55:47.000Z",
+      "observedAt": "2026-11-26T18:49:09.839Z",
+      "sourceUrl": "https://bsc-mainnet.public.blastapi.io",
+      "totalAssetsRaw": "33397931351318283708154368",
+      "totalSupplyRaw": "30159530455792503129960855",
+      "exchangeRateRaw": "1107375706669989169",
+      "unvestedRaw": "1176374750260416666666"
+    },
+    {
+      "blockNumber": "133483393",
+      "blockHash": "0x3c85a7c3ad4c81596b983e0eaccdb22758232d8361fa94ce154c697656298883",
+      "timestamp": "2026-11-14T04:55:47.000Z",
+      "observedAt": "2026-11-26T18:49:22.336Z",
+      "sourceUrl": "https://bsc-mainnet.public.blastapi.io",
+      "totalAssetsRaw": "32751691690992364184620551",
+      "totalSupplyRaw": "29567906801910864817081667",
+      "exchangeRateRaw": "1107677046955374706",
+      "unvestedRaw": "1157858602152777777777"
+    },
+    {
+      "blockNumber": "133675333",
+      "blockHash": "0x9c89a2c9e67f3ae2b5cce8e234a344981221b2a57bf0e4fe68e8db6469078838",
+      "timestamp": "2026-11-15T04:55:47.000Z",
+      "observedAt": "2026-11-26T18:49:34.247Z",
+      "sourceUrl": "https://bsc-mainnet.public.blastapi.io",
+      "totalAssetsRaw": "31533298745869140438620528",
+      "totalSupplyRaw": "28460191284549627313189764",
+      "exchangeRateRaw": "1107979156942203383",
+      "unvestedRaw": "1117061644836805555555"
+    },
+    {
+      "blockNumber": "133867270",
+      "blockHash": "0x4982ff9b89b0cfbf7a46bc3594115777b6c4c6ad8f96053e033373517848dab3",
+      "timestamp": "2026-11-16T04:55:47.000Z",
+      "observedAt": "2026-11-26T18:49:46.348Z",
+      "sourceUrl": "https://bsc-mainnet.public.blastapi.io",
+      "totalAssetsRaw": "31346492247357934890787025",
+      "totalSupplyRaw": "28283897124585705483925860",
+      "exchangeRateRaw": "1108280521219619215",
+      "unvestedRaw": "1108692948270833333333"
+    },
+    {
+      "blockNumber": "135275254",
+      "blockHash": "0x0996ed1d2e72b45fc9cfd878243a541653cdabd37f5b25f182c20a8d2e1928fc",
+      "timestamp": "2026-11-23T13:00:19.000Z",
+      "observedAt": "2026-11-26T18:49:58.914Z",
+      "sourceUrl": "https://bsc-mainnet.public.blastapi.io",
+      "totalAssetsRaw": "27621983009476244285800764",
+      "totalSupplyRaw": "24878070153141026949457280",
+      "exchangeRateRaw": "1110294441628495027",
+      "unvestedRaw": "940603419937500000000"
+    },
+    {
+      "blockNumber": "135467148",
+      "blockHash": "0xd54b519bf0ac0fb61dde29011e254975a370c4e0df2d42235e0693d483099311",
+      "timestamp": "2026-11-24T13:00:19.000Z",
+      "observedAt": "2026-11-26T18:50:10.870Z",
+      "sourceUrl": "https://bsc-mainnet.public.blastapi.io",
+      "totalAssetsRaw": "27084919508834186744505912",
+      "totalSupplyRaw": "24387723770416768933744052",
+      "exchangeRateRaw": "1110596452699255935",
+      "unvestedRaw": "929775658930555555555"
+    },
+    {
+      "blockNumber": "135659093",
+      "blockHash": "0x5a04e764effc9fc631e8e1fdf69852615ef2ac708378d889382dc1a848079bd2",
+      "timestamp": "2026-11-25T13:00:19.000Z",
+      "observedAt": "2026-11-26T18:50:23.623Z",
+      "sourceUrl": "https://bsc-mainnet.public.blastapi.io",
+      "totalAssetsRaw": "27034305415057281675617121",
+      "totalSupplyRaw": "24335544794771358773881545",
+      "exchangeRateRaw": "1110897892077015189",
+      "unvestedRaw": "925151124909722222222"
+    }
+  ]
+}

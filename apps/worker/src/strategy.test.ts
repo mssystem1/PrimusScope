@@ -3,7 +3,7 @@ import { getEventSelector, toFunctionSelector } from 'viem';
 import { FinanceStrategySchema } from '@primusscope/api-schema';
 import baselineData from '../../../data/strategy/unitas-history.json';
 import type { Rpc } from './rpc';
-import { mergeStrategySamples, projectStrategyFlowLog, strategyFlowStart, collectPublicStrategy, reconcileStrategyFlowShares, mergeStrategyLogReads } from './strategy';
+import { mergeStrategySamples, projectStrategyFlowLog, strategyFlowStart, collectPublicStrategy, collectStrategyStockSampleAt, reconcileStrategyFlowShares, mergeStrategyLogReads, reconcileStrategyLogReads } from './strategy';
 
 vi.mock('node:crypto', async importOriginal => {
   const actual = await importOriginal<typeof import('node:crypto')>();
@@ -33,8 +33,68 @@ function mockRpc(run: (method: string, params: unknown[]) => unknown | Promise<u
 }
 const hash = (digit: string) => `0x${digit.repeat(64)}`;
 const header = { number: '0x64', hash: hash('a'), parentHash: hash('b'), timestamp: '0x69000000' };
+function historicalStockRpc(blockNumber: string, options: { codeChanged?: boolean; headerChanged?: boolean; timestamp?: string; block?: bigint;
+  anchorHeader?: () => { number: bigint; hash: string; timestamp: string } | undefined } = {}) {
+  const sample = baseline.samples.find(item => item.blockNumber === blockNumber)!;
+  const blockTag = `0x${(options.block ?? BigInt(blockNumber)).toString(16)}`;
+  const sampleTimestamp = options.timestamp ?? sample.timestamp;
+  const sampleHeader = { number: blockTag, hash: options.block ? hash('e') : sample.blockHash, parentHash: hash('b'), timestamp: `0x${Math.floor(Date.parse(sampleTimestamp) / 1000).toString(16)}` };
+  let headerReads = 0;
+  const requestedTags: unknown[] = [];
+  const rpc = mockRpc((method, params) => {
+    if (method === 'eth_chainId') return '0x38';
+    if (method === 'eth_getBlockByNumber') {
+      requestedTags.push(params[0]);
+      headerReads++;
+      const anchor = options.anchorHeader?.();
+      const tag = params[0];
+      const found = anchor && tag === `0x${anchor.number.toString(16)}` ? {
+        number: tag, hash: anchor.hash, parentHash: hash('b'), timestamp: `0x${Math.floor(Date.parse(anchor.timestamp) / 1000).toString(16)}`,
+      } : sampleHeader;
+      return options.headerChanged && headerReads === 2 ? { ...found, hash: hash('f') } : found;
+    }
+    if (method === 'eth_getCode') {
+      const to = params[0] as string;
+      const code = to === '0xe9e8573bb351da16c6ee7ddac0cbc70b7f9784ae' ? '0x6001'
+        : to === '0x8d5e94c1eaae7d71ed4fcba2402e6b03380354f8' ? '0x6002'
+          : to === '0x385c279445581a186a4182a5503094ebb652ec71' ? options.codeChanged ? '0x6999' : '0x6003' : '0x6004';
+      return code;
+    }
+    if (method === 'eth_getStorageAt') return `0x${'0'.repeat(24)}8d5e94c1eaae7d71ed4fcba2402e6b03380354f8`;
+    if (method === 'eth_call') {
+      const selector = (params[0] as { data: string }).data.slice(0, 10);
+      const output = new Map([
+        [toFunctionSelector('staked()'), `0x${'0'.repeat(24)}385c279445581a186a4182a5503094ebb652ec71`],
+        [toFunctionSelector('usdu()'), `0x${'0'.repeat(24)}ea953ea6634d55dac6697c436b1e81a679db5882`],
+        [toFunctionSelector('decimals()'), `0x${word(18n)}`],
+        [toFunctionSelector('totalAssets()'), `0x${word(90n)}`],
+        [toFunctionSelector('totalSupply()'), `0x${word(90n)}`],
+        [toFunctionSelector('getUnvestedAmount()'), `0x${word(10n)}`],
+        [toFunctionSelector('convertToAssets(uint256)'), `0x${word(10n ** 18n)}`],
+        [toFunctionSelector('calculateExchangeRate(uint256)'), `0x${word(10n ** 18n)}`],
+        [toFunctionSelector('balanceOf(address)'), `0x${word(100n)}`],
+      ]);
+      return output.get(selector as `0x${string}`) ?? `0x${word(0n)}`;
+    }
+    throw new Error(`unexpected method ${method}`);
+  });
+  return { rpc, requestedTags, blockTag };
+}
 
 describe('public strategy collector', () => {
+  it('samples a requested historical block with the same pins, accounting checks, and header recheck', async () => {
+    const old = baseline.samples.find(sample => sample.blockNumber === '132716031')!;
+    const { rpc, requestedTags, blockTag } = historicalStockRpc(old.blockNumber);
+    const sample = await collectStrategyStockSampleAt(rpc, BigInt(old.blockNumber), () => new Date('2026-11-26T18:00:00.000Z'));
+    expect(requestedTags).toEqual([blockTag, blockTag]);
+    expect(sample).toMatchObject({ blockNumber: old.blockNumber, blockHash: old.blockHash, timestamp: old.timestamp,
+      observedAt: '2026-11-26T18:00:00.000Z', totalAssetsRaw: '90', totalSupplyRaw: '90' });
+    const changedCode = historicalStockRpc(old.blockNumber, { codeChanged: true });
+    await expect(collectStrategyStockSampleAt(changedCode.rpc, BigInt(old.blockNumber))).rejects.toMatchObject({ code: 'STRATEGY_CODE_CHANGED' });
+    const changedHeader = historicalStockRpc(old.blockNumber, { headerChanged: true });
+    await expect(collectStrategyStockSampleAt(changedHeader.rpc, BigInt(old.blockNumber))).rejects.toMatchObject({ code: 'STRATEGY_BLOCK_CHANGED' });
+  });
+
   it('refuses a non-BSC stock RPC before making other requests', async () => {
     const rpc = mockRpc(method => { if (method === 'eth_chainId') return '0x1'; throw new Error('unexpected'); });
     await expect(collectPublicStrategy(baseline, { stockRpc: rpc, flowRpc: mockRpc(() => null) })).rejects.toMatchObject({ code: 'STRATEGY_WRONG_CHAIN' });
@@ -120,8 +180,64 @@ describe('public strategy collector', () => {
       assetSymbol: 'USDu', shareSymbol: 'sUSDu', assetDecimals: 18, shareDecimals: 18 });
     expect(result.strategy.samples.at(-1)).toMatchObject({ blockNumber: String(BigInt(freshHeader.number)), totalAssetsRaw: '90', totalSupplyRaw: '90', unvestedRaw: '10' });
     expect(called).toHaveLength(10);
+    expect(flowRpc.requestsMade).toBe(1);
     freshHeader.number='0x64';freshHeader.timestamp=header.timestamp;
     await expect(collectPublicStrategy(baseline,{stockRpc,flowRpc})).rejects.toMatchObject({code:'STRATEGY_HEAD_BEHIND'});
+  });
+
+  it('keeps the current sample and continues flow work when rolling-anchor lookup fails', async () => {
+    const prior = structuredClone(baseline);
+    const currentBlock = BigInt(prior.samples.at(-1)!.blockNumber) + 1n;
+    const currentTime = '2026-11-10T07:00:00.000Z';
+    const stock = historicalStockRpc(prior.samples.at(-1)!.blockNumber, { block: currentBlock, timestamp: currentTime });
+    const flowRpc = mockRpc(method => {
+      if (method === 'eth_chainId') return '0x38';
+      if (method === 'eth_getBlockByNumber') throw new Error('historical header unavailable');
+      throw new Error(`unexpected method ${method}`);
+    });
+    const result = await collectPublicStrategy(prior, { stockRpc: stock.rpc, flowRpc, now: () => new Date('2026-11-10T07:01:00.000Z') });
+    expect(result.flowIssueCode).toBeUndefined();
+    expect(result.strategy.samples.at(-1)).toMatchObject({ blockNumber: currentBlock.toString(), timestamp: currentTime });
+    expect(result.strategy.flowCoverage).toEqual(prior.flowCoverage);
+    expect(flowRpc.requestsMade).toBe(2);
+  });
+
+  it('adds a pinned rolling anchor while preserving existing and current samples', async () => {
+    const prior = structuredClone(baseline);
+    const currentBlock = BigInt(prior.samples.at(-1)!.blockNumber) + 1n;
+    const currentTime = '2026-11-10T07:00:00.000Z';
+    const targetTime = Date.parse(currentTime) - 30 * 86400_000;
+    const ordered = [...prior.samples].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
+    const lowSample = [...ordered].reverse().find(item => Date.parse(item.timestamp) < targetTime)!;
+    const highSample = ordered.find(item => Date.parse(item.timestamp) > targetTime)!;
+    let selectedHeader: { number: bigint; hash: string; timestamp: string } | undefined;
+    const stock = historicalStockRpc(prior.samples.at(-1)!.blockNumber, { block: currentBlock, timestamp: currentTime,
+      anchorHeader: () => selectedHeader });
+    const flowRpc = mockRpc((method, params) => {
+      if (method === 'eth_chainId') return '0x38';
+      if (method === 'eth_getBlockByNumber') {
+        const number = BigInt(params[0] as string);
+        const existing = ordered.find(item => BigInt(item.blockNumber) === number);
+        if (existing) return { number: params[0], hash: existing.blockHash, parentHash: hash('b'), timestamp: `0x${Math.floor(Date.parse(existing.timestamp) / 1000).toString(16)}` };
+        const lowBlock = BigInt(lowSample.blockNumber), highBlock = BigInt(highSample.blockNumber);
+        const fraction = Number(number - lowBlock) / Number(highBlock - lowBlock);
+        const seconds = Math.floor(Date.parse(lowSample.timestamp) / 1000
+          + fraction * (Date.parse(highSample.timestamp) - Date.parse(lowSample.timestamp)) / 1000);
+        const found = { number, hash: hash('c'), timestamp: new Date(seconds * 1000).toISOString() };
+        selectedHeader = found;
+        return { number: params[0], hash: found.hash, parentHash: hash('b'), timestamp: `0x${seconds.toString(16)}` };
+      }
+      throw new Error(`unexpected method ${method}`);
+    });
+    const result = await collectPublicStrategy(prior, { stockRpc: stock.rpc, flowRpc, now: () => new Date('2026-11-10T07:01:00.000Z') });
+    expect(result.flowIssueCode).toBeUndefined();
+    expect(result.strategy.samples.some(item => item.timestamp === currentTime)).toBe(true);
+    expect(result.strategy.samples.some(item => item.timestamp === prior.samples.at(-1)!.timestamp)).toBe(true);
+    const anchor = result.strategy.samples.reduce((best, item) => Math.abs(Date.parse(item.timestamp) - targetTime)
+      < Math.abs(Date.parse(best.timestamp) - targetTime) ? item : best, result.strategy.samples[0]!);
+    expect(Math.abs(Date.parse(anchor.timestamp) - targetTime)).toBeLessThanOrEqual(2 * 3600_000);
+    expect(anchor.blockHash).toBe(selectedHeader?.hash);
+    expect(flowRpc.requestsMade).toBeGreaterThan(3);
   });
 
   it('projects standard ERC-4626 event amounts without retaining participants', () => {
@@ -164,6 +280,14 @@ describe('flow read completeness controls',()=>{
     const second={...first,transactionHash:hash('d'),logIndex:'0x1'};
     expect(mergeStrategyLogReads([[first],[first,second]],100n,100n)).toHaveLength(2);
     expect(()=>mergeStrategyLogReads([[first],[{...first,data:'0x'+word(11n)+word(9n)}]],100n,100n)).toThrow();
+  });
+  it('recovers a silently omitted flow only when a second source restores exact supply reconciliation',()=>{
+    const depositTopic=getEventSelector('Deposit(address,address,uint256,uint256)');
+    const withdrawTopic=getEventSelector('Withdraw(address,address,address,uint256,uint256)');
+    const deposit={address:baseline.vaultAddress,removed:false,topics:[depositTopic,hash('1'),hash('2')],data:'0x'+word(20n)+word(20n),blockNumber:'0x64',blockHash:hash('a'),transactionHash:hash('c'),logIndex:'0x0'};
+    const withdraw={address:baseline.vaultAddress,removed:false,topics:[withdrawTopic,hash('1'),hash('2'),hash('3')],data:'0x'+word(5n)+word(5n),blockNumber:'0x64',blockHash:hash('a'),transactionHash:hash('d'),logIndex:'0x1'};
+    expect(()=>reconcileStrategyLogReads([[deposit],[],[withdraw]],100n,100n,100n,115n)).not.toThrow();
+    expect(()=>reconcileStrategyLogReads([[deposit],[],[]],100n,100n,100n,115n)).toThrow('FLOW_SUPPLY_RECONCILIATION_FAILED');
   });
   it('rejects a silently incomplete flow set when on-chain share supply changed',()=>{
     expect(()=>reconcileStrategyFlowShares([{kind:'Deposit',sharesRaw:'20'},{kind:'Withdraw',sharesRaw:'5'}],100n,115n)).not.toThrow();

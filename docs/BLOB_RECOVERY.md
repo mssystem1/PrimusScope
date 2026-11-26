@@ -152,6 +152,20 @@ input pages do not poll or refresh this way. Finance separately identifies flow
 history that trails its assets/share/NAV measurements; newer stock samples do
 not imply that missing deposits or withdrawals have been restored.
 
+The 26 November stock repair added ten independently sampled historical points
+and preserved all existing stock samples, Finance/Network events and flows.
+The live strategy then contained 190 points with no stock-series gaps, and both
+7D and 30D APY were computable. [Recorded public source evidence](discovery/stock-recovery-2026-11-26.json)
+contains the exact blocks, hashes and raw accounting values. A bounded rolling
+30-day anchor lookup maintains the existing two-hour APY lookback tolerance;
+it does not substitute approximate returns when historical reads fail.
+
+Flow recovery still requires a provider serving the historical logs. A strict
+secondary read can recover a partial primary response only when its union
+reconciles exactly and every recovered event passes the same block/receipt
+checks. Its provider is retained in source provenance. Provider limits or
+unreconciled share changes preserve the previous verified flow interval.
+
 ## Outage behavior
 
 Primary reads have a three-second deadline and a 60-second failure cooldown.
