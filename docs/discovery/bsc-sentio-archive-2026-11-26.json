@@ -1,0 +1,230 @@
+{
+  "at": "2026-11-26T19:22:28.398Z",
+  "publicRegistry": "https://chainlist.org/rpcs.json",
+  "publicListing": "https://chainlist.org/chain/56",
+  "chainId": 56,
+  "vault": "0x385c279445581a186a4182a5503094ebb652ec71",
+  "knownFlow": {
+    "blockNumber": "132717387",
+    "blockHash": "0x03f4ddb1ca26050fc2165313d12612c59ea4a902b4d0526094cc8cacb3ccf9de",
+    "transactionHash": "0x29613245a92b6c1177a270f05c3a1448c9edfcc196795efe6a00ce1a4926c270",
+    "logIndex": "293",
+    "kind": "Deposit",
+    "assetsRaw": "108748266653220000000000",
+    "sharesRaw": "98283463913096951820345"
+  },
+  "knownEventCheck": {
+    "endpoint": "https://bsc.rpc.sentio.xyz",
+    "verified": true,
+    "status": 200,
+    "count": 1
+  },
+  "boundedWindow": {
+    "endpoint": "https://bsc.rpc.sentio.xyz",
+    "publicListing": "https://chainlist.org/chain/56",
+    "fromBlock": 132727607,
+    "toBlock": 132737606,
+    "queries": {
+      "chain": {
+        "status": 200
+      },
+      "topics": {
+        "status": 429,
+        "error": "public eth_getLogs is limited to 1000 blocks",
+        "errorCode": 8
+      },
+      "address": {
+        "status": 429,
+        "error": "public eth_getLogs is limited to 1000 blocks",
+        "errorCode": 8
+      },
+      "beforeHeader": {
+        "status": 200,
+        "number": "0x7e94336",
+        "hash": "0xf076dac0491beef8c6bd378824e2fe4546695587e478b04f82259b177f5c7089",
+        "timestamp": "0x6af2b82f"
+      },
+      "beforeSupply": {
+        "status": 200,
+        "totalSupplyRaw": "31029812991169227202574560"
+      },
+      "afterHeader": {
+        "status": 200,
+        "number": "0x7e96a46",
+        "hash": "0x02e55a9b24ffcb1920ada49cfeba4f9dd76d83bd7170207929ecfb2e70c6c830",
+        "timestamp": "0x6af2c9c6"
+      },
+      "afterSupply": {
+        "status": 200,
+        "totalSupplyRaw": "31029785829048265819232499"
+      }
+    },
+    "chainId": 56,
+    "chunked": {
+      "blockLimit": 1000,
+      "chunks": [
+        {
+          "fromBlock": 132727607,
+          "toBlock": 132728606,
+          "topics": {
+            "status": 200,
+            "logs": 0,
+            "flows": 0
+          },
+          "address": {
+            "status": 200,
+            "logs": 0,
+            "flows": 0
+          }
+        },
+        {
+          "fromBlock": 132728607,
+          "toBlock": 132729606,
+          "topics": {
+            "status": 200,
+            "logs": 0,
+            "flows": 0
+          },
+          "address": {
+            "status": 200,
+            "logs": 0,
+            "flows": 0
+          }
+        },
+        {
+          "fromBlock": 132729607,
+          "toBlock": 132730606,
+          "topics": {
+            "status": 200,
+            "logs": 0,
+            "flows": 0
+          },
+          "address": {
+            "status": 200,
+            "logs": 1,
+            "flows": 0
+          }
+        },
+        {
+          "fromBlock": 132730607,
+          "toBlock": 132731606,
+          "topics": {
+            "status": 200,
+            "logs": 0,
+            "flows": 0
+          },
+          "address": {
+            "status": 200,
+            "logs": 0,
+            "flows": 0
+          }
+        },
+        {
+          "fromBlock": 132731607,
+          "toBlock": 132732606,
+          "topics": {
+            "status": 200,
+            "logs": 0,
+            "flows": 0
+          },
+          "address": {
+            "status": 200,
+            "logs": 6,
+            "flows": 0
+          }
+        },
+        {
+          "fromBlock": 132732607,
+          "toBlock": 132733606,
+          "topics": {
+            "status": 200,
+            "logs": 1,
+            "flows": 1
+          },
+          "address": {
+            "status": 200,
+            "logs": 2,
+            "flows": 1
+          }
+        },
+        {
+          "fromBlock": 132733607,
+          "toBlock": 132734606,
+          "topics": {
+            "status": 200,
+            "logs": 0,
+            "flows": 0
+          },
+          "address": {
+            "status": 200,
+            "logs": 0,
+            "flows": 0
+          }
+        },
+        {
+          "fromBlock": 132734607,
+          "toBlock": 132735606,
+          "topics": {
+            "status": 200,
+            "logs": 0,
+            "flows": 0
+          },
+          "address": {
+            "status": 200,
+            "logs": 0,
+            "flows": 0
+          }
+        },
+        {
+          "fromBlock": 132735607,
+          "toBlock": 132736606,
+          "topics": {
+            "status": 200,
+            "logs": 0,
+            "flows": 0
+          },
+          "address": {
+            "status": 200,
+            "logs": 0,
+            "flows": 0
+          }
+        },
+        {
+          "fromBlock": 132736607,
+          "toBlock": 132737606,
+          "topics": {
+            "status": 200,
+            "logs": 0,
+            "flows": 0
+          },
+          "address": {
+            "status": 200,
+            "logs": 0,
+            "flows": 0
+          }
+        }
+      ],
+      "failedQueries": 0,
+      "conflictingFlowPositions": 0,
+      "deposits": 0,
+      "withdrawals": 1,
+      "netFlowSharesRaw": "-27162120961383342061",
+      "supplyDeltaRaw": "-27162120961383342061",
+      "supplyReconciles": true,
+      "sample": {
+        "blockNumber": "0x7e95a23",
+        "blockHash": "0x0f3861915ebb2d2b0e9c5c123fe8f1a4be96fd258f75021ef71d4d7a00fafa1e",
+        "transactionHash": "0x4f61cc024f4fdf2e7b514128e186229cdb7ea8f2228a0be618c8d9471720a39f",
+        "logIndex": "0xe8",
+        "headerQuery": {
+          "status": 200
+        },
+        "headerMatches": true,
+        "receiptQuery": {
+          "status": 200
+        },
+        "receiptMatches": true
+      }
+    }
+  }
+}

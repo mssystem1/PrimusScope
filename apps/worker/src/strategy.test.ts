@@ -3,7 +3,7 @@ import { getEventSelector, toFunctionSelector } from 'viem';
 import { FinanceStrategySchema } from '@primusscope/api-schema';
 import baselineData from '../../../data/strategy/unitas-history.json';
 import type { Rpc } from './rpc';
-import { mergeStrategySamples, projectStrategyFlowLog, strategyFlowStart, collectPublicStrategy, collectStrategyStockSampleAt, reconcileStrategyFlowShares, mergeStrategyLogReads, reconcileStrategyLogReads } from './strategy';
+import { mergeStrategySamples, projectStrategyFlowLog, strategyFlowStart, collectPublicStrategy, collectStrategyStockSampleAt, collectStrategyFlows, reconcileStrategyFlowShares, mergeStrategyLogReads, reconcileStrategyLogReads } from './strategy';
 
 vi.mock('node:crypto', async importOriginal => {
   const actual = await importOriginal<typeof import('node:crypto')>();
@@ -88,6 +88,55 @@ function historicalStockRpc(blockNumber: string, options: { codeChanged?: boolea
 }
 
 describe('public strategy collector', () => {
+  it('refuses successful empty archive responses when a retained boundary event is missing', async () => {
+    const prior = structuredClone(baseline), boundary = prior.flowCoverage!;
+    const stock = { ...prior.samples.at(-1)!, blockNumber: String(BigInt(boundary.toBlock) + 1n),
+      blockHash: hash('e'), timestamp: '2026-11-10T06:30:00.000Z' };
+    let accountingReads = 0, logReads = 0;
+    const rpc = mockRpc((method, params) => {
+      if (method === 'eth_chainId') return '0x38';
+      if (method === 'eth_getBlockByNumber') {
+        const atBoundary = BigInt(params[0] as string) === BigInt(boundary.toBlock);
+        return { number: params[0], hash: atBoundary ? boundary.toBlockHash : stock.blockHash, parentHash: hash('b'),
+          timestamp: `0x${Math.floor(Date.parse(atBoundary ? boundary.toTime : stock.timestamp) / 1000).toString(16)}` };
+      }
+      if (method === 'eth_getLogs') { logReads++; return []; }
+      throw new Error('No receipt or accounting read should follow a missing archive anchor');
+    });
+    const accounting = mockRpc(() => { accountingReads++; throw new Error('Unexpected accounting read'); });
+    await expect(collectStrategyFlows(rpc, stock, prior, () => new Date(), accounting,
+      { sourceUrl: 'https://bsc.rpc.sentio.xyz' })).rejects.toMatchObject({ code: 'FLOW_ARCHIVE_ANCHOR_MISSING' });
+    expect(logReads).toBe(1); expect(accountingReads).toBe(0);
+    expect(prior.flowCoverage).toEqual(baseline.flowCoverage);
+    expect(prior.flows).toEqual(baseline.flows);
+  });
+  it('checks canonical boundary evidence while preserving legacy retained flow IDs', async () => {
+    const prior = structuredClone(baseline), boundary = prior.flowCoverage!, sentinel = prior.flows.at(-1)!;
+    const stock = { ...prior.samples.at(-1)!, blockNumber: String(BigInt(boundary.toBlock) + 1n),
+      blockHash: hash('e'), timestamp: '2026-11-10T06:30:00.000Z', totalSupplyRaw: '90' };
+    const topic = getEventSelector(sentinel.kind === 'Deposit' ? 'Deposit(address,address,uint256,uint256)' : 'Withdraw(address,address,address,uint256,uint256)');
+    const retainedLog = { address: prior.vaultAddress, removed: false, topics: [topic,hash('0'),hash('0'),...(sentinel.kind === 'Withdraw'?[hash('0')]:[])],
+      data: '0x'+word(BigInt(sentinel.assetsRaw))+word(BigInt(sentinel.sharesRaw)), blockNumber:'0x'+BigInt(sentinel.blockNumber).toString(16),
+      blockHash:sentinel.blockHash,transactionHash:sentinel.transactionHash,logIndex:'0x'+BigInt(sentinel.logIndex).toString(16) };
+    const rpc = mockRpc((method, params) => {
+      if (method === 'eth_chainId') return '0x38';
+      if (method === 'eth_getBlockByNumber') {
+        const atBoundary = BigInt(params[0] as string) === BigInt(boundary.toBlock);
+        return { number: params[0], hash: atBoundary ? boundary.toBlockHash : stock.blockHash, parentHash: hash('b'),
+          timestamp: `0x${Math.floor(Date.parse(atBoundary ? boundary.toTime : stock.timestamp) / 1000).toString(16)}` };
+      }
+      if (method === 'eth_getLogs') return (params[0] as {fromBlock:string}).fromBlock === retainedLog.blockNumber ? [retainedLog] : [];
+      throw new Error('Unexpected receipt read for an empty new range');
+    });
+    const accounting = mockRpc((method, params) => method === 'eth_getBlockByNumber'
+      ? { number: params[0],hash:boundary.toBlockHash,parentHash:hash('b'),timestamp:'0x'+Math.floor(Date.parse(boundary.toTime)/1000).toString(16) }
+      : '0x'+word(90n));
+    const result = await collectStrategyFlows(rpc,stock,prior,()=>new Date(),accounting,{sourceUrl:'https://bsc.rpc.sentio.xyz'});
+    expect(result.flowCoverage?.toBlock).toBe(stock.blockNumber);
+    expect(result.flowCoverage?.sourceUrl).toBe('https://bsc.rpc.sentio.xyz');
+    expect(result.flows).toEqual(prior.flows);
+    expect(result.flows.at(-1)!.id).toBe(sentinel.id);
+  });
   it('samples a requested historical block with the same pins, accounting checks, and header recheck', async () => {
     const old = baseline.samples.find(sample => sample.blockNumber === '132716031')!;
     const { rpc, requestedTags, blockTag } = historicalStockRpc(old.blockNumber);

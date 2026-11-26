@@ -4,6 +4,7 @@ import { FinanceStrategySchema, type FinanceStrategy, type StrategySample } from
 import baselineData from '../../../data/strategy/unitas-history.json';
 import provenance from '../../../data/strategy/unitas-history-provenance.json';
 import { FetchRpc } from './fetch-rpc';
+import { SENTIO_BSC_RPC } from './strategy-archive-rpc';
 import { WorkerError, bytes, hash, header, hexQuantity, type Header } from './registry';
 import type { Rpc } from './rpc';
 
@@ -228,6 +229,26 @@ export async function collectStrategyFlows(rpc: Rpc, stock: StrategySample, prev
     if (boundary.time !== old.toTime || (old.toBlockHash&&boundary.hash!==old.toBlockHash)
       || previous.flows.some(flow => flow.blockNumber === old.toBlock && flow.blockHash !== boundary.hash)) {
       throw new WorkerError('FLOW_BOUNDARY_HASH_MISMATCH');
+    }
+  }
+  if (old && sourceUrl === SENTIO_BSC_RPC) {
+    // A pruned provider can return successful empty responses. Require a known
+    // retained event near this boundary before trusting another historical range.
+    const sentinel = previous.flows.reduce<StrategyFlow | null>((last, flow) =>
+      BigInt(flow.blockNumber) <= BigInt(old.toBlock) && (!last
+        || BigInt(flow.blockNumber) > BigInt(last.blockNumber)
+        || flow.blockNumber === last.blockNumber && BigInt(flow.logIndex) > BigInt(last.logIndex)) ? flow : last, null);
+    if (sentinel) {
+      const block = BigInt(sentinel.blockNumber);
+      const raw = await rpc.call('eth_getLogs', [{ address: VAULT, fromBlock: qty(block), toBlock: qty(block), topics: [ERC4626_TOPICS] }]);
+      const found = mergeStrategyLogReads([raw], block, block)
+        .map(item => projectStrategyFlowLog(item, block))
+        .find(item => item.transactionHash === sentinel.transactionHash && item.logIndex === sentinel.logIndex);
+      // The retained baseline uses a legacy display ID. Canonical on-chain
+      // identity and event fields must agree; its existing ID remains unchanged.
+      if (!found || (Object.keys(found) as (keyof typeof found)[]).some(key => key !== 'id' && found[key] !== sentinel[key])) {
+        throw new WorkerError('FLOW_ARCHIVE_ANCHOR_MISSING');
+      }
     }
   }
   let rawLogs: unknown;
