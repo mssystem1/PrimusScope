@@ -2,7 +2,8 @@ import { resolve } from 'node:path';
 import { SQLiteStore } from '@primusscope/storage';
 import { neonClient, PostgresPublicationStore, type PublishedState } from '@primusscope/storage/postgres';
 import{BlobPublicationStore}from'@primusscope/storage/blob';
-import type { HostedPublication } from '@primusscope/storage/publication';
+import{readCollectorFailure,type CollectorFailure}from'@primusscope/storage/collector-status';
+import {MAX_BLOB_PUBLICATION_BYTES,type HostedPublication} from '@primusscope/storage/publication';
 import { z } from 'zod';
 import {
   DecimalStringSchema, IsoTimestampSchema, ObservationSetSchema, Sha256Schema,
@@ -30,7 +31,9 @@ export const PublicIndexerDomainStatusSchema = z.object({
   targetFinalizedBlock: DecimalStringSchema.nullable(), sourceAsOf: nullableTime,
   lagBlocks: DecimalStringSchema.nullable(), asObservedAt: nullableTime,
   retryAfterSeconds: z.number().int().min(0).max(86400).nullable(), nextRetryAt: nullableTime,
+  stale: z.boolean(),
 }).strict();
+const CollectorFailurePublicSchema=z.object({failedAt:IsoTimestampSchema,code:z.enum(['CAPACITY_EXCEEDED','DATABASE_UNAVAILABLE','SOURCE_UNAVAILABLE','PUBLICATION_CONFLICT','LEASE_BUSY','LEASE_LOST','NOT_INITIALIZED','INVALID_PUBLICATION','COLLECTION_FAILED'])}).strict();
 export const PublicIndexerStatusSchema = z.object({
   mode: ServingModeSchema, storage: z.enum(['bundled_snapshot', 'local_sqlite', 'hosted_postgres','hosted_blob']),
   publication: z.enum(['available', 'quarantined', 'empty']), snapshotId: Sha256Schema.nullable(),
@@ -40,6 +43,8 @@ export const PublicIndexerStatusSchema = z.object({
   lastRunUrl: z.string().regex(/^https:\/\/github\.com\/mssystem1\/PrimusScope\/actions\/runs\/[0-9]+$/).nullable().optional(),
   recovery: z.object({source:z.enum(['process_cache','bundled_snapshot']),issue:z.literal('PRIMARY_STORE_UNAVAILABLE')}).strict().optional(),
   historical:z.boolean().optional(),
+  collectorFailure:CollectorFailurePublicSchema.nullable().optional(),
+  capacity:z.object({publicationBytes:z.number().int().nonnegative(),publicationLimitBytes:z.literal(MAX_BLOB_PUBLICATION_BYTES),networkEvents:z.number().int().nonnegative(),networkEventLimit:z.literal(100_000)}).strict().optional(),
 }).strict();
 export type PublicIndexerStatus = z.infer<typeof PublicIndexerStatusSchema>;
 export type ServingContext = { mode: ServingMode; indexerStatus: PublicIndexerStatus | null };
@@ -110,6 +115,7 @@ function publicStatus(raw: ReturnType<SQLiteStore['getStatus']>): PublicIndexerS
       targetFinalizedBlock: domain.targetFinalizedBlock, sourceAsOf: domain.sourceAsOf,
       lagBlocks: domain.lagBlocks, asObservedAt: domain.asObservedAt,
       retryAfterSeconds: domain.retryAfterSeconds, nextRetryAt: domain.nextRetryAt,
+      stale:false,
     })),
   });
 }
@@ -162,18 +168,21 @@ let hostedCache: { connection: string; state: PublishedState } | undefined;
 let hostedFailure: {connection:string;retryAt:number}|undefined;
 let blobCheckedAt=0;
 let blobInFlight:{key:string;promise:Promise<PublishedState>}|undefined;
+let collectorFailureCache:{key:string;checkedAt:number;value:CollectorFailure|null;unavailable:boolean}|undefined;
+let collectorFailureInFlight:{key:string;promise:Promise<CollectorFailure|null>}|undefined;
+const capacityCache=new WeakMap<HostedPublication,{publicationBytes:number;publicationLimitBytes:64_000_000;networkEvents:number;networkEventLimit:100_000}>();
 function usesBlob(){return process.env.PRIMUSSCOPE_DATA_MODE==='blob'||process.env.PRIMUSSCOPE_PUBLICATION_STORE==='blob';}
 function primaryKey(){return usesBlob()?'blob:'+(process.env.BLOB_STORE_ID??process.env.BLOB_READ_WRITE_TOKEN??'runtime'):process.env.WEB_DATABASE_URL;}
 async function recoverableHostedState(statusOnly=false):Promise<ServingState>{
   try{
-    const {publication}=await hostedPublication(),indexerStatus=hostedStatus(publication);
+    const {publication}=await hostedPublication(),indexerStatus=usesBlob()?await hostedBlobStatus(publication):hostedStatus(publication);
     if(!statusOnly&&indexerStatus.publication!=='available')throw new DataAccessError('PUBLICATION_QUARANTINED','Indexed observations are awaiting source reconciliation. Inspect indexer status.',503);
     return{snapshot:ObservationSetSchema.parse(publication.snapshot),mode:'indexed_observations',indexerStatus};
   }catch(error){
     if(error instanceof DataAccessError&&error.code==='PUBLICATION_QUARANTINED')throw error;
     const cached=hostedCache&&hostedCache.connection===primaryKey()?hostedCache.state:null;
     if(!statusOnly&&cached?.publication.checkpoints.some(c=>c.quarantined))throw new DataAccessError('PUBLICATION_QUARANTINED','Indexed observations are awaiting source reconciliation. Inspect indexer status.',503);
-    if(cached)return{snapshot:ObservationSetSchema.parse(cached.publication.snapshot),mode:'indexed_observations',indexerStatus:{...hostedStatus(cached.publication),recovery:{source:'process_cache',issue:'PRIMARY_STORE_UNAVAILABLE'}}};
+    if(cached){const status=usesBlob()?await hostedBlobStatus(cached.publication):hostedStatus(cached.publication);return{snapshot:ObservationSetSchema.parse(cached.publication.snapshot),mode:'indexed_observations',indexerStatus:{...status,recovery:{source:'process_cache',issue:'PRIMARY_STORE_UNAVAILABLE'}}};}
     const snapshot=bundledSnapshot();return{snapshot,mode:'recorded_observations',indexerStatus:{mode:'recorded_observations',storage:'bundled_snapshot',publication:'available',snapshotId:snapshot.snapshotId,continuousWorker:false,domains:[],recovery:{source:'bundled_snapshot',issue:'PRIMARY_STORE_UNAVAILABLE'}}};
   }
 }
@@ -200,20 +209,61 @@ async function hostedPublication() {
   } catch { hostedFailure={connection,retryAt:Date.now()+60000};throw new DataAccessError('SOURCE_UNAVAILABLE', 'The hosted observation store is unavailable.', 503); }
 }
 
-function hostedStatus(publication: HostedPublication): PublicIndexerStatus {
+function hostedStatus(publication: HostedPublication, blobMode=usesBlob()): PublicIndexerStatus {
   const status = publicStatus({ storage: 'sqlite',
     publication: publication.checkpoints.some(c => c.quarantined) ? 'quarantined' : 'available',
     snapshotId: publication.snapshot.snapshotId, domains: publication.checkpoints });
-  return { ...status, storage: usesBlob()?'hosted_blob':'hosted_postgres', collectionMode: publication.collector.mode,
-    intervalMinutes: publication.collector.intervalMinutes, lastRunUrl: publication.collector.runUrl };
+  const interval=publication.collector.intervalMinutes;
+  const staleAfter=interval===null?Infinity:(interval+30)*60_000,now=Date.now();
+  const domains=status.domains.map(domain=>{
+    const times=[domain.lastAttemptAt,domain.asObservedAt,domain.observedAt].filter((value):value is string=>value!==null).map(Date.parse);
+    const lastStatusTime=times.length?Math.max(...times):NaN;
+    return{...domain,stale:publication.collector.mode==='scheduled'&&Number.isFinite(lastStatusTime)&&now-lastStatusTime>staleAfter};
+  });
+  const result:PublicIndexerStatus={ ...status,domains, storage: blobMode?'hosted_blob':'hosted_postgres', collectionMode: publication.collector.mode,
+    intervalMinutes: interval, lastRunUrl: publication.collector.runUrl };
+  if(blobMode)result.capacity=capacityFor(publication);
+  return result;
 }
 
-async function readDeadline<T>(work:Promise<T>):Promise<T>{let timer:ReturnType<typeof setTimeout>|undefined;try{return await Promise.race([work,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('READ_TIMEOUT')),3000);})]);}finally{clearTimeout(timer);}}
+function capacityFor(publication:HostedPublication){
+  const cached=capacityCache.get(publication);if(cached)return cached;
+  const value={publicationBytes:Buffer.byteLength(JSON.stringify(publication)),publicationLimitBytes:MAX_BLOB_PUBLICATION_BYTES as typeof MAX_BLOB_PUBLICATION_BYTES,
+    networkEvents:publication.snapshot.network.events.length,networkEventLimit:100_000 as const};
+  capacityCache.set(publication,value);return value;
+}
+
+async function hostedBlobStatus(publication:HostedPublication):Promise<PublicIndexerStatus>{
+  const status=hostedStatus(publication),key=primaryKey()??'blob:runtime',now=Date.now();
+  const failure=await cachedCollectorFailure(key,now);
+  const latestAttempt=publication.checkpoints.map(c=>c.lastAttemptAt).filter((v):v is string=>v!==null).map(Date.parse);
+  status.collectorFailure=failure&&(!latestAttempt.length||Date.parse(failure.failedAt)>Math.max(...latestAttempt))?{failedAt:failure.failedAt,code:failure.code}:null;
+  return status;
+}
+
+async function cachedCollectorFailure(key:string,now:number):Promise<CollectorFailure|null>{
+  const cached=collectorFailureCache;
+  if(cached&&cached.key===key&&now-cached.checkedAt<60_000)return cached.value;
+  if(collectorFailureInFlight?.key===key)return collectorFailureInFlight.promise;
+  const promise=(async()=>{
+    try{
+      const value=await readDeadline(readCollectorFailure({token:process.env.BLOB_READ_WRITE_TOKEN}),1200);
+      collectorFailureCache={key,checkedAt:Date.now(),value,unavailable:false};return value;
+    }catch{
+      const prior=collectorFailureCache,previous=prior&&prior.key===key?prior.value:null;
+      collectorFailureCache={key,checkedAt:Date.now(),value:previous,unavailable:true};return previous;
+    }
+  })();
+  collectorFailureInFlight={key,promise};
+  try{return await promise;}finally{if(collectorFailureInFlight?.promise===promise)collectorFailureInFlight=undefined;}
+}
+
+async function readDeadline<T>(work:Promise<T>,timeoutMs=3000):Promise<T>{let timer:ReturnType<typeof setTimeout>|undefined;try{return await Promise.race([work,new Promise<never>((_,reject)=>{timer=setTimeout(()=>reject(new Error('READ_TIMEOUT')),timeoutMs);})]);}finally{clearTimeout(timer);}}
 /** Explicit read-only history; never copied into the current Blob publication. */
 export async function getNeonHistoryState():Promise<ServingState>{
   const connection=process.env.WEB_DATABASE_URL;if(!connection)throw new DataAccessError('SOURCE_UNAVAILABLE','Neon history is not configured. Current Blob observations remain separate.',503);
   try{const state=await readDeadline(new PostgresPublicationStore(neonClient(connection),true).read());if(!state)throw new Error();
-    const indexerStatus={...hostedStatus(state.publication),storage:'hosted_postgres' as const,historical:true};
+    const indexerStatus={...hostedStatus(state.publication,false),storage:'hosted_postgres' as const,historical:true};
     if(indexerStatus.publication!=='available')throw new DataAccessError('PUBLICATION_QUARANTINED','Historical observations are awaiting source reconciliation.',503);
     return{snapshot:ObservationSetSchema.parse(state.publication.snapshot),mode:'indexed_observations',indexerStatus};
   }catch(error){if(error instanceof DataAccessError)throw error;throw new DataAccessError('SOURCE_UNAVAILABLE','Neon history is currently unavailable. No historical data has been removed; current Blob observations remain separate.',503);}

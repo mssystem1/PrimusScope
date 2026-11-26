@@ -31,7 +31,7 @@ export async function collectHosted(options: HostedOptions) {
     const initial = await options.store.read();
     if (!initial) throw new StorageError('NOT_INITIALIZED');
     directory = await mkdtemp(join(tmpdir(), 'primusscope-collector-'));
-    local = new SQLiteStore(join(directory, 'job.sqlite'));
+    local = new SQLiteStore(join(directory, 'job.sqlite'), { publicationMaxBytes: options.store.publicationMaxBytes });
     local.restorePublication(initial.publication);
     let revision = initial.revision;
     const reports = [];

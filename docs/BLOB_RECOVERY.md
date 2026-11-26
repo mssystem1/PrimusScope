@@ -46,8 +46,11 @@ publication is needed for this Vercel configuration.
 ## Atomic publication and cadence
 
 A fixed private object, `primusscope/current-v1.json`, contains the revision,
-validated publication and lease in one envelope. The publication is gzip/base64
-encoded. Writers read the origin with a strong ETag (`Accept-Encoding: identity`)
+validated publication and lease in one envelope. Events use versioned fixed
+columns, with repeated provenance and canonical IDs reconstructed losslessly.
+The entire envelope is binary gzip, avoiding Base64's approximately 33% encoding
+overhead. Readers also accept the previous JSON/gzip-Base64 format. Writers
+read the origin with a strong ETag (`Accept-Encoding: identity`)
 and use conditional writes. Lease acquisition and final publication each use one
 write. The final write checks the lease and expected revision, increments the
 revision and releases the lease atomically. A stale collector cannot overwrite
@@ -61,22 +64,61 @@ Base block production better than the earlier 10,000-block cap. A busy or
 limited source may still leave a visible backlog; no caught-up SLA is implied.
 
 Cron runs **hourly** (`0 * * * *`, UTC). At two writes per successful job this is
-1,440 writes in 30 days, against the documented Hobby allowance of 2,000 advanced
-operations. Initialization, failed-job release and manual invocations also count.
-This is a budget, not unlimited free storage. Other documented allowances are
-1 GB storage, 10 GB transfer and 10,000 simple operations per month. Monitor the
-actual account's limits before increasing frequency. A validated live snapshot
-of about 1.90 MB raw occupied about 686 KB in the compressed envelope.
+1,440 publication writes in 30 days. Initialization, failed-job lease release,
+failure status and manual invocations also count. Hosting and Blob follow the
+account's actual plan, credits and limits. This is not unlimited free storage or
+transfer. Each publication overwrites the same object; old full snapshots are
+not appended on each run. History still grows as new on-chain events are kept.
 
 Readers share concurrent requests and cache validated Blob publications in each
 server process for five minutes; Blob edge caching can add up to 60 seconds.
 Cold starts and independent server instances still consume reads and transfer.
 Traffic is not guaranteed to remain within the free allowances. The existing
-validated-publication limits also remain: 16 MB and 100,000 events per domain.
+validated-publication limits remain bounded: 64 MB decompressed for Blob and
+100,000 events per domain. The separate Neon adapter retains its 16 MB limit.
 Reaching a capacity limit refuses advancement and retains the last publication;
 this release does not implement an unbounded warehouse or automatic history
 deletion. Failed uploads
 leave the prior object intact. Provider quota can still prevent object reads.
+
+## 26 November: publication capacity incident
+
+The last successful publication was revision 119, committed on 22 November at
+13:00 UTC. Vercel continued invoking the hourly collector, but it returned HTTP
+503. An authenticated reproduction returned `CAPACITY_EXCEEDED`. The retained
+publication was 15,954,704 bytes uncompressed, just below the inherited
+16,000,000-byte application limit; the compressed Blob object was about 4.59 MB.
+This was an application guard, not evidence of a Blob storage-quota failure.
+
+The same retained revision was measured before and after lossless compaction:
+15,954,704 bytes of full JSON become 8,672,898 bytes of compact event data, and
+the stored envelope falls from 4,591,041 to 3,194,363 bytes (**30.4% less storage**).
+The expanded publication compares equal, including all 63 Finance events and
+25,057 Network events, source coverage, strategy records and checkpoints.
+Raw Brotli and an explicit hash dictionary were also measured; they did not
+improve enough over compact gzip to justify their complexity or runtime cost.
+
+Blob now has its own 64,000,000-byte decompressed budget. The same limit reaches
+the temporary SQLite restore/export path, so a later job can resume a larger
+publication. Neon keeps its original budget and remains read-only history.
+The event guard remains 100,000 per domain. No observations or checkpoints are
+deleted or reset. This restores bounded headroom; partitioned history is still
+needed for continued growth beyond these limits. Compaction does not turn
+indefinitely growing event history into a fixed-size dataset. Overwrite is
+appropriate for checkpoints, mutable current state and replaceable summaries;
+overwriting old raw events would remove historical explorer detail. A future
+partitioned store should retain immutable compressed raw-event partitions and
+overwrite only its small manifest/current state and derived daily rollups.
+
+Sources distinguishes retained-data availability from collection freshness.
+Global publication failures use a separate small private status object, so a
+failed upload can be reported without replacing the last validated data.
+Failure-status writes are best-effort; age-derived stale warnings still work
+when that object is unavailable. An older failure is superseded by a newer
+published collector attempt. Approaching byte/event limits are disclosed.
+Scheduled status becomes stale after its cadence plus 30 minutes of grace.
+After recovery, finite job budgets can leave a backlog while stored ranges
+advance; the last observed head does not establish the current chain head.
 
 ## Outage behavior
 

@@ -6,6 +6,7 @@ import { StorageError } from '@primusscope/storage';
 import { neonClient, PostgresPublicationStore } from '@primusscope/storage/postgres';
 import {SDKDiagnosticsStore} from '@primusscope/storage/diagnostics';
 import{BlobPublicationStore}from'@primusscope/storage/blob';
+import{recordCollectorFailure}from'@primusscope/storage/collector-status';
 import{freshPublication}from'@primusscope/worker/seed';
 import recorded from'../../../../../../data/observations/current.json';
 import{ObservationSetSchema}from'@primusscope/api-schema';
@@ -58,6 +59,11 @@ export async function GET(request: Request) {
     if(!blob)try{await new SDKDiagnosticsStore(neonClient(connection!)).prune();retention='pruned';}catch{}
     return Response.json(result, { status: result.outcome === 'partial' ? 207 : 200, headers:{...headers,'X-PrimusScope-Diagnostics-Retention':retention} });
   } catch (error) {
+    if(blob){
+      const code=error instanceof StorageError?error.code:'COLLECTION_FAILED';
+      let timer:ReturnType<typeof setTimeout>|undefined;
+      try{await Promise.race([recordCollectorFailure(code,{token:process.env.BLOB_READ_WRITE_TOKEN}),new Promise<void>(resolve=>{timer=setTimeout(resolve,2500);})]);}catch{/* Failure status is best-effort; preserve the original collection error. */}finally{if(timer)clearTimeout(timer);}
+    }
     return Response.json({ code: error instanceof StorageError ? error.code : 'COLLECTION_FAILED' }, { status: 503, headers });
   }
 }

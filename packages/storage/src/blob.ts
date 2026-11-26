@@ -3,10 +3,11 @@ import{gzipSync,gunzipSync}from'node:zlib';
 import { get, put, BlobPreconditionFailedError } from '@vercel/blob';
 import { z } from 'zod';
 import { StorageError } from './errors';
-import { MAX_PUBLICATION_BYTES, validatePublication, type HostedPublication } from './publication';
+import { MAX_BLOB_PUBLICATION_BYTES, validatePublication, type HostedPublication } from './publication';
+import { compactPublication, expandPublication } from './compact-publication';
 
 const BLOB_PATH = 'primusscope/current-v1.json';
-export const MAX_ENVELOPE_BYTES = MAX_PUBLICATION_BYTES + 4096;
+export const MAX_ENVELOPE_BYTES = MAX_BLOB_PUBLICATION_BYTES + 4096;
 const REVISION = /^(0|[1-9][0-9]{0,18})$/;
 const OWNER = /^[A-Za-z0-9_.:-]{1,120}$/;
 const LeaseSchema = z.object({
@@ -16,7 +17,7 @@ const EnvelopeSchema = z.object({
   schemaVersion: z.literal('primusscope-publication-v1'),
   revision: z.string().regex(REVISION),
   publication: z.unknown(),
-  compression:z.literal('gzip-base64').optional(),
+  compression:z.enum(['gzip-base64', 'compact-events-v1']).optional(),
   lease: LeaseSchema.nullable(),
 }).strict();
 
@@ -48,7 +49,7 @@ const sdkTransport: BlobCASClient = {
     return { etag: result.blob.etag, stream: result.stream };
   },
   async put(pathname, body, options) {
-    const result = await put(pathname, Buffer.from(body), { access: options.access, allowOverwrite: options.allowOverwrite, ifMatch: options.ifMatch, token: options.token,addRandomSuffix:false,cacheControlMaxAge:60,contentType:'application/json' });
+    const result = await put(pathname, Buffer.from(body), { access: options.access, allowOverwrite: options.allowOverwrite, ifMatch: options.ifMatch, token: options.token,addRandomSuffix:false,cacheControlMaxAge:60,contentType:'application/octet-stream' });
     return { etag: result.etag };
   },
 };
@@ -85,14 +86,19 @@ async function readBytes(stream: ReadableStream<Uint8Array>): Promise<Uint8Array
 
 function decodeEnvelope(bytes: Uint8Array, etag: string): { envelope: Envelope; etag: string } {
   let value: unknown;
-  try { value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)); }
+  try {
+    const decoded = bytes[0] === 0x1f && bytes[1] === 0x8b
+      ? gunzipSync(bytes, { maxOutputLength: MAX_ENVELOPE_BYTES }) : bytes;
+    value = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(decoded));
+  }
   catch { throw new StorageError('SOURCE_UNAVAILABLE'); }
   const parsed = EnvelopeSchema.safeParse(value);
   if (!parsed.success || !etag) throw new StorageError('SOURCE_UNAVAILABLE');
   let publication: HostedPublication;
   try {
-    const source=parsed.data.compression==='gzip-base64'?JSON.parse(gunzipSync(Buffer.from(z.string().regex(/^[A-Za-z0-9+/]+={0,2}$/).parse(parsed.data.publication),'base64'),{maxOutputLength:MAX_PUBLICATION_BYTES}).toString('utf8')):parsed.data.publication;
-    publication = validatePublication(source);
+    const source=parsed.data.compression==='gzip-base64'?JSON.parse(gunzipSync(Buffer.from(z.string().regex(/^[A-Za-z0-9+/]+={0,2}$/).parse(parsed.data.publication),'base64'),{maxOutputLength:MAX_BLOB_PUBLICATION_BYTES}).toString('utf8'))
+      :parsed.data.compression==='compact-events-v1'?expandPublication(parsed.data.publication):parsed.data.publication;
+    publication = validatePublication(source, MAX_BLOB_PUBLICATION_BYTES);
   }
   catch { throw new StorageError('SOURCE_UNAVAILABLE'); }
   return { envelope: {schemaVersion:parsed.data.schemaVersion,revision:parsed.data.revision,lease:parsed.data.lease,publication}, etag };
@@ -104,6 +110,7 @@ function decodeEnvelope(bytes: Uint8Array, etag: string): { envelope: Envelope; 
  * one compare-and-swap boundary.
  */
 export class BlobPublicationStore {
+  readonly publicationMaxBytes = MAX_BLOB_PUBLICATION_BYTES;
   private readonly client: BlobCASClient;
   private readonly now: () => number;
   private readonly readOnly: boolean;
@@ -134,8 +141,10 @@ export class BlobPublicationStore {
   }
 
   private async replace(envelope: Envelope, options: { ifMatch?: string; allowOverwrite?: boolean }): Promise<string> {
-    const wire={...envelope,publication:gzipSync(Buffer.from(JSON.stringify(envelope.publication))).toString('base64'),compression:'gzip-base64'};
-    const body = new TextEncoder().encode(JSON.stringify(wire));
+    const wire = { ...envelope, publication: compactPublication(envelope.publication), compression: 'compact-events-v1' };
+    const raw = Buffer.from(JSON.stringify(wire));
+    if (raw.byteLength > MAX_ENVELOPE_BYTES) throw new StorageError('CAPACITY_EXCEEDED');
+    const body = gzipSync(raw);
     if (body.byteLength > MAX_ENVELOPE_BYTES) throw new StorageError('CAPACITY_EXCEEDED');
     try {
       const result = await this.client.put(BLOB_PATH, body, {
@@ -160,7 +169,7 @@ export class BlobPublicationStore {
 
   async initialize(input: HostedPublication): Promise<boolean> {
     this.writable();
-    const publication = validatePublication(input);
+    const publication = validatePublication(input, this.publicationMaxBytes);
     const initial: Envelope = { schemaVersion: 'primusscope-publication-v1', revision: '0', publication, lease: null };
     try {
       await this.replace(initial, { allowOverwrite: false });
@@ -211,7 +220,7 @@ export class BlobPublicationStore {
 
   async publish(token: string, expectedRevision: string, input: HostedPublication): Promise<string> {
     this.writable();
-    const publication = validatePublication(input);
+    const publication = validatePublication(input, this.publicationMaxBytes);
     if (!REVISION.test(expectedRevision)) throw new StorageError('INVALID_REVISION');
     const current = await this.current();
     const now = this.now();

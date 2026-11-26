@@ -5,7 +5,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { FinanceStrategySchema, ObservationSetSchema, type FinanceStrategy, type ObservationSet } from '@primusscope/api-schema';
 import type { Checkpoint, CompletedRange, Domain, DomainStatus, IndexerStatus, Lease, RunRecord, ServingState } from './types';
 import { StorageError } from './errors';
-import { validatePublication, type HostedPublication } from './publication';
+import { MAX_PUBLICATION_BYTES, MAX_BLOB_PUBLICATION_BYTES, validatePublication, type HostedPublication } from './publication';
 export type * from './types';
 export { StorageError } from './errors';
 
@@ -26,7 +26,7 @@ const ERROR_CODES = new Set(['RPC_TIMEOUT', 'RPC_RATE_LIMITED', 'REQUEST_BUDGET_
   'BLOCK_HASH_MISMATCH', 'APPEND_PARENT_MISMATCH', 'SOURCE_QUARANTINED', 'SINGLE_BLOCK_EVENT_LIMIT', 'INDEXER_FAILED']);
 
 type Row = Record<string, unknown>;
-export type StoreOptions = { readOnly?: boolean; clock?: () => Date };
+export type StoreOptions = { readOnly?: boolean; clock?: () => Date; publicationMaxBytes?: number };
 
 export function defaultDatabasePath(repositoryRoot = process.cwd()): string {
   // This is external mutable runtime storage, never a bundled deployment asset.
@@ -61,10 +61,14 @@ export class SQLiteStore {
   private db!: DatabaseSync;
   private readonly clock: () => Date;
   private readonly readOnly: boolean;
+  private readonly publicationMaxBytes: number;
 
   constructor(path: string, options: StoreOptions = {}) {
     this.clock = options.clock ?? (() => new Date());
     this.readOnly = options.readOnly === true;
+    this.publicationMaxBytes = options.publicationMaxBytes ?? MAX_PUBLICATION_BYTES;
+    if (!Number.isSafeInteger(this.publicationMaxBytes) || this.publicationMaxBytes < 1
+      || this.publicationMaxBytes > MAX_BLOB_PUBLICATION_BYTES) throw new StorageError('INVALID_CONFIGURATION');
     if (typeof path !== 'string' || !isAbsolute(path) || path.includes('\0')) throw new StorageError('INVALID_PATH');
     if (this.readOnly && !existsSync(path)) throw new StorageError('SOURCE_UNAVAILABLE');
     try {
@@ -383,12 +387,12 @@ export class SQLiteStore {
   /** Worker-only transfer: includes the last validated facts during quarantine. */
   exportPublication(collector: HostedPublication['collector'] = { mode: 'manual', intervalMinutes: null, runUrl: null }): HostedPublication {
     return this.transaction(() => validatePublication({ schemaVersion: '1.0.0',
-      snapshot: this.currentSnapshot(true), checkpoints: this.status().domains, collector }), false);
+      snapshot: this.currentSnapshot(true), checkpoints: this.status().domains, collector }, this.publicationMaxBytes), false);
   }
 
   /** Restore a published checkpoint into a fresh, private job-local database. */
   restorePublication(input: HostedPublication): void {
-    const value = validatePublication(input);
+    const value = validatePublication(input, this.publicationMaxBytes);
     if (this.getStatus().publication !== 'empty') throw new StorageError('ALREADY_INITIALIZED');
     const byDomain = (domain: Domain) => value.checkpoints.find(c => c.domain === domain)!;
     this.initialize(value.snapshot, { finance: byDomain('finance').blockHash, network: byDomain('network').blockHash });

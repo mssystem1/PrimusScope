@@ -54,10 +54,16 @@ export const HostedPublicationSchema = z.object({
 });
 export type HostedPublication = z.infer<typeof HostedPublicationSchema>;
 export const MAX_PUBLICATION_BYTES = 16_000_000;
+// Blob does not share Neon's row/storage budget. Keep a separate, bounded
+// decompressed limit; the same budget must reach the job-local reducer.
+export const MAX_BLOB_PUBLICATION_BYTES = 64_000_000;
 
-export function validatePublication(value: unknown): HostedPublication {
+export function validatePublication(value: unknown, maxBytes = MAX_PUBLICATION_BYTES): HostedPublication {
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 1 || maxBytes > MAX_BLOB_PUBLICATION_BYTES) {
+    throw new StorageError('INVALID_CONFIGURATION');
+  }
   const parsed = HostedPublicationSchema.safeParse(value);
   if (!parsed.success) throw new StorageError('INVALID_PUBLICATION');
-  if (Buffer.byteLength(JSON.stringify(parsed.data)) > MAX_PUBLICATION_BYTES) throw new StorageError('CAPACITY_EXCEEDED');
+  if (Buffer.byteLength(JSON.stringify(parsed.data)) > maxBytes) throw new StorageError('CAPACITY_EXCEEDED');
   return parsed.data;
 }

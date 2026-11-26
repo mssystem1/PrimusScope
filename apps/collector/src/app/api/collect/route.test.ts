@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   neonClient: vi.fn(),
   PostgresPublicationStore: vi.fn(),
   BlobPublicationStore:vi.fn(),
+  recordCollectorFailure:vi.fn(),
 }));
 vi.mock('@primusscope/worker/hosted', () => ({ collectHosted: mocks.collectHosted }));
 vi.mock('@primusscope/worker/fetch-rpc', () => ({ FetchRpc: mocks.FetchRpc }));
@@ -14,10 +15,12 @@ vi.mock('@primusscope/storage/postgres', () => ({
   PostgresPublicationStore: mocks.PostgresPublicationStore,
 }));
 vi.mock('@primusscope/storage/blob',()=>({BlobPublicationStore:mocks.BlobPublicationStore}));
-vi.mock('@primusscope/storage', () => ({ StorageError: class StorageError extends Error { code = 'STORAGE_FAILED'; } }));
+vi.mock('@primusscope/storage/collector-status',()=>({recordCollectorFailure:mocks.recordCollectorFailure}));
+vi.mock('@primusscope/storage', () => ({ StorageError: class StorageError extends Error { constructor(readonly code='STORAGE_FAILED'){super(code);} } }));
 
 import { GET } from './route';
 import {SDKDiagnosticsStore} from '@primusscope/storage/diagnostics';
+import {StorageError} from '@primusscope/storage';
 
 const oldSecret = process.env.CRON_SECRET;
 const oldDatabase = process.env.WORKER_DATABASE_URL;
@@ -52,8 +55,16 @@ describe('scheduled collection route', () => {
   it('uses Blob for new publications and performs no Neon writes or retention mutations',async()=>{
     process.env.PRIMUSSCOPE_PUBLICATION_STORE='blob';delete process.env.WORKER_DATABASE_URL;
     const store={read:vi.fn().mockResolvedValue({revision:'1'})};mocks.BlobPublicationStore.mockImplementation(function(){return store;});mocks.collectHosted.mockResolvedValueOnce({outcome:'completed'});const prune=vi.spyOn(SDKDiagnosticsStore.prototype,'prune');
-    const response=await GET(request());expect(response.status).toBe(200);expect(response.headers.get('x-primusscope-diagnostics-retention')).toBe('history_read_only');expect(mocks.collectHosted.mock.calls[0][0]).toMatchObject({store,commitOnce:true,limits:{maxBlocks:40000,chunkSize:5000},collector:{intervalMinutes:60}});expect(mocks.neonClient).not.toHaveBeenCalled();expect(prune).not.toHaveBeenCalled();
+    const response=await GET(request());expect(response.status).toBe(200);expect(response.headers.get('x-primusscope-diagnostics-retention')).toBe('history_read_only');expect(mocks.collectHosted.mock.calls[0][0]).toMatchObject({store,commitOnce:true,limits:{maxBlocks:40000,chunkSize:5000},collector:{provider:'vercel_cron',intervalMinutes:60}});expect(mocks.neonClient).not.toHaveBeenCalled();expect(prune).not.toHaveBeenCalled();
     mocks.collectHosted.mock.calls[0][0].rpcFor("network");expect(mocks.FetchRpc.mock.calls[0][1]).toMatchObject({maxRequests:2000,minIntervalMs:125});
+  });
+  it('records a sanitized global Blob publication failure best-effort',async()=>{
+    process.env.PRIMUSSCOPE_PUBLICATION_STORE='blob';delete process.env.WORKER_DATABASE_URL;
+    const store={read:vi.fn().mockResolvedValue({revision:'2'})};mocks.BlobPublicationStore.mockImplementation(function(){return store;});
+    mocks.collectHosted.mockRejectedValueOnce(new StorageError('CAPACITY_EXCEEDED'));
+    const response=await GET(request());expect(response.status).toBe(503);expect(await response.json()).toEqual({code:'CAPACITY_EXCEEDED'});
+    expect(mocks.recordCollectorFailure).toHaveBeenCalledWith('CAPACITY_EXCEEDED',{token:process.env.BLOB_READ_WRITE_TOKEN});
+    expect(mocks.neonClient).not.toHaveBeenCalled();
   });
   it('prunes expired diagnostic metadata after completed collection and reports the retention outcome',async()=>{
     mocks.collectHosted.mockResolvedValueOnce({outcome:'completed'});

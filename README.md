@@ -208,7 +208,14 @@ from 17 November, while the retained strategy baseline has its own earlier
 scope. This is a bounded observational release, not complete ecosystem history.
 
 Capacity, provider quotas and finite job budgets can leave a visible backlog.
-The publication currently has a 16 MB limit and a 100,000-event limit per domain.
+Stored events use compact columns and binary gzip; each update overwrites the
+current publication. The retained November snapshot used 30.4% less Blob space
+than its previous gzip/Base64 representation, with equal reconstructed data.
+Blob publications have a 64 MB decompressed limit; the separate Neon adapter
+retains its 16 MB limit. Both keep a 100,000-event limit per domain. These are
+bounded snapshots: additional headroom does not replace a partitioned history
+store. Sources reports publication failures, stale collection and approaching
+capacity while keeping the last validated observations readable.
 RPC access is keyless for the demonstrated collection paths; Vercel hosting and
 Blob still follow the account's plan/credits and limits. Historical archive-code
 coverage and independent chain consensus are not established.

@@ -7,6 +7,8 @@ export type SqlResult = { rows: Record<string, unknown>[] };
 export interface SqlClient { query(text: string, values?: unknown[]): Promise<SqlResult> }
 export type PublishedState = { revision: string; publication: HostedPublication };
 export interface PublicationStore {
+  /** Storage-specific bound for the temporary SQLite restore/export path. */
+  readonly publicationMaxBytes?: number;
   read():Promise<PublishedState|null>;
   acquireLease(owner:string,seconds?:number):Promise<string|null>;
   renewLease(token:string,seconds?:number):Promise<void>;

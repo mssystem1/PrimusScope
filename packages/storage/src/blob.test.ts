@@ -6,6 +6,11 @@ import { SQLiteStore } from './index';
 import { BlobPublicationStore, MAX_ENVELOPE_BYTES, type BlobCASClient } from './blob';
 import { ObservationSetSchema } from '@primusscope/api-schema';
 import recorded from '../../../data/observations/current.json';
+import { MAX_BLOB_PUBLICATION_BYTES, MAX_PUBLICATION_BYTES, validatePublication } from './publication';
+import { collectHosted } from '../../../apps/worker/src/hosted';
+import type { RunReport } from '../../../apps/worker/src/indexer';
+import { gzipSync, gunzipSync } from 'node:zlib';
+import { compactPublication, expandPublication } from './compact-publication';
 
 const temporary: string[] = [];
 afterEach(() => { for (const path of temporary.splice(0)) rmSync(path, { recursive: true, force: true }); });
@@ -57,6 +62,57 @@ function store(transport: FakeCAS, options: { readOnly?: boolean; useCache?: boo
 }
 
 describe('Blob durable publication protocol', () => {
+  it('reads legacy envelopes and rewrites the same history as compact binary gzip', async () => {
+    const transport = new FakeCAS(), seed = publication(), client = store(transport);
+    const legacy = { schemaVersion: 'primusscope-publication-v1', revision: '119', lease: null,
+      compression: 'gzip-base64', publication: gzipSync(Buffer.from(JSON.stringify(seed))).toString('base64') };
+    transport.corrupt(JSON.stringify(legacy));
+    expect((await client.read())?.publication).toEqual(seed);
+    const token = (await client.acquireLease('compact-upgrade'))!;
+    expect(Array.from(transport.raw()!.subarray(0, 2))).toEqual([0x1f, 0x8b]);
+    expect(await client.publish(token, '119', seed)).toBe('120');
+    const after = await store(transport, { readOnly: true }).read();
+    expect(after?.publication).toEqual(seed);
+    const wire = JSON.parse(gunzipSync(transport.raw()!).toString());
+    expect(wire.compression).toBe('compact-events-v1');
+    expect(wire.publication.snapshot.network.events[0]).toBeInstanceOf(Array);
+    expect(wire.publication.snapshot.network.events).toHaveLength(seed.snapshot.network.events.length);
+  });
+
+  it('preserves noncanonical IDs and address casing exactly and rejects malformed compact rows', () => {
+    const seed = publication(), first = seed.snapshot.network.events[0]!;
+    first.contractAddress = first.contractAddress.toUpperCase().replace('0X', '0x');
+    first.id = [8453, first.contractAddress, first.transactionHash, first.logIndex].join(':');
+    seed.snapshot.network.events[1]!.id = 'retained:seed:custom-id';
+    expect(validatePublication(expandPublication(compactPublication(seed)), MAX_BLOB_PUBLICATION_BYTES)).toEqual(seed);
+    const bad = compactPublication(seed); bad.snapshot.network.events[0]![3] = 'invalid-hash';
+    expect(() => expandPublication(bad)).toThrow();
+  });
+
+  it('restores, collects and rereads a Blob publication above the legacy Neon budget without truncating history', async () => {
+    const seed = publication(), source = seed.snapshot.network.events[0]!;
+    seed.snapshot.network.events = Array.from({ length: 22_000 }, (_, index) => ({
+      ...source, id: `capacity:${index}:` + 'x'.repeat(450),
+      transactionHash: '0x' + index.toString(16).padStart(64, '0'), logIndex: String(index),
+    }));
+    expect(Buffer.byteLength(JSON.stringify(seed))).toBeGreaterThan(MAX_PUBLICATION_BYTES);
+    expect(Buffer.byteLength(JSON.stringify(seed))).toBeLessThan(MAX_BLOB_PUBLICATION_BYTES);
+    expect(() => validatePublication(seed)).toThrowError(expect.objectContaining({ code: 'CAPACITY_EXCEEDED' }));
+    const transport = new FakeCAS(), client = store(transport);
+    await client.initialize(seed);
+    expect((await store(transport, { readOnly: true }).read())?.publication.snapshot.network.events).toHaveLength(22_000);
+    const result = await collectHosted({ store: client, commitOnce: true,
+      collector: { mode: 'scheduled', provider: 'vercel_cron', intervalMinutes: 60, runUrl: null },
+      rpcFor: () => ({ requestsMade: 0, async call() { throw new Error('Unexpected RPC'); } }),
+      runDomain: async (_local, _rpc, domain) => ({ domain, outcome: 'idle' } as RunReport),
+    });
+    expect(result).toMatchObject({ outcome: 'completed', revision: '1' });
+    const after = await store(transport, { readOnly: true }).read();
+    expect(after?.publication.snapshot.network.events).toEqual(seed.snapshot.network.events);
+    expect(after?.publication.checkpoints).toEqual(seed.checkpoints);
+    expect(() => validatePublication(after?.publication)).toThrowError(expect.objectContaining({ code: 'CAPACITY_EXCEEDED' }));
+  }, 30_000);
+
   it('initializes once, resolves a concurrent initializer, and rejects a different seed', async () => {
     const transport = new FakeCAS(), first = store(transport), second = store(transport), seed = publication();
     const results = await Promise.all([first.initialize(seed), second.initialize(seed)]);
