@@ -228,7 +228,8 @@ capacity while keeping the last validated observations readable.
 RPC access is keyless for the demonstrated collection paths; Vercel hosting and
 Blob still follow the account's plan/credits and limits. Historical archive-code
 coverage and independent chain consensus are not established.
-See [storage/recovery operation](docs/BLOB_RECOVERY.md) and
+See [storage/recovery operation](docs/BLOB_RECOVERY.md),
+[partition layout, measured costs and processing limits](docs/PARTITIONED_STORAGE.md), and
 [hosted collection](docs/HOSTED_INDEXER.md).
 
 ### Repository map

@@ -20,7 +20,7 @@ export function PublicationRefresh({ snapshotId, indexerStatus }: { snapshotId: 
     async function check() {
       if (!active || pending || document.visibilityState !== 'visible') return;
       pending = true; controller = new AbortController();
-      const timeout = setTimeout(() => controller?.abort(), 5000);
+      const timeout = setTimeout(() => controller?.abort(), 8000);
       try {
         const response = await fetch('/api/v1/status/indexer', { cache: 'no-store', signal: controller.signal });
         if (!response.ok) return;

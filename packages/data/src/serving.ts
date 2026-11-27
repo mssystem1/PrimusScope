@@ -194,7 +194,7 @@ async function hostedPublication() {
     if(blob){
       if(hostedCache?.connection===connection&&Date.now()-blobCheckedAt<300000)return hostedCache.state;
       if(blobInFlight?.key===connection)return blobInFlight.promise;
-      const promise=(async()=>{const store=new BlobPublicationStore({token:process.env.BLOB_READ_WRITE_TOKEN,readOnly:true,useCache:true});const state=await readDeadline(store.read());if(!state)throw new Error('EMPTY_BLOB');hostedCache={connection,state};blobCheckedAt=Date.now();hostedFailure=undefined;return state;})();
+      const promise=(async()=>{const store=new BlobPublicationStore({token:process.env.BLOB_READ_WRITE_TOKEN,readOnly:true,useCache:true});const state=await readDeadline(store.read(),6000);if(!state)throw new Error('EMPTY_BLOB');hostedCache={connection,state};blobCheckedAt=Date.now();hostedFailure=undefined;return state;})();
       blobInFlight={key:connection,promise};try{return await promise;}finally{if(blobInFlight?.promise===promise)blobInFlight=undefined;}
     }
     const client=neonClient(connection);

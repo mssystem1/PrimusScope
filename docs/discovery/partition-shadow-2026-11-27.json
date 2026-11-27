@@ -1,0 +1,52 @@
+{
+  "at": "2026-11-27T04:16:01.214Z",
+  "revision": "178",
+  "decodedBytes": 21527140,
+  "previousRootBytes": 4252764,
+  "partitionedRootBytes": 171111,
+  "archiveObjects": 19,
+  "archiveBytes": 4088890,
+  "planMs": 1360,
+  "rootWriteReductionPercent": 95.98,
+  "reads": [
+    {
+      "attempt": 0,
+      "mode": "cold",
+      "ms": 2736,
+      "archiveGets": 19,
+      "rss": 382787584
+    },
+    {
+      "attempt": 0,
+      "mode": "warm",
+      "ms": 720,
+      "archiveGets": 0,
+      "rss": 419987456
+    },
+    {
+      "attempt": 1,
+      "mode": "cold",
+      "ms": 1411,
+      "archiveGets": 19,
+      "rss": 462749696
+    },
+    {
+      "attempt": 1,
+      "mode": "warm",
+      "ms": 544,
+      "archiveGets": 0,
+      "rss": 519200768
+    }
+  ],
+  "currentRootChanged": false,
+  "totalStoredBytes": 4260001,
+  "scope": "Existing Blob public observations only; no Neon history read or migration",
+  "readerConcurrency": 4,
+  "materializedLimitBytes": 64000000,
+  "cache": {
+    "entries": 64,
+    "rawBytes": 16000000
+  },
+  "limitsSource": "https://vercel.com/docs/vercel-blob/usage-and-pricing#size-limits",
+  "functionLimitsSource": "https://vercel.com/docs/functions/limitations#memory-size-limits"
+}
