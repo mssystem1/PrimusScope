@@ -397,11 +397,20 @@ export async function collectPublicStrategy(previous?: FinanceStrategy, rpcOverr
     // A rolling anchor is optional: retain the current observation and let
     // the independent flow collector continue if historical reads are down.
   }
-  const common = { ...prior, samples };
+  let strategy = FinanceStrategySchema.parse({ ...prior, samples });
   try {
-    const flow = await collectStrategyFlows(flowRpc, sample, prior, now, stockRpc, {sourceUrl:flowSourceUrl});
-    return { strategy: FinanceStrategySchema.parse({ ...common, ...flow }) };
+    // A provider interruption can leave more than one hourly range behind.
+    // Reuse the same finite RPC/time budgets for at most two contiguous ranges.
+    for (let range = 0; range < 2; range++) {
+      const before = strategy.flowCoverage?.toBlock;
+      const flow = await collectStrategyFlows(flowRpc, sample, strategy, now, stockRpc, {sourceUrl:flowSourceUrl});
+      strategy = FinanceStrategySchema.parse({ ...strategy, ...flow });
+      if (!flow.flowCoverage || flow.flowCoverage.toBlock === before
+        || BigInt(flow.flowCoverage.toBlock) >= BigInt(sample.blockNumber)) break;
+    }
+    return { strategy };
   } catch (error) {
-    return { strategy: FinanceStrategySchema.parse(common), flowIssueCode: asCode(error) };
+    // A later bounded range failure must retain an earlier validated range.
+    return { strategy, flowIssueCode: asCode(error) };
   }
 }

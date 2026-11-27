@@ -190,7 +190,7 @@ function StrategyCoveragePanel({ strategy }: { strategy: ObservationSet['finance
   if (!strategy) return null;
   const ordered = [...strategy.samples].sort((a,b)=>Date.parse(a.timestamp)-Date.parse(b.timestamp));
   const first = ordered[0], latest = ordered.at(-1), flow = strategy.flowCoverage;
-  const behind = !!flow && !!latest && Date.parse(latest.timestamp)-Date.parse(flow.toTime)>2*3600000;
+  const behind = !!flow && !!latest && BigInt(flow.toBlock)<BigInt(latest.blockNumber);
   return <section className="panel" aria-labelledby="strategy-coverage-title">
     <div className="panel-heading"><div><h2 id="strategy-coverage-title">Finance strategy coverage</h2><p>The retained public strategy baseline and newer verified on-chain measurements have their own coverage.</p></div><Link className="text-link" href="/finance?range=all&amp;interval=day">Open Finance analytics <ArrowUpRight size={14}/></Link></div>
     <div className="indexer-domains">

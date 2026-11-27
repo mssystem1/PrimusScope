@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { getEventSelector, toFunctionSelector } from 'viem';
 import { FinanceStrategySchema } from '@primusscope/api-schema';
+import { WorkerError } from './registry';
 import baselineData from '../../../data/strategy/unitas-history.json';
 import type { Rpc } from './rpc';
 import { mergeStrategySamples, projectStrategyFlowLog, strategyFlowStart, collectPublicStrategy, collectStrategyStockSampleAt, collectStrategyFlows, reconcileStrategyFlowShares, mergeStrategyLogReads, reconcileStrategyLogReads } from './strategy';
@@ -88,6 +89,40 @@ function historicalStockRpc(blockNumber: string, options: { codeChanged?: boolea
 }
 
 describe('public strategy collector', () => {
+  it.each([
+    { distance:15000n, failSecond:false, advance:15000n },
+    { distance:15000n, failSecond:true, advance:10000n },
+    { distance:25000n, failSecond:false, advance:20000n },
+  ])('bounds catch-up and retains validated progress (later failure: $failSecond, distance: $distance)', async ({distance,failSecond,advance}) => {
+    const prior=structuredClone(baseline), old=prior.flowCoverage!, boundary=BigInt(old.toBlock), target=boundary+distance;
+    const headers=[{number:boundary,hash:old.toBlockHash!,timestamp:old.toTime},
+      {number:boundary+10000n,hash:hash('c'),timestamp:'2026-11-10T07:30:00.000Z'},
+      {number:boundary+20000n,hash:hash('d'),timestamp:'2026-11-10T08:30:00.000Z'},
+      {number:target,hash:hash('e'),timestamp:'2026-11-10T09:30:00.000Z'}];
+    const stock=historicalStockRpc(prior.samples.at(-1)!.blockNumber,{block:target,timestamp:headers.at(-1)!.timestamp,
+      stockSupply:90n,boundaryBlock:boundary,boundarySupply:90n,extraHeaders:()=>headers.slice(0,-1)});
+    const starts:bigint[]=[];
+    const flow=mockRpc((method,params)=>{
+      if(method==='eth_chainId')return '0x38';
+      if(method==='eth_getBlockByNumber'){
+        const found=headers.find(h=>h.number===BigInt(params[0] as string));
+        if(!found)throw new Error('Optional rolling anchor unavailable');
+        return {number:params[0],hash:found.hash,parentHash:hash('b'),timestamp:'0x'+Math.floor(Date.parse(found.timestamp)/1000).toString(16)};
+      }
+      if(method==='eth_getLogs'){
+        const from=BigInt((params[0] as {fromBlock:string}).fromBlock);starts.push(from);
+        if(failSecond&&from>boundary+10000n)throw new WorkerError('RATE_LIMITED');
+        return [];
+      }
+      throw new Error('Unexpected receipt read for empty ranges');
+    });
+    const result=await collectPublicStrategy(prior,{stockRpc:stock.rpc,flowRpc:flow});
+    expect(result.strategy.flowCoverage?.toBlock).toBe(String(boundary+advance));
+    expect(result.strategy.flows).toEqual(prior.flows);
+    expect(result.strategy.samples.at(-1)?.blockNumber).toBe(String(target));
+    expect(result.flowIssueCode).toBe(failSecond?'FLOW_RATE_LIMITED':undefined);
+    expect([...new Set(starts)]).toEqual([boundary+1n,boundary+10001n]);
+  });
   it.each([false,true])('refuses archive recovery without a verifiable retained event (empty history: %s)', async emptyHistory => {
     const prior = structuredClone(baseline), boundary = prior.flowCoverage!;
     if(emptyHistory)prior.flows=[];

@@ -170,8 +170,10 @@ this integration has no paid fallback or automatic upgrade.
 
 The transport partitions log requests into at most 1,000 blocks, preserving
 both topic and address reads. Logical recovery ranges are bounded at 100,000
-blocks; ordinary hourly flow collection uses 10,000 blocks, at most 60 events,
-200 RPC requests and 60 seconds. Result count and bytes remain bounded. Before
+blocks; ordinary hourly flow collection uses at most two contiguous 10,000-block
+ranges, each capped at 60 events, within one shared 200-request/60-second budget.
+A failure in the second range retains the first validated range. Result count
+and bytes remain bounded. Before
 advancing a historical interval, collection rechecks a known retained event by
 canonical transaction/log identity. Legacy baseline display IDs remain intact.
 Share-supply reconciliation, cross-provider accounting headers, per-event block
@@ -183,6 +185,10 @@ previous verified interval.
 Sources shows strategy stock measurements and flow history separately, with
 their own counts, source times, blocks and flow providers. New stock samples do
 not establish newer deposits or withdrawals.
+Public analytics pages show their last publication and next scheduled collection
+in UTC. An expected update window is distinct from a running or successful job;
+the banner does not start collection. Finance discloses any measured flow gap,
+including gaps shorter than two hours.
 
 The [26 November flow repair](discovery/flow-recovery-2026-11-26.json) published
 766 additional validated events across 32 contiguous ranges, extending the
