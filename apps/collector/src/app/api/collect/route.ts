@@ -36,7 +36,7 @@ export async function GET(request: Request) {
   const started = Date.now();
   const strategyEnabled = process.env.PRIMUSSCOPE_STRATEGY_ENABLED === '1';
   try {
-    const store = blob?new BlobPublicationStore({token:process.env.BLOB_READ_WRITE_TOKEN}):new PostgresPublicationStore(neonClient(connection!));
+    const store = blob?new BlobPublicationStore({token:process.env.BLOB_READ_WRITE_TOKEN,partitionedWrites:true}):new PostgresPublicationStore(neonClient(connection!));
     const recoveryRun=request.headers.get('x-primusscope-recovery-run');
     const runUrl=recoveryIdentity?.runUrl??(recoveryRun&&/^https:\/\/github\.com\/mssystem1\/PrimusScope\/actions\/runs\/[0-9]+$/.test(recoveryRun)?recoveryRun:null);
     const collector={mode:'scheduled' as const,provider:'vercel_cron' as const,intervalMinutes:blob?60:15,runUrl};
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
           Math.floor((240000-(Date.now()-started))/1000))),
         timeoutSeconds:10,maxResponseBytes:2000000,minIntervalMs:blob?125:350,
       });
-    if(blob&&!await store.read()){
+    if(blob&&(await store.revision())===null){
       const seed=await freshPublication(ObservationSetSchema.parse(recorded),rpcFor,collector);
       try{await (store as BlobPublicationStore).initialize(seed);}catch(error){if(!(error instanceof StorageError)||error.code!=='SEED_MISMATCH')throw error;}
     }

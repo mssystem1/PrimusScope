@@ -74,13 +74,15 @@ describe('scheduled collection route', () => {
   });
   it('uses Blob for new publications and performs no Neon writes or retention mutations',async()=>{
     process.env.PRIMUSSCOPE_PUBLICATION_STORE='blob';delete process.env.WORKER_DATABASE_URL;
-    const store={read:vi.fn().mockResolvedValue({revision:'1'})};mocks.BlobPublicationStore.mockImplementation(function(){return store;});mocks.collectHosted.mockResolvedValueOnce({outcome:'completed'});const prune=vi.spyOn(SDKDiagnosticsStore.prototype,'prune');
+    const store={revision:vi.fn().mockResolvedValue('1'),read:vi.fn()};mocks.BlobPublicationStore.mockImplementation(function(){return store;});mocks.collectHosted.mockResolvedValueOnce({outcome:'completed'});const prune=vi.spyOn(SDKDiagnosticsStore.prototype,'prune');
     const response=await GET(request());expect(response.status).toBe(200);expect(response.headers.get('x-primusscope-diagnostics-retention')).toBe('history_read_only');expect(mocks.collectHosted.mock.calls[0][0]).toMatchObject({store,commitOnce:true,limits:{maxBlocks:40000,chunkSize:5000},collector:{provider:'vercel_cron',intervalMinutes:60}});expect(mocks.neonClient).not.toHaveBeenCalled();expect(prune).not.toHaveBeenCalled();
     mocks.collectHosted.mock.calls[0][0].rpcFor("network");expect(mocks.FetchRpc.mock.calls[0][1]).toMatchObject({maxRequests:2000,minIntervalMs:125});
+    expect(mocks.BlobPublicationStore).toHaveBeenCalledWith({token:process.env.BLOB_READ_WRITE_TOKEN,partitionedWrites:true});
+    expect(store.revision).toHaveBeenCalledOnce();expect(store.read).not.toHaveBeenCalled();
   });
   it('records a sanitized global Blob publication failure best-effort',async()=>{
     process.env.PRIMUSSCOPE_PUBLICATION_STORE='blob';delete process.env.WORKER_DATABASE_URL;
-    const store={read:vi.fn().mockResolvedValue({revision:'2'})};mocks.BlobPublicationStore.mockImplementation(function(){return store;});
+    const store={revision:vi.fn().mockResolvedValue('2')};mocks.BlobPublicationStore.mockImplementation(function(){return store;});
     mocks.collectHosted.mockRejectedValueOnce(new StorageError('CAPACITY_EXCEEDED'));
     const response=await GET(request());expect(response.status).toBe(503);expect(await response.json()).toEqual({code:'CAPACITY_EXCEEDED'});
     expect(mocks.recordCollectorFailure).toHaveBeenCalledWith('CAPACITY_EXCEEDED',{token:process.env.BLOB_READ_WRITE_TOKEN});

@@ -45,14 +45,16 @@ publication is needed for this Vercel configuration.
 
 ## Atomic publication and cadence
 
-A fixed private object, `primusscope/current-v1.json`, contains the revision,
-validated publication and lease in one envelope. Events use versioned fixed
-columns, with repeated provenance and canonical IDs reconstructed losslessly.
-The entire envelope is binary gzip, avoiding Base64's approximately 33% encoding
-overhead. Readers also accept the previous JSON/gzip-Base64 format. Writers
-read the origin with a strong ETag (`Accept-Encoding: identity`)
-and use conditional writes. Lease acquisition and final publication each use one
-write. The final write checks the lease and expected revision, increments the
+A fixed private root, `primusscope/current-v1.json`, contains revision, lease,
+metadata, inline tails and ordered references to immutable compressed history.
+Each completed 2,000-record group is a content-addressed archive; tails remain
+in the root. Events retain their lossless fixed-column encoding. Readers verify
+archive checksums and context, then validate the full reconstructed publication.
+Legacy JSON, gzip/Base64 and compact v1 publications remain readable.
+Writers read the root at origin with a strong ETag (`Accept-Encoding: identity`)
+and upload/verify new archives before its fenced replacement. Lease acquisition
+and final publication each use one root write; full archives are uploaded only
+when needed. The final write checks the lease and expected revision, increments the
 revision and releases the lease atomically. A stale collector cannot overwrite
 a newer publication or erase its lease. The 600-second lease exceeds the
 300-second job limit; local freshness checks avoid extra renewal writes.
@@ -63,12 +65,13 @@ second and the existing shared 240-second budget. These limits accommodate
 Base block production better than the earlier 10,000-block cap. A busy or
 limited source may still leave a visible backlog; no caught-up SLA is implied.
 
-Cron runs **hourly** (`0 * * * *`, UTC). At two writes per successful job this is
-1,440 publication writes in 30 days. Initialization, failed-job lease release,
-failure status and manual invocations also count. Hosting and Blob follow the
+Cron runs **hourly** (`0 * * * *`, UTC). At two root writes per successful job this
+is 1,440 root writes in 30 days. New archive uploads, initialization, failed-job
+lease release, failure status and manual invocations also count. Hosting and Blob follow the
 account's actual plan, credits and limits. This is not unlimited free storage or
-transfer. Each publication overwrites the same object; old full snapshots are
-not appended on each run. History still grows as new on-chain events are kept.
+transfer. Each publication replaces the same small root; complete immutable
+history is reused. Old full snapshots are not appended on each run. History
+still grows as new on-chain events are kept. [Partition protocol and measured limits](PARTITIONED_STORAGE.md).
 
 Readers share concurrent requests and cache validated Blob publications in each
 server process for five minutes; Blob edge caching can add up to 60 seconds.
@@ -201,7 +204,7 @@ continues from that boundary with the archive transport.
 
 ## Outage behavior
 
-Primary reads have a three-second deadline and a 60-second failure cooldown.
+Primary Blob reads have a six-second deadline and a 60-second failure cooldown.
 A warm instance serves its last validated publication with its original source
 range and timestamps. A cold instance uses the bundled, validated recorded
 snapshot and clearly labels recovery mode. This cold snapshot is older than the
