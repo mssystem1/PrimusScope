@@ -138,3 +138,20 @@ one period selector, date legend and export. Eight visual rows are grouped into
 Capital flows, Pool value and Yield. Mobile rows keep both period values and
 their change together. The single CSV includes a `metric_group` column while
 preserving each group's coverage, comparison basis and measurement timestamps.
+
+## Maintaining APY comparison lookbacks
+
+The hourly collector maintains NAV lookbacks for both the current observation
+and the actual previous endpoint of the 24h, 7d and 30d presets. A previous
+endpoint is selected at or before the inclusive comparison boundary; its APYs
+use that observation's own 7D/30D lookbacks. The existing two-hour eligibility
+limit and actual-elapsed-time formula are unchanged. New archive searches aim
+within fifteen minutes of the target to reduce drift as the window advances.
+
+After collecting live stock and flows, a separate bounded archive phase accepts
+at most four verified historical samples per invocation, with independent
+72-stock-request and 80-header-request budgets and 60-second deadlines. Every
+sample retains bytecode, implementation, accounting and cross-provider block
+checks. Accepted samples survive later archive failures; pending lookbacks are
+reported as `APY_ANCHORS_PENDING` without failing or starving live flow
+collection. The next scheduled invocation retries the missing lookbacks.

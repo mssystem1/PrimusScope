@@ -101,11 +101,11 @@ export async function collectStrategyStockSampleAt(rpc: Rpc, block: bigint, now:
   return stockSample(rpc, now, block);
 }
 
-const THIRTY_DAY_MS = 30 * 86400_000;
+const DAY_MS = 86400_000;
 const STRATEGY_ANCHOR_TOLERANCE_MS = 2 * 3600_000;
-async function findThirtyDayAnchor(previous: StrategySample[], latest: StrategySample, flowRpc: Rpc, stockRpc: Rpc,
+const STRATEGY_ANCHOR_SEARCH_AIM_MS = 15 * 60_000;
+async function findStrategyAnchor(previous: StrategySample[], latest: StrategySample, targetTime: number, flowRpc: Rpc, stockRpc: Rpc,
   now: () => Date): Promise<StrategySample | null> {
-  const targetTime = Date.parse(latest.timestamp) - THIRTY_DAY_MS;
   const prior = previous.filter(item => Date.parse(item.timestamp) < Date.parse(latest.timestamp));
   const alreadyClose = prior.reduce<StrategySample | null>((best, item) => !best
     || Math.abs(Date.parse(item.timestamp) - targetTime) < Math.abs(Date.parse(best.timestamp) - targetTime) ? item : best, null);
@@ -130,7 +130,7 @@ async function findThirtyDayAnchor(previous: StrategySample[], latest: StrategyS
   if (low.number >= high.number || Date.parse(low.time) > targetTime || Date.parse(high.time) < targetTime) return null;
   let best = Math.abs(Date.parse(low.time) - targetTime) <= Math.abs(Date.parse(high.time) - targetTime) ? low : high;
   for (let i = 0; i < 25 && high.number - low.number > 1n; i++) {
-    if (Math.abs(Date.parse(best.time) - targetTime) <= STRATEGY_ANCHOR_TOLERANCE_MS) break;
+    if (Math.abs(Date.parse(best.time) - targetTime) <= STRATEGY_ANCHOR_SEARCH_AIM_MS) break;
     const midNumber = (low.number + high.number) / 2n;
     const mid = header(await flowRpc.call('eth_getBlockByNumber', [qty(midNumber), false]), midNumber);
     if (Math.abs(Date.parse(mid.time) - targetTime) < Math.abs(Date.parse(best.time) - targetTime)) best = mid;
@@ -141,6 +141,62 @@ async function findThirtyDayAnchor(previous: StrategySample[], latest: StrategyS
   const sample = await collectStrategyStockSampleAt(stockRpc, best.number, now);
   if (sample.blockHash !== best.hash || sample.timestamp !== best.time) throw new WorkerError('STRATEGY_ANCHOR_HEADER_MISMATCH');
   return sample;
+}
+
+
+/** APY lookbacks for the current and actual prior endpoint of each preset. */
+export function strategyApyAnchorTargets(samples: StrategySample[]) {
+  const latest = samples.at(-1);
+  if (!latest) return [];
+  const endpoints = [latest];
+  const latestTime = Date.parse(latest.timestamp);
+  for (const days of [1, 7, 30]) {
+    // Match the inclusive comparison windows; never select a future endpoint.
+    const end = latestTime - days * DAY_MS - 1, from = end - days * DAY_MS;
+    const endpoint = samples.findLast(sample => {
+      const time = Date.parse(sample.timestamp);
+      return time >= from && time <= end && end - time <= 36 * 3600_000;
+    });
+    if (endpoint) endpoints.push(endpoint);
+  }
+  return endpoints.flatMap(endpoint => ([30, 7] as const).flatMap(days => {
+    const endpointTime = Date.parse(endpoint.timestamp), targetTime = endpointTime - days * DAY_MS;
+    const covered = samples.some(sample => Date.parse(sample.timestamp) < endpointTime
+      && Math.abs(Date.parse(sample.timestamp) - targetTime) <= STRATEGY_ANCHOR_TOLERANCE_MS);
+    return covered ? [] : [{ key: endpoint.blockNumber + ':' + days, endpoint, days, targetTime }];
+  }));
+}
+
+/** Separate archive budgets keep missing APY lookbacks from starving live flows. */
+export async function collectStrategyApyAnchors(previous: FinanceStrategy, options: {
+  stockRpc?: Rpc; headerRpc?: Rpc; maxAnchors?: number; now?: () => Date;
+} = {}): Promise<{ strategy: FinanceStrategy; anchorIssueCode?: string }> {
+  const maxAnchors = options.maxAnchors ?? 4;
+  if (!Number.isInteger(maxAnchors) || maxAnchors < 1 || maxAnchors > 8) throw new WorkerError('STRATEGY_INVALID_ANCHOR_LIMIT');
+  let strategy = FinanceStrategySchema.parse(previous);
+  if (!strategyApyAnchorTargets(strategy.samples).length) return { strategy };
+  const now = options.now ?? (() => new Date());
+  const headerRpc = options.headerRpc ?? new FetchRpc(SENTIO_BSC_RPC,
+    { maxRequests: 80, maxSeconds: 60, timeoutSeconds: 5, maxResponseBytes: 1_000_000, minIntervalMs: 125 });
+  const stockRpc = options.stockRpc ?? new FetchRpc(BLAST,
+    { maxRequests: 72, maxSeconds: 60, timeoutSeconds: 5, maxResponseBytes: 1_000_000, minIntervalMs: 350 });
+  const skipped = new Set<string>();
+  let added = 0;
+  for (let attempt = 0; attempt < 16 && added < maxAnchors; attempt++) {
+    const target = strategyApyAnchorTargets(strategy.samples).find(item => !skipped.has(item.key));
+    if (!target) break;
+    try {
+      const latest = strategy.samples.at(-1)!;
+      const anchor = await findStrategyAnchor(strategy.samples, latest, target.targetTime, headerRpc, stockRpc, now);
+      if (!anchor) { skipped.add(target.key); continue; }
+      strategy = FinanceStrategySchema.parse({ ...strategy, samples: mergeStrategySamples(strategy.samples, [anchor, latest]) });
+      added++;
+    } catch {
+      // Retain every accepted anchor, current stock and completed flow range.
+      skipped.add(target.key);
+    }
+  }
+  return { strategy, ...(strategyApyAnchorTargets(strategy.samples).length ? { anchorIssueCode: 'APY_ANCHORS_PENDING' } : {}) };
 }
 
 export function projectStrategyFlowLog(value: unknown, block: bigint): Omit<StrategyFlow, 'timestamp'> {
@@ -376,7 +432,7 @@ export async function collectStrategyFlows(rpc: Rpc, stock: StrategySample, prev
     sourceUrls:[...new Set<NonNullable<FinanceStrategy['flowCoverage']>['sourceUrl']>([...(old?.sourceUrls??(old?[old.sourceUrl]:[])),sourceUrl,...(recoveredFromSecondary?[BLAST] as const:[])])], complete: true } };
 }
 
-export async function collectPublicStrategy(previous?: FinanceStrategy, rpcOverrides: { stockRpc?: Rpc; flowRpc?: Rpc; flowSourceUrl?: NonNullable<FinanceStrategy['flowCoverage']>['sourceUrl']; now?: () => Date } = {}): Promise<{ strategy: FinanceStrategy; flowIssueCode?: string }> {
+export async function collectPublicStrategy(previous?: FinanceStrategy, rpcOverrides: { stockRpc?: Rpc; flowRpc?: Rpc; flowSourceUrl?: NonNullable<FinanceStrategy['flowCoverage']>['sourceUrl']; anchorStockRpc?: Rpc; anchorHeaderRpc?: Rpc; maxApyAnchors?: number; now?: () => Date } = {}): Promise<{ strategy: FinanceStrategy; flowIssueCode?: string; anchorIssueCode?: string }> {
   const prior = FinanceStrategySchema.parse(previous ?? baseline());
   const now = rpcOverrides.now ?? (() => new Date());
   const stockRpc = rpcOverrides.stockRpc ?? new FetchRpc(BLAST, { maxRequests: 50, maxSeconds: 60, timeoutSeconds: 5, maxResponseBytes: 1_000_000, minIntervalMs: 350 });
@@ -389,15 +445,8 @@ export async function collectPublicStrategy(previous?: FinanceStrategy, rpcOverr
   const previousHead=prior.samples.reduce((latest,current)=>BigInt(current.blockNumber)>BigInt(latest.blockNumber)?current:latest,prior.samples[0]??sample);
   if(BigInt(sample.blockNumber)<BigInt(previousHead.blockNumber)||Date.parse(sample.timestamp)<Date.parse(previousHead.timestamp))throw new WorkerError('STRATEGY_HEAD_BEHIND');
   if(sample.blockNumber===previousHead.blockNumber&&sample.blockHash!==previousHead.blockHash)throw new WorkerError('STRATEGY_BLOCK_CHANGED');
-  let samples = mergeStrategySamples(prior.samples, [sample]);
-  try {
-    const anchor = await findThirtyDayAnchor(prior.samples, sample, flowRpc, stockRpc, now);
-    if (anchor) samples = mergeStrategySamples(prior.samples, [sample, anchor]);
-  } catch {
-    // A rolling anchor is optional: retain the current observation and let
-    // the independent flow collector continue if historical reads are down.
-  }
-  let strategy = FinanceStrategySchema.parse({ ...prior, samples });
+  let strategy = FinanceStrategySchema.parse({ ...prior, samples: mergeStrategySamples(prior.samples, [sample]) });
+  let flowIssueCode: string | undefined;
   try {
     // A provider interruption can leave more than one hourly range behind.
     // Reuse the same finite RPC/time budgets for at most two contiguous ranges.
@@ -408,9 +457,14 @@ export async function collectPublicStrategy(previous?: FinanceStrategy, rpcOverr
       if (!flow.flowCoverage || flow.flowCoverage.toBlock === before
         || BigInt(flow.flowCoverage.toBlock) >= BigInt(sample.blockNumber)) break;
     }
-    return { strategy };
   } catch (error) {
     // A later bounded range failure must retain an earlier validated range.
-    return { strategy, flowIssueCode: asCode(error) };
+    flowIssueCode = asCode(error);
   }
+  const anchors = await collectStrategyApyAnchors(strategy, {
+    stockRpc: rpcOverrides.anchorStockRpc ?? rpcOverrides.stockRpc,
+    headerRpc: rpcOverrides.anchorHeaderRpc ?? rpcOverrides.flowRpc,
+    maxAnchors: rpcOverrides.maxApyAnchors, now,
+  });
+  return { ...anchors, ...(flowIssueCode ? { flowIssueCode } : {}) };
 }

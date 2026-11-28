@@ -18,7 +18,7 @@ type HostedOptions = {
   limits?: ScanLimits;
   rpcFor?: (domain: Domain) => Rpc;
   runDomain?: typeof runOnce;
-  collectStrategy?: (previous?:FinanceStrategy)=>Promise<{strategy:FinanceStrategy;flowIssueCode?:string}>;
+  collectStrategy?: (previous?:FinanceStrategy)=>Promise<{strategy:FinanceStrategy;flowIssueCode?:string;anchorIssueCode?:string}>;
 };
 
 /** Job-local SQLite reuses the validated reducer; only fenced publications survive a job. */
@@ -47,11 +47,12 @@ export async function collectHosted(options: HostedOptions) {
           ? error.code : 'INDEXER_FAILED' });
       }
       if(domain==='finance'&&options.collectStrategy&&!local.getCheckpoint('finance').quarantined){
-        const strategyLease=local.acquireLease('finance','strategy',120000);
+        const strategyLease=local.acquireLease('finance','strategy',240000);
         if(strategyLease)try{
           const result=await options.collectStrategy(local.readSnapshot().finance.strategy);
           local.recordStrategy(strategyLease.token,result.strategy);
           if(result.flowIssueCode)reports.push({domain:'strategy',outcome:'failed',code:result.flowIssueCode});
+          if(result.anchorIssueCode)reports.push({domain:'strategy',outcome:'idle',code:result.anchorIssueCode});
         }catch(error){reports.push({domain:'strategy',outcome:'failed',code:error instanceof WorkerError||error instanceof StorageError?error.code:'STRATEGY_COLLECTION_FAILED'});}
         finally{local.releaseLease(strategyLease.token);}
       }

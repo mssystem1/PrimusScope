@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { getEventSelector, toFunctionSelector } from 'viem';
-import { FinanceStrategySchema } from '@primusscope/api-schema';
+import { FinanceStrategySchema, ObservationSetSchema } from '@primusscope/api-schema';
+import { buildFinanceComparison } from '@primusscope/data';
+import recorded from '../../../data/observations/current.json';
 import { WorkerError } from './registry';
 import baselineData from '../../../data/strategy/unitas-history.json';
 import type { Rpc } from './rpc';
-import { mergeStrategySamples, projectStrategyFlowLog, strategyFlowStart, collectPublicStrategy, collectStrategyStockSampleAt, collectStrategyFlows, reconcileStrategyFlowShares, mergeStrategyLogReads, reconcileStrategyLogReads } from './strategy';
+import { collectStrategyApyAnchors, strategyApyAnchorTargets, mergeStrategySamples, projectStrategyFlowLog, strategyFlowStart, collectPublicStrategy, collectStrategyStockSampleAt, collectStrategyFlows, reconcileStrategyFlowShares, mergeStrategyLogReads, reconcileStrategyLogReads } from './strategy';
 
 vi.mock('node:crypto', async importOriginal => {
   const actual = await importOriginal<typeof import('node:crypto')>();
@@ -286,11 +288,15 @@ describe('public strategy collector', () => {
       if (method === 'eth_getBlockByNumber') throw new Error('historical header unavailable');
       throw new Error(`unexpected method ${method}`);
     });
-    const result = await collectPublicStrategy(prior, { stockRpc: stock.rpc, flowRpc, now: () => new Date('2026-11-10T07:01:00.000Z') });
+    const anchorHeaderRpc = mockRpc(() => { throw new Error('historical header unavailable'); });
+    const result = await collectPublicStrategy(prior, { stockRpc: stock.rpc, flowRpc, anchorHeaderRpc,
+      now: () => new Date('2026-11-10T07:01:00.000Z') });
     expect(result.flowIssueCode).toBeUndefined();
+    expect(flowRpc.requestsMade).toBe(1);
+    expect(anchorHeaderRpc.requestsMade).toBeGreaterThan(0);
     expect(result.strategy.samples.at(-1)).toMatchObject({ blockNumber: currentBlock.toString(), timestamp: currentTime });
     expect(result.strategy.flowCoverage).toEqual(prior.flowCoverage);
-    expect(flowRpc.requestsMade).toBe(2);
+    expect(result.anchorIssueCode).toBe('APY_ANCHORS_PENDING');
   });
 
   it('adds a pinned rolling anchor while preserving existing and current samples', async () => {
@@ -320,7 +326,7 @@ describe('public strategy collector', () => {
       }
       throw new Error(`unexpected method ${method}`);
     });
-    const result = await collectPublicStrategy(prior, { stockRpc: stock.rpc, flowRpc, now: () => new Date('2026-11-10T07:01:00.000Z') });
+    const result = await collectPublicStrategy(prior, { stockRpc: stock.rpc, flowRpc, maxApyAnchors: 1, now: () => new Date('2026-11-10T07:01:00.000Z') });
     expect(result.flowIssueCode).toBeUndefined();
     expect(result.strategy.samples.some(item => item.timestamp === currentTime)).toBe(true);
     expect(result.strategy.samples.some(item => item.timestamp === prior.samples.at(-1)!.timestamp)).toBe(true);
@@ -329,6 +335,81 @@ describe('public strategy collector', () => {
     expect(Math.abs(Date.parse(anchor.timestamp) - targetTime)).toBeLessThanOrEqual(2 * 3600_000);
     expect(anchor.blockHash).toBe(selectedHeader?.hash);
     expect(flowRpc.requestsMade).toBeGreaterThan(3);
+  });
+
+  function sparseApyHistory() {
+    const now = () => new Date('2027-03-10T12:00:00.000Z');
+    const hour = 3600_000;
+    const latestBlock = 900_000_000n;
+    const template = baseline.samples.at(-1)!;
+    const headers = new Map<bigint, { number: bigint; hash: string; timestamp: string }>();
+    function headerAt(number: bigint) {
+      const existing = headers.get(number);
+      if (existing) return existing;
+      const found = { number, hash: `0x${number.toString(16).padStart(64, '0')}`,
+        timestamp: new Date(now().getTime() + Number(number - latestBlock) * 1000).toISOString() };
+      headers.set(number, found);
+      return found;
+    }
+    const samples = [-62 * 24, -30 * 24 - 8, -7 * 24 - 8, -24 - 8, -24 + 4, 0].map(hours => {
+      const found = headerAt(latestBlock + BigInt(hours * hour / 1000));
+      return { ...template, blockNumber: String(found.number), blockHash: found.hash,
+        timestamp: found.timestamp, observedAt: now().toISOString() };
+    });
+    const stock = historicalStockRpc(template.blockNumber, { extraHeaders: () => [...headers.values()] });
+    function archiveHeaders(failFirst = false) {
+      return mockRpc((method, params) => {
+        if (method !== 'eth_getBlockByNumber') throw new Error(`unexpected method ${method}`);
+        if (failFirst) { failFirst = false; throw new Error('historical header unavailable'); }
+        const found = headerAt(BigInt(params[0] as string));
+        return { number: params[0], hash: found.hash, parentHash: hash('b'),
+          timestamp: `0x${(Date.parse(found.timestamp) / 1000).toString(16)}` };
+      });
+    }
+    return { strategy: { ...baseline, samples }, stock, archiveHeaders, now };
+  }
+
+  it('fills the current and actual prior APY lookbacks for each comparison preset', async () => {
+    const { strategy, stock, archiveHeaders, now } = sparseApyHistory();
+    const future = strategy.samples.at(-2)!;
+    const priorDay = strategy.samples.at(-3)!;
+    const requested = strategyApyAnchorTargets(strategy.samples);
+    expect(requested.some(target => target.endpoint.blockNumber === priorDay.blockNumber)).toBe(true);
+    expect(requested.some(target => target.endpoint.blockNumber === future.blockNumber)).toBe(false);
+
+    const result = await collectStrategyApyAnchors(strategy, {
+      stockRpc: stock.rpc, headerRpc: archiveHeaders(), maxAnchors: 8, now,
+    });
+    expect(result.anchorIssueCode).toBeUndefined();
+    expect(result.strategy.samples.at(-1)).toEqual(strategy.samples.at(-1));
+    const snapshot = ObservationSetSchema.parse(recorded);
+    snapshot.finance.strategy = result.strategy;
+    for (const range of ['24h', '7d', '30d'] as const) {
+      const comparison = buildFinanceComparison(snapshot, { range }).strategyValue;
+      expect(comparison.status).toBe('available');
+      expect(Date.parse(comparison.previous.measuredAt!)).toBeLessThanOrEqual(Date.parse(comparison.previous.to!));
+      if (range === '24h') expect(comparison.previous.measuredAt).toBe(priorDay.timestamp);
+      for (const key of ['apy7d', 'apy30d']) {
+        expect(comparison.metrics.find(metric => metric.key === key)).toMatchObject({
+          current: expect.any(String), previous: expect.any(String), delta: expect.any(String),
+        });
+      }
+    }
+  });
+
+  it('retains the head and flow facts and adds at most four anchors after an archive failure', async () => {
+    const { strategy, stock, archiveHeaders, now } = sparseApyHistory();
+    const result = await collectStrategyApyAnchors(strategy, {
+      stockRpc: stock.rpc, headerRpc: archiveHeaders(true), now,
+    });
+    expect(result.anchorIssueCode).toBe('APY_ANCHORS_PENDING');
+    expect(result.strategy.samples).toHaveLength(strategy.samples.length + 4);
+    expect(strategyApyAnchorTargets(result.strategy.samples)).toContainEqual(
+      expect.objectContaining({ endpoint: strategy.samples.at(-1), days: 30 }),
+    );
+    expect(result.strategy.samples.at(-1)).toEqual(strategy.samples.at(-1));
+    expect(result.strategy.flows).toEqual(strategy.flows);
+    expect(result.strategy.flowCoverage).toEqual(strategy.flowCoverage);
   });
 
   it('rejects a secondary union above the event cap before receipt reads or coverage advances', async () => {

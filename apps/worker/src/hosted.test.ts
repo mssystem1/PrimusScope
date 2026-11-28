@@ -50,7 +50,10 @@ it('commits both domains once when using the Blob write budget',async()=>{
 
 it('retains strategy observations through the next domain commit and a fresh collector job',async()=>{
   const store=await fixture(),strategy=FinanceStrategySchema.parse(strategyJson);
-  await collectHosted({store,collector,rpcFor,runDomain:advance,collectStrategy:async()=>({strategy})});
+  const result = await collectHosted({store,collector,rpcFor,runDomain:advance,
+    collectStrategy:async()=>({strategy,anchorIssueCode:'APY_ANCHORS_PENDING'})});
+  expect(result.outcome).toBe('completed');
+  expect(result.reports).toContainEqual({domain:'strategy',outcome:'idle',code:'APY_ANCHORS_PENDING'});
   expect((await store.read())?.publication.snapshot.finance.strategy).toEqual(strategy);
   await collectHosted({store,collector,rpcFor,runDomain:advance});
   expect((await store.read())?.publication.snapshot.finance.strategy).toEqual(strategy);
