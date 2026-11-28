@@ -26,7 +26,7 @@ const QUARANTINE=new Set(['CHECKPOINT_HASH_CHANGED','CHECKPOINT_TIME_CHANGED','I
 function compare(a:string,b:string){return BigInt(a)<BigInt(b)?-1:BigInt(a)>BigInt(b)?1:0;}
 async function getHeader(rpc:Rpc,block:bigint):Promise<Header>{return header(await rpc.call('eth_getBlockByNumber',[quantity(block),false]),block);}
 
-async function verifyPins(rpc:Rpc,source:Source,block:bigint):Promise<void>{
+export async function verifyPins(rpc:Rpc,source:Source,block:bigint):Promise<void>{
   const checkedImplementation=new Set<string>();
   for(const pin of source.contracts){
     const proxy=await rpc.call('eth_getCode',[pin.address,quantity(block)]);
@@ -56,7 +56,7 @@ function distinctLogs(raw:unknown,source:Source,from:bigint,to:bigint,max:number
   return [...ids.values()].sort((a,b)=>compare(a.event.blockNumber,b.event.blockNumber)||compare(a.event.logIndex,b.event.logIndex)||a.event.id.localeCompare(b.event.id));
 }
 
-function reconcileReceipt(receipt:unknown,values:ParsedLog[]):void{
+export function reconcileReceipt(receipt:unknown,values:ParsedLog[]):void{
   if(!receipt||typeof receipt!=='object'||Array.isArray(receipt))throw new WorkerError('RECEIPT_MISMATCH');
   const raw=receipt as Record<string,unknown>;const first=values[0]!.event;
   if(hash(raw.transactionHash)!==first.transactionHash||hash(raw.blockHash)!==first.blockHash||String(hexQuantity(raw.blockNumber))!==first.blockNumber||hexQuantity(raw.status)!==1n||!Array.isArray(raw.logs))throw new WorkerError('RECEIPT_MISMATCH');

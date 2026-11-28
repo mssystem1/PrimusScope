@@ -93,3 +93,42 @@ net minted/burned shares to match block-pinned share-supply changes before
 advancing flow coverage. A successful RPC response alone does not establish
 complete event retrieval. Unexplained supply changes preserve the previous
 verified flow range rather than publishing a misleading zero.
+
+## Comparing periods
+
+Period shortcuts and the dashboard form use client navigation. An indeterminate
+loading bar appears while the request is pending, with the earlier dashboard
+retained until the new one is ready. Active shortcuts are highlighted; modified
+clicks keep normal browser behavior. A delayed-response browser test verifies
+this on desktop and mobile. `Last 30 days` compares with `Prior 30 days`, anchored
+to the displayed source cutoff. Custom UTC dates use the immediately preceding
+period of equal duration. All available history has no preceding equivalent.
+
+Shared strategy comparisons include deposits, withdrawals and signed net flow
+(inflow, outflow or balanced), plus total assets, shares, NAV per share and
+7D/30D APY. Stock comparisons use the latest verified observation inside each
+period, at most 36 hours before its end. Each actual measurement time is shown;
+these are endpoint observations, not a claim of continuous sampling. APY uses
+its own historical NAV anchor for each endpoint; missing anchors remain
+unavailable. APY differences are percentage points. CSV includes exact values,
+measurement timestamps, comparison basis and change units; NAV displays six
+decimals.
+
+## Restoring earlier Primus route activity
+
+The 17 November Blob recovery restarted route-event coverage at a verified
+finalized head. That date is not a contract deployment date. Retained research
+already contained earlier route activity. Separate public archive reads now
+verify the four registered aggregator proxies' first-code boundaries (U routes:
+24 August; USDT routes: 20 September 2026), their runtime and implementation
+pins, and their parent-block code absence.
+
+Historical recovery scans contiguous BSC log windows, recognizes only registered
+batch events, checks event headers and full transaction receipts, and fences the
+join with existing coverage. A constructor `Upgraded` event is accepted only at
+the independently checked first-code boundary with the pinned implementation;
+other upgrades stop the recovery. The reducer rejects gaps or disagreement in
+any overlapping event and preserves current IDs, source IDs, head checkpoints,
+Network observations, strategy samples and flows. Only the earlier Finance
+coverage boundary is extended. New archive events retain their registered RPC
+source; no Neon history is read or exported by this process.

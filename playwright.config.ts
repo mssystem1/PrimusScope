@@ -70,12 +70,12 @@ export default defineConfig({
     { name: "api", testMatch: hosted ? ["hosted-api.spec.ts","sdk-hosted.spec.ts"] : "api.spec.ts" },
     {
       name: "chromium",
-      testMatch: ["app.spec.ts", "activity.spec.ts", "dashboards.spec.ts", "hydration.spec.ts", "sdk-tools.spec.ts", "sdk-positive.spec.ts", "daily-use.spec.ts"],
+      testMatch: ["app.spec.ts", "activity.spec.ts", "dashboards.spec.ts", "analytics-navigation.spec.ts", "hydration.spec.ts", "sdk-tools.spec.ts", "sdk-positive.spec.ts", "daily-use.spec.ts"],
       use: chromium,
     },
     ...[360, 390].map((width) => ({
       name: `mobile-${width}`,
-      testMatch: ["mobile.spec.ts", "activity.spec.ts", "dashboards.spec.ts", "hydration.spec.ts", "sdk-tools.spec.ts", "sdk-positive.spec.ts", "daily-use.spec.ts"],
+      testMatch: ["mobile.spec.ts", "activity.spec.ts", "dashboards.spec.ts", "analytics-navigation.spec.ts", "hydration.spec.ts", "sdk-tools.spec.ts", "sdk-positive.spec.ts", "daily-use.spec.ts"],
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width, height: 844 },

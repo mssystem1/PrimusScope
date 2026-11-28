@@ -3,6 +3,7 @@ import type { ObservationSet } from '@primusscope/api-schema';
 import { AnalyticsChart, type ChartRow } from './analytics-chart';
 import { AnalyticsControls } from './analytics-controls';
 import {PeriodComparison} from './period-comparison';
+import {AnalyticsNavigation} from './analytics-navigation';
 import { analyticsQueryString, analyticsViewTitle } from '../lib/analytics-query';
 
 const C={u:'#ff9d73',usdt:'#a79cf4',green:'#53d9b5',blue:'#7bbcf9',red:'#f38b99',gold:'#edcd72'};
@@ -16,8 +17,12 @@ function Kpi({label,value,note}:{label:string;value:string;note:string}){return 
 function comparisonPeriods(action:string,options:AnalyticsOptions,preservedFields:[string,string][]=[]){
   return ([['24h','Compare 24 hours'],['7d','Compare 7 days'],['30d','Compare 30 days']] as const).map(([range,label])=>{
     const params=new URLSearchParams(preservedFields);params.set('range',range);params.set('interval',options.interval??'day');
-    return{label,href:action+'?'+params};
+    return{label,href:action+'?'+params,active:options.range===range};
   });
+}
+function comparisonLabels(options:AnalyticsOptions){
+  const duration=options.range==='24h'?'24 hours':options.range==='7d'?'7 days':options.range==='30d'?'30 days':null;
+  return duration?{current:'Last '+duration,previous:'Prior '+duration}:{current:'Chosen dates',previous:'Prior equal period'};
 }
 function Toolbar({action,options,scope,preservedFields=[]}:{action:string;options:AnalyticsOptions;scope:string;preservedFields?:[string,string][]}){
   const params=new URLSearchParams(analyticsQueryString(options));
@@ -38,7 +43,7 @@ export function FinanceAnalyticsDashboard({snapshot,options,action}:{snapshot:Ob
   const flowSource=strategy.flowCoverage?.complete?`Shared Unitas ERC-4626 Deposit/Withdraw asset amounts; covered ${strategy.flowCoverage.fromTime.slice(0,10)}–${strategy.flowCoverage.toTime.slice(0,10)} UTC. Sources: ${(strategy.flowCoverage.sourceUrls??[strategy.flowCoverage.sourceUrl]).map(url=>new URL(url).hostname).join(', ')}. No Primus attribution.`:'The public strategy flow scan is incomplete. Missing ranges are not plotted as zero.';
   const flowHistoryBehind=!!strategy.sourceAsOf&&!!strategy.flowCoverage
     &&Date.parse(strategy.sourceAsOf)>Date.parse(strategy.flowCoverage.toTime);
-  return <div className="analytics-dashboard" data-snapshot-id={snapshot.snapshotId}><Toolbar action={action} options={options} scope={options.routeId?options.routeId.includes('usdt')?'USDT / eUSDT analytics':'U / eU analytics':'U / eU + USDT / eUSDT analytics'}/>
+  return <AnalyticsNavigation><div className="analytics-dashboard" data-snapshot-id={snapshot.snapshotId}><Toolbar action={action} options={options} scope={options.routeId?options.routeId.includes('usdt')?'USDT / eUSDT analytics':'U / eU analytics':'U / eU + USDT / eUSDT analytics'}/>
     <div className="analytics-scope-note"><strong>Primus routes first. Shared strategy in context.</strong><p>U/eU and USDT/eUSDT reference the same underlying Unitas strategy. The financial charts below measure its public USDu assets and sUSDu shares once; encrypted Primus positions are not included in those totals.</p></div>
     {flowHistoryBehind&&<div className="notice" role="status"><p><strong>Flow history is behind vault measurements.</strong> Deposits, withdrawals and net flows are verified through {strategy.flowCoverage!.toTime.replace('T',' ').replace(/\.\d{3}Z$/,' UTC')}. Assets, shares and NAV are measured through {strategy.sourceAsOf!.replace('T',' ').replace(/\.\d{3}Z$/,' UTC')}. The remaining flow period is unavailable; earlier verified flows remain visible.</p></div>}
     <div className="analytics-coverage-grid">
@@ -46,7 +51,8 @@ export function FinanceAnalyticsDashboard({snapshot,options,action}:{snapshot:Ob
       <SelectionCoverage title="Deposits / withdrawals / net flows" complete={strategy.flowHistoryComplete} from={strategy.flowSelection?.hasCoverage?strategy.flowSelection.from:null} to={strategy.flowSelection?.hasCoverage?strategy.flowSelection.to:null} requestedFrom={strategy.requestedFrom} requestedTo={strategy.requestedTo} empty={!strategy.flows.length}/>
       <SelectionCoverage title="Primus route operations" complete={ops.historyComplete} from={ops.coveredFrom} to={ops.coveredTo} requestedFrom={ops.requestedFrom} requestedTo={ops.requestedTo} empty={!ops.hasCoverage}/>
     </div>
-    <PeriodComparison title="Shared strategy · period comparison" data={comparison.strategyFlows} snapshotId={snapshot.snapshotId} description="See whether deposits or withdrawals are accelerating. Net flow shows capital entering or leaving the shared pool." periodLinks={comparisonPeriods(action,options)} source="Public Unitas ERC-4626 flows · BSC · shared strategy, without Primus route attribution."/>
+    <PeriodComparison title="Shared strategy · period comparison" data={comparison.strategyFlows} snapshotId={snapshot.snapshotId} description="See whether deposits or withdrawals are accelerating. Net flow shows capital entering or leaving the shared pool." periodLabels={comparisonLabels(options)} periodLinks={comparisonPeriods(action,options)} source="Public Unitas ERC-4626 flows · BSC · shared strategy, without Primus route attribution."/>
+    <PeriodComparison title="Shared strategy · value & yield comparison" data={comparison.strategyValue} snapshotId={snapshot.snapshotId} description="Compare assets, share supply, value per share and yield at each period’s end. The measurement dates show exactly which observations were used." periodLabels={comparisonLabels(options)} periodLinks={comparisonPeriods(action,options)} source="Public Unitas sUSDu stock observations · shared strategy on BSC. NAV is value per underlying share; APY describes annualized NAV growth."/>
     {strategy.sampleGaps.length>0&&<div className="notice"><p><strong>Stock history has observation gaps.</strong> Missing dates remain gaps in the charts; new measurements do not fill earlier missing days.</p></div>}<div className="analytics-section-heading"><h2>Public strategy · assets, shares & yield</h2><a className="text-link" href={`https://bscscan.com/address/${strategy.vaultAddress}#code`} target="_blank" rel="noopener noreferrer">StakedUSDu source ↗</a></div>
     <div className="analytics-kpis financial-kpis"><Kpi label="Strategy TVL / NAV" value={latest?amount(latest.assets)+' USDu':'—'} note="totalAssets · unvested rewards excluded"/><Kpi label="Vault share supply" value={latest?amount(latest.shares)+' sUSDu':'—'} note="Underlying shares · distinct from eU/eUSDT"/><Kpi label="NAV per vault share" value={latest?amount(latest.nav,6):'—'} note="USDu per sUSDu · on-chain exchange price"/><Kpi label="APY · 7D" value={percent(latest?.apy7d??null)} note="Annualized NAV growth · actual elapsed time"/><Kpi label="APY · 30D" value={percent(latest?.apy30d??null)} note="Annualized NAV growth · excludes route incentives"/></div>
     <div className="analytics-grid">
@@ -57,7 +63,7 @@ export function FinanceAnalyticsDashboard({snapshot,options,action}:{snapshot:Ob
       <AnalyticsChart title="Net flows · underlying strategy" description="Public vault deposits minus withdrawals. Positive bars indicate net capital entering this shared pool." rows={strategy.flows} bucketCoverage={strategy.flowSelection?.bucketCoverage} series={[{key:'netFlows',label:'Net flow',color:C.u}]} type="bar" unit="USDu" precision={2} source={flowSource}/>
       <AnalyticsChart title="Deposits & withdrawals · underlying strategy" description="ERC-4626 asset amounts, with participants excluded from this dataset." rows={strategy.flows} bucketCoverage={strategy.flowSelection?.bucketCoverage} series={[{key:'deposits',label:'Deposits',color:C.u},{key:'withdrawals',label:'Withdrawals',color:C.usdt}]} type="bar" unit="USDu" precision={2} source={flowSource}/>
     </div>
-    <PeriodComparison title="Primus operations · period comparison" data={comparison.routeOperations} snapshotId={snapshot.snapshotId} description="Compare dispatches, finalizations and cancellations with the preceding period to spot changes in public batch activity." periodLinks={comparisonPeriods(action,options)} source={"Public registered BSC aggregator events · "+(options.routeId??'all registered Primus routes')+'.'}/>
+    <PeriodComparison title="Primus operations · period comparison" data={comparison.routeOperations} snapshotId={snapshot.snapshotId} description="Compare dispatches, finalizations and cancellations with the preceding period to spot changes in public batch activity." periodLabels={comparisonLabels(options)} periodLinks={comparisonPeriods(action,options)} source={"Public registered BSC aggregator events · "+(options.routeId??'all registered Primus routes')+'.'}/>
     <div className="analytics-section-heading"><h2>Primus route operations</h2><span className="muted">Public batch evidence · {ops.missingTimestampCount} events without sampled times</span></div>
     <div className="analytics-kpis"><Kpi label="Dispatch events" value={ops.hasCoverage?count(total(ops.series,'AggregateDispatched')):'—'} note="Selected calendar period"/><Kpi label="Finalization events" value={ops.hasCoverage?count(total(ops.series,'AggregateFinalized')):'—'} note="Batch finalization is separate from user claims"/><Kpi label="Dispatch → finalization · median" value={seconds(ops.dispatchToFinalized.p50Seconds)} note={`${ops.dispatchToFinalized.count} fully observed pairs; censored pairs excluded`}/><Kpi label="Dispatch → finalization · p90" value={seconds(ops.dispatchToFinalized.p90Seconds)} note="Observed public batch interval"/></div>
     <div className="analytics-grid">
@@ -66,17 +72,17 @@ export function FinanceAnalyticsDashboard({snapshot,options,action}:{snapshot:Ob
       <AnalyticsChart title="U/eU vs USDT/eUSDT · route activity" description="Deposit- and redeem-aggregator event counts. These are operational events, not token amounts." rows={(ops.hasCoverage?ops.routeActivity:[]).map(row=>({...row,label:row.routeId.includes('usdt')?'USDT / eUSDT':'U / eU'}))} series={[{key:'depositEventCount',label:'Deposit aggregator',color:C.u},{key:'redeemEventCount',label:'Redeem aggregator',color:C.usdt}]} type="bar" source={opsSource}/>
       <AnalyticsChart title="Latest observed batch lifecycle" description="Last recognized lifecycle event for each contract-scoped batch across the covered history." rows={ops.hasCoverage?lifecycle:[]} series={[{key:'value',label:'Batches',color:C.blue}]} type="bar" unit="batches" source="Observed events only. Dispatched without an observed later finalization is not an authoritative pending balance or queue state."/>
     </div>
-  </div>;
+  </div></AnalyticsNavigation>;
 }
 
 export function NetworkAnalyticsDashboard({snapshot,options,preservedFields=[]}:{snapshot:ObservationSet;options:AnalyticsOptions;preservedFields?:[string,string][]}){
   const data=buildNetworkAnalytics(snapshot,options),cohort=data.requestCohort,latency=data.firstReportLatency;
   const source=`Registered Primus Network task contract · Base · ${data.from.replace('T',' ').slice(0,16)}–${data.to.replace('T',' ').slice(0,16)} UTC. ${!data.hasCoverage?'No history in this selected period.':data.historyComplete?'Selected history is covered.':'Selected history is only partially covered.'}`;
   const hourCounts=data.hasCoverage?Array.from({length:24},(_,hour)=>({label:String(hour).padStart(2,'0')+':00',events:data.utcHourActivity.filter(row=>Number(row.hour.slice(11,13))===hour).reduce((sum,row)=>sum+row.eventCount,0)})):[];
-  return <div className="analytics-dashboard" data-snapshot-id={snapshot.snapshotId}><Toolbar action="/network" options={options} scope="zkTLS Network analytics" preservedFields={preservedFields}/>
+  return <AnalyticsNavigation><div className="analytics-dashboard" data-snapshot-id={snapshot.snapshotId}><Toolbar action="/network" options={options} scope="zkTLS Network analytics" preservedFields={preservedFields}/>
     <div className="analytics-scope-note"><strong>Traffic, response coverage and observed latency.</strong><p>Request cohorts and attestor reports are measured separately. A report is not a native SUCCESS state or a cryptographic proof check. Time series use block timestamps; {data.missingTimestampCount} untimed events are excluded.</p></div>
     <div className="analytics-coverage-grid"><SelectionCoverage title="Network event history" complete={data.historyComplete} from={data.coveredFrom} to={data.coveredTo} requestedFrom={data.requestedFrom} requestedTo={data.requestedTo} empty={!data.hasCoverage}/></div>
-    <PeriodComparison title="Network activity · period comparison" data={buildNetworkComparison(snapshot,options)} snapshotId={snapshot.snapshotId} description="Compare requests and attestor reports with the preceding period to see how network activity is changing." periodLinks={comparisonPeriods('/network',options,preservedFields)} source="Registered Primus Network task contract · Base · requests and individual attestor reports are separate event measures."/>
+    <PeriodComparison title="Network activity · period comparison" data={buildNetworkComparison(snapshot,options)} snapshotId={snapshot.snapshotId} description="Compare requests and attestor reports with the preceding period to see how network activity is changing." periodLabels={comparisonLabels(options)} periodLinks={comparisonPeriods('/network',options,preservedFields)} source="Registered Primus Network task contract · Base · requests and individual attestor reports are separate event measures."/>
     <div className="analytics-kpis"><Kpi label="Requests in selected period" value={data.hasCoverage?count(total(data.series,'SubmitTask')):'—'} note="Canonical SubmitTask events"/><Kpi label="Attestor reports" value={data.hasCoverage?count(total(data.series,'ReportResult')):'—'} note="Per-attestor ReportResult events"/><Kpi label="Requests with a later report" value={cohort.reportObservedRate===null?'—':percent(cohort.reportObservedRate*100)} note={`${cohort.requestsWithSubsequentReport} of ${cohort.requestCount} observed request-cohort tasks`}/><Kpi label="First report · median / p90" value={seconds(latency.p50Seconds)+' / '+seconds(latency.p90Seconds)} note={`${latency.count} matched request/report pairs`}/></div>
     <div className="analytics-grid">
       <AnalyticsChart title="Requests & reports over time" description="UTC traffic separates request creation from individual attestor responses." rows={rows(data.series)} bucketCoverage={data.bucketCoverage} series={[{key:'SubmitTask',label:'Requests',color:C.u},{key:'ReportResult',label:'Attestor reports',color:C.usdt}]} type="bar" source={source}/>
@@ -87,5 +93,5 @@ export function NetworkAnalyticsDashboard({snapshot,options,preservedFields=[]}:
       <AnalyticsChart title="Withdrawals & callback failures" description="Protocol withdrawal and callback-failure events in the selected time window." rows={rows(data.series)} bucketCoverage={data.bucketCoverage} series={[{key:'WithdrawBalance',label:'Withdrawals',color:C.gold},{key:'CallbackFailed',label:'Callback failures',color:C.red}]} type="bar" source={source}/>
       <AnalyticsChart title="Activity by UTC hour" description="Time-of-day activity aggregated across the selected days." rows={hourCounts} series={[{key:'events',label:'Network events',color:C.green}]} type="bar" source={source}/>
     </div>
-  </div>;
+  </div></AnalyticsNavigation>;
 }

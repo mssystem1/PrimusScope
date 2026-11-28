@@ -42,6 +42,7 @@ export const CoverageSchema = z.object({
   completeForRegisteredContracts: z.boolean(),
   finality: z.literal("provider_reported_finalized"),
   sourceId: IdentifierSchema,
+  additionalSourceIds: z.array(IdentifierSchema).min(1).max(99).optional(),
 }).strict().superRefine((coverage, ctx) => {
   const low = decimal(coverage.fromBlock);
   const high = decimal(coverage.toBlock);
@@ -56,6 +57,10 @@ export const CoverageSchema = z.object({
   const addresses = coverage.contractAddresses.map((value) => value.toLowerCase());
   if (new Set(addresses).size !== addresses.length) {
     issue(ctx, "Coverage contains duplicate contracts.", ["contractAddresses"]);
+  }
+  if (coverage.additionalSourceIds && (coverage.chainId !== 56
+    || new Set([coverage.sourceId, ...coverage.additionalSourceIds]).size !== coverage.additionalSourceIds.length + 1)) {
+    issue(ctx, "Additional coverage sources must be distinct BSC Finance sources.", ["additionalSourceIds"]);
   }
 });
 export type Coverage = z.infer<typeof CoverageSchema>;
@@ -218,6 +223,7 @@ export type NetworkObservation = z.infer<typeof NetworkObservationSchema>;
 
 function validateEvents(events: SharedEvent[], coverage: Coverage, ctx: IssueContext, path: string[]) {
   const addresses = new Set(coverage.contractAddresses.map((value) => value.toLowerCase()));
+  const sources = new Set([coverage.sourceId, ...(coverage.additionalSourceIds ?? [])]);
   const ids = new Set<string>();
   const identities = new Set<string>();
   const blockHashes = new Map<string, string>();
@@ -234,8 +240,8 @@ function validateEvents(events: SharedEvent[], coverage: Coverage, ctx: IssueCon
     if (block !== null && low !== null && high !== null && (block < low || block > high)) {
       issue(ctx, "Event block is outside the covered range.", [...base, "blockNumber"]);
     }
-    if (event.sourceId !== coverage.sourceId) {
-      issue(ctx, "Event provenance differs from its coverage source.", [...base, "sourceId"]);
+    if (!sources.has(event.sourceId)) {
+      issue(ctx, "Event provenance is outside its coverage sources.", [...base, "sourceId"]);
     }
     const identity = [event.contractAddress.toLowerCase(), event.transactionHash.toLowerCase(), event.logIndex].join(":");
     if (ids.has(event.id) || identities.has(identity)) {
@@ -284,6 +290,9 @@ export const ObservationSetSchema = z.object({
     const coverage = observation.coverage;
     if (coverage.chainId !== observation.chainId) issue(ctx, "Coverage chain does not match its domain.", [domain, "coverage", "chainId"]);
     if (sourceById.get(coverage.sourceId)?.kind !== "rpc") issue(ctx, "Coverage must reference its registered RPC source.", [domain, "coverage", "sourceId"]);
+    if (coverage.additionalSourceIds?.some(id => sourceById.get(id)?.kind !== "rpc")) {
+      issue(ctx, "Additional coverage sources must reference registered RPC sources.", [domain, "coverage", "additionalSourceIds"]);
+    }
     const observedAt = timestamp(coverage.observedAt);
     const generatedAt = timestamp(snapshot.generatedAt);
     if (observedAt !== null && generatedAt !== null && observedAt > generatedAt) issue(ctx, "Snapshot generation predates observation.", ["generatedAt"]);

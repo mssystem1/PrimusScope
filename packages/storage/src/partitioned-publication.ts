@@ -34,7 +34,7 @@ export const PartitionReferencesSchema = z.strictObject({
 // needed to reconstruct the compact rows without consulting a mutable root.
 const FinanceRow = z.tuple([
   IdentifierSchema.nullable(), AddressSchema, DecimalStringSchema, HashSchema, HashSchema,
-  DecimalStringSchema, IsoTimestampSchema.nullable(), FinanceEventKindSchema, DecimalStringSchema,
+  DecimalStringSchema, IsoTimestampSchema.nullable(), FinanceEventKindSchema, DecimalStringSchema, IdentifierSchema.optional(),
 ]);
 const NetworkRow = z.tuple([
   IdentifierSchema.nullable(), DecimalStringSchema, HashSchema, HashSchema, DecimalStringSchema,

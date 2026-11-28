@@ -1,6 +1,6 @@
-import type { FinanceEvent, NetworkEvent, ObservationSet } from '@primusscope/api-schema';
+import type { FinanceEvent, FinanceStrategy, NetworkEvent, ObservationSet } from '@primusscope/api-schema';
 import { buildFinanceAnalytics, buildNetworkAnalytics, type AnalyticsOptions } from './analytics';
-import { buildStrategyAnalytics, combinedStrategy, decimalUnits } from './strategy-analytics';
+import { buildStrategyAnalytics, combinedStrategy, decimalUnits, MAX_STOCK_SAMPLE_GAP_MS, strategyApy } from './strategy-analytics';
 
 export type ComparisonUnavailableReason = 'NO_FIXED_PERIOD' | 'INCOMPLETE_COVERAGE' | 'MISSING_TIMESTAMPS';
 export type ComparisonMetric = {
@@ -10,6 +10,7 @@ export type ComparisonMetric = {
   current: string | null;
   previous: string | null;
   delta: string | null;
+  deltaUnit?: 'pp';
   percentChange: number | null;
 };
 export type ComparisonWindow = {
@@ -17,11 +18,13 @@ export type ComparisonWindow = {
   to: string | null;
   coveredFrom: string | null;
   coveredTo: string | null;
+  measuredAt?: string | null;
   complete: boolean;
 };
 export type ComparisonGroup = {
   status: 'available' | 'unavailable';
   reason: ComparisonUnavailableReason | null;
+  basis?: 'end_observations';
   current: ComparisonWindow;
   previous: ComparisonWindow;
   metrics: ComparisonMetric[];
@@ -99,6 +102,50 @@ function sumFlows(strategy: ReturnType<typeof combinedStrategy>, from: string | 
     .reduce((total, flow) => total + BigInt(flow.assetsRaw), 0n);
 }
 
+function stockAtPeriodEnd(samples: FinanceStrategy['samples'], bounds: ComparisonWindow) {
+  const from = ms(bounds.from), to = ms(bounds.to);
+  const index = from === null || to === null ? -1 : samples.findLastIndex(sample => {
+    const time = Date.parse(sample.timestamp);
+    return time >= from && time <= to && to - time <= MAX_STOCK_SAMPLE_GAP_MS;
+  });
+  const sample = samples[index];
+  const measuredAt = sample?.timestamp ?? null;
+  return {
+    sample,
+    index,
+    window: { ...bounds, coveredFrom: measuredAt, coveredTo: measuredAt, measuredAt, complete: !!sample },
+  };
+}
+
+function compareStrategyStock(samples: FinanceStrategy['samples'], from: string, to: string, fixed: boolean): ComparisonGroup {
+  const bounds = windows(from, to, null, to, false, false, fixed);
+  const current = stockAtPeriodEnd(samples, bounds.current);
+  const previous = stockAtPeriodEnd(samples, bounds.previous);
+  const stock = [
+    ['assets', 'Total assets (TVL)', 'USDu', 'totalAssetsRaw'],
+    ['shares', 'Share supply', 'sUSDu', 'totalSupplyRaw'],
+    ['nav', 'NAV per share', 'USDu / sUSDu', 'exchangeRateRaw'],
+  ] as const;
+  const metrics = stock.map(([key, label, unit, field]) => metric(key, label, unit,
+    current.sample ? BigInt(current.sample[field]) : null, previous.sample ? BigInt(previous.sample[field]) : null,
+    current.window.complete, previous.window.complete, value => decimalUnits(String(value))));
+
+  const apyDecimals = 6;
+  function scaledApy(index: number, days: number) {
+    const value = index < 0 ? null : strategyApy(samples, index, days);
+    if (value === null) return null;
+    const scaled = Math.round(value * 10 ** apyDecimals);
+    return Number.isFinite(scaled) ? BigInt(scaled) : null;
+  }
+  for (const days of [7, 30]) {
+    const rate = metric('apy' + days + 'd', days + 'D APY', '%',
+      scaledApy(current.index, days), scaledApy(previous.index, days),
+      current.window.complete, previous.window.complete, value => decimalUnits(String(value), apyDecimals));
+    metrics.push({ ...rate, deltaUnit: 'pp', percentChange: null });
+  }
+  return { ...group(current.window, previous.window, metrics, fixed, true, false), basis: 'end_observations' };
+}
+
 export function buildNetworkComparison(snapshot: ObservationSet, options: AnalyticsOptions = {}) {
   const analytics = buildNetworkAnalytics(snapshot, options);
   const coverage = snapshot.network.coverage;
@@ -161,5 +208,6 @@ export function buildFinanceComparison(snapshot: ObservationSet, options: Analyt
   ];
   const strategyFlows = group(flowPair.current, flowPair.previous, flowMetrics, fixed,
     flowCoverage?.complete ?? false, strategyHasMissing);
-  return { routeOperations, strategyFlows };
+  const strategyValue = compareStrategyStock(strategy.samples, strategyAnalytics.requestedFrom, strategyAnalytics.requestedTo, fixed);
+  return { routeOperations, strategyFlows, strategyValue };
 }

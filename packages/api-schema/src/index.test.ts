@@ -102,6 +102,23 @@ describe("observation snapshot boundary", () => {
     expect(result).toEqual(input);
   });
 
+  it("accepts only explicitly listed registered RPC sources for additional Finance provenance", () => {
+    const input = fixture();
+    const archive = { id: "bsc-archive", label: "BSC archive", kind: "rpc", url: "https://bsc.rpc.sentio.xyz" } as const;
+    input.finance.events[0]!.sourceId = archive.id;
+    expect(ObservationSetSchema.safeParse(input).success).toBe(false);
+    input.finance.coverage.additionalSourceIds = [archive.id];
+    expect(ObservationSetSchema.safeParse(input).success).toBe(false);
+    input.sources.push({ ...archive, kind: "official_docs" });
+    expect(ObservationSetSchema.safeParse(input).success).toBe(false);
+    input.sources[input.sources.length - 1] = archive;
+    expect(ObservationSetSchema.parse(input)).toEqual(input);
+    input.network.events[0]!.sourceId = archive.id;
+    expect(ObservationSetSchema.safeParse(input).success).toBe(false);
+    input.network.coverage.additionalSourceIds = [archive.id];
+    expect(ObservationSetSchema.safeParse(input).success).toBe(false);
+  });
+
   it("rejects private or unexpected fields at every object layer", () => {
     const input = fixture();
     expect(ObservationSetSchema.safeParse({ ...input, decryptedBalance: "123" }).success).toBe(false);

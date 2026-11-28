@@ -4,7 +4,7 @@ import { FinanceStrategySchema, ObservationSetSchema } from '@primusscope/api-sc
 import { describe, expect, it } from 'vitest';
 import recorded from '../../../data/observations/current.json';
 import strategyBaseline from '../../../data/strategy/unitas-history.json';
-import { compactPublication } from './compact-publication';
+import { compactPublication, expandPublication } from './compact-publication';
 import {
   decodePartition, MAX_PARTITION_BYTES, PARTITION_ROWS, PartitionReferencesSchema,
   planPartitionedPublication, restorePartitionedPublication, type PartitionData, type PartitionKind,
@@ -67,6 +67,26 @@ describe('partitioned publication codec', () => {
     expect(plan.references.strategyFlows).toHaveLength(2);
     expect(plan.tail).toEqual(expectedTail);
     expect(restorePartitionedPublication(plan.tail, plan.references, decodePlan(plan))).toEqual(seed);
+  });
+
+  it('retains heterogeneous Finance provenance in legacy rows, archived chunks and the tail', () => {
+    const seed = publication();
+    const source = { id: 'bsc-archive', label: 'BSC archive', kind: 'rpc', url: 'https://bsc.rpc.sentio.xyz' } as const;
+    seed.snapshot.sources.push(source);
+    seed.snapshot.finance.coverage.additionalSourceIds = [source.id];
+    seed.snapshot.finance.events[0]!.sourceId = source.id;
+    seed.snapshot.finance.events[PARTITION_ROWS]!.sourceId = source.id;
+
+    const compact = compactPublication(seed);
+    expect(compact.snapshot.finance.events[0]).toHaveLength(10);
+    expect(compact.snapshot.finance.events[1]).toHaveLength(9);
+    expect(validatePublication(expandPublication(compact), MAX_BLOB_PUBLICATION_BYTES)).toEqual(seed);
+    const plan = planPartitionedPublication(seed), parts = decodePlan(plan);
+    expect(restorePartitionedPublication(plan.tail, plan.references, parts)).toEqual(seed);
+
+    const invalid = compactPublication(seed);
+    invalid.snapshot.finance.events[0]![9] = 'unregistered-source';
+    expect(() => validatePublication(expandPublication(invalid), MAX_BLOB_PUBLICATION_BYTES)).toThrowError(expect.objectContaining({ code: 'INVALID_PUBLICATION' }));
   });
 
   it('replaces the affected reference for a correction without changing a later chunk', () => {

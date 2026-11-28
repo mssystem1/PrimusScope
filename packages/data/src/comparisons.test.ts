@@ -92,6 +92,8 @@ describe('coverage-aware period comparisons', () => {
     const result = buildFinanceComparison(source);
     expect(result.routeOperations.reason).toBe('NO_FIXED_PERIOD');
     expect(result.strategyFlows.reason).toBe('NO_FIXED_PERIOD');
+    expect(result.strategyValue).toMatchObject({ status: 'unavailable', reason: 'NO_FIXED_PERIOD' });
+    expect(result.strategyValue.metrics.every(item => item.current === null && item.previous === null && item.delta === null)).toBe(true);
   });
 
   it('compares shared strategy flows with exact large raw amounts and honors incoming flow coverage', () => {
@@ -120,5 +122,78 @@ describe('coverage-aware period comparisons', () => {
     const unavailable = buildFinanceComparison(incomplete, options).strategyFlows;
     expect(unavailable.status).toBe('unavailable');
     expect(unavailable.metrics.every(item => item.current === null && item.previous === null && item.delta === null)).toBe(true);
+  });
+});
+
+describe('shared strategy period-end observations', () => {
+  const options = { range: 'custom' as const, from: '2027-01-15', to: '2027-01-20' };
+  const currentAssets = '9007199254740993123456789';
+  const previousAssets = '8007199254740993123456788';
+  const currentShares = '3007199254740993123456791';
+  const previousShares = '3007199254740993123456789';
+
+  function stockHistory() {
+    const snapshot = structuredClone(source);
+    const strategy = FinanceStrategySchema.parse(retainedStrategy);
+    const template = strategy.samples.at(-1)!;
+    snapshot.finance.strategy = {
+      ...strategy,
+      samples: [
+        ['2026-12-15', '1000000000000000000', previousAssets, previousShares],
+        ['2026-12-21', '1010000000000000000', previousAssets, previousShares],
+        ['2027-01-07', '1010000000000000000', previousAssets, previousShares],
+        ['2027-01-13', '1030000000000000000', previousAssets, previousShares],
+        ['2027-01-14', '1020000000000000000', previousAssets, previousShares],
+        ['2027-01-20', '1045000000000000000', currentAssets, currentShares],
+        ['2027-01-21', '4000000000000000000', currentAssets, currentShares],
+      ].map(([date, exchangeRateRaw, totalAssetsRaw, totalSupplyRaw], index) => ({
+        ...template, blockNumber: String(BigInt(template.blockNumber) + BigInt(index + 1)),
+        timestamp: date + 'T12:00:00.000Z', exchangeRateRaw: exchangeRateRaw!,
+        totalAssetsRaw: totalAssetsRaw!, totalSupplyRaw: totalSupplyRaw!,
+      })),
+    };
+    return snapshot;
+  }
+
+  it('compares exact stock values and independently anchored APY at each period end', () => {
+    const result = buildFinanceComparison(stockHistory(), options).strategyValue;
+    const metrics = Object.fromEntries(result.metrics.map(item => [item.key, item]));
+    expect(result).toMatchObject({
+      status: 'available', basis: 'end_observations',
+      current: { to: '2027-01-20T23:59:59.999Z', measuredAt: '2027-01-20T12:00:00.000Z' },
+      previous: { to: '2027-01-14T23:59:59.999Z', measuredAt: '2027-01-14T12:00:00.000Z' },
+    });
+    expect(metrics.assets).toMatchObject({
+      current: decimalUnits(currentAssets), previous: decimalUnits(previousAssets),
+      delta: decimalUnits(String(BigInt(currentAssets) - BigInt(previousAssets))),
+    });
+    expect(metrics.shares).toMatchObject({
+      current: decimalUnits(currentShares), previous: decimalUnits(previousShares), delta: '0.000000000000000002',
+    });
+    expect(metrics.nav).toMatchObject({ current: '1.045', previous: '1.02', delta: '0.025' });
+    const expected = (endingRate: number, anchor: number, days: number) => (Math.pow(endingRate / anchor, 365 / days) - 1) * 100;
+    for (const [days, currentAnchor, previousAnchor] of [[7, 1.03, 1.01], [30, 1.01, 1]] as const) {
+      const rate = metrics['apy' + days + 'd']!;
+      expect(rate).toMatchObject({ unit: '%', deltaUnit: 'pp', percentChange: null });
+      const current = expected(1.045, currentAnchor, days), previous = expected(1.02, previousAnchor, days);
+      expect(Number(rate.current)).toBeCloseTo(current, 5);
+      expect(Number(rate.previous)).toBeCloseTo(previous, 5);
+      expect(Number(rate.delta)).toBeCloseTo(current - previous, 5);
+    }
+  });
+
+  it('leaves an APY missing independently and rejects stale or future endpoint samples', () => {
+    const snapshot = stockHistory();
+    const samples = snapshot.finance.strategy!.samples;
+    snapshot.finance.strategy!.samples = samples.filter(sample => !sample.timestamp.startsWith('2026-12-15'));
+    const partial = buildFinanceComparison(snapshot, options).strategyValue;
+    expect(partial.status).toBe('available');
+    expect(partial.metrics.find(item => item.key === 'apy30d')).toMatchObject({ previous: null, delta: null });
+    expect(partial.metrics.find(item => item.key === 'apy30d')!.current).not.toBeNull();
+
+    samples.find(sample => sample.timestamp.startsWith('2027-01-20'))!.timestamp = '2027-01-18T00:00:00.000Z';
+    const stale = buildFinanceComparison(snapshot, options).strategyValue;
+    expect(stale).toMatchObject({ status: 'unavailable', reason: 'INCOMPLETE_COVERAGE', current: { measuredAt: null }, previous: { complete: true } });
+    expect(stale.metrics.every(item => item.current === null && item.delta === null)).toBe(true);
   });
 });

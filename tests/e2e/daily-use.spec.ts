@@ -51,6 +51,26 @@ test('all-history comparisons offer usable periods and show visual flows without
  expect(link.searchParams.get('eventKind')).toBe('SubmitTask');expect(link.searchParams.get('interval')).toBe('hour');
 });
 
+test('value and yield comparisons show dated observations and export percentage-point APY changes',async({page,request})=>{
+ const query='?range=custom&from=2026-11-01&to=2026-11-07&interval=day';
+ await page.goto('/finance'+query);
+ const panel=page.getByRole('region',{name:'Shared strategy · value & yield comparison',exact:true});
+ await expect(panel).toHaveAttribute('data-comparison-status','available');
+ await expect(panel.locator('.comparison-metric')).toHaveCount(5);await expect(panel.locator('.comparison-bars')).toHaveCount(5);
+ await expect(panel).toContainText('endpoint measured');await expect(panel).toContainText('Measured:');
+ const body=await(await request.get('/api/v1/finance/analytics'+query)).json(),comparison=body.comparison.strategyValue;
+ const[download]=await Promise.all([page.waitForEvent('download'),panel.getByRole('button',{name:'Export comparison CSV for Shared strategy · value & yield comparison',exact:true}).click()]);
+ const[header,...rows]=parseCsv(await readFile((await download.path())!,'utf8'));const column=(name:string)=>header.indexOf(name);
+ expect(rows).toHaveLength(5);for(const[index,row]of rows.entries()){
+  const metric=comparison.metrics[index];expect(row[column('current')]).toBe(metric.current);expect(row[column('absolute_change')]).toBe(metric.delta);
+  expect(row[column('current_measured_at_utc')]).toBe(comparison.current.measuredAt);expect(row[column('previous_measured_at_utc')]).toBe(comparison.previous.measuredAt);
+  expect(row[column('comparison_basis')]).toBe('end_observations');
+  if(metric.key.startsWith('apy')){expect(row[column('delta_unit')]).toBe('pp');expect(row[column('percent_change')]).toBe('');}
+ }
+ const scan=await new AxeBuilder({page}).include('.period-comparison').withTags(['wcag2a','wcag2aa','wcag21aa','wcag22aa']).analyze();expect(scan.violations.map(v=>v.id)).toEqual([]);
+ const size=await page.evaluate(()=>({width:document.documentElement.clientWidth,content:document.documentElement.scrollWidth}));expect(size.content).toBeLessThanOrEqual(size.width+1);
+});
+
 test('saved-object changes persist until reviewed, handle failed checks and clear with the watchlist',async({page,request},testInfo)=>{
  const href=knownTaskPath,id=`task:8453:${knownTask.contractAddress}:${knownTask.taskId}`,item={id,title:'Tracked public task',href,domain:'network',savedAt:new Date().toISOString()};
  const result=await(await request.post('/api/v1/workspace/check',{data:{items:[{id,href}]}})).json();const prior={...result.items[0],state:'Earlier observed sample',contentHash:'0'.repeat(64)};

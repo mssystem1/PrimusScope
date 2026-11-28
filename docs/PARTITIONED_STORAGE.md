@@ -81,3 +81,17 @@ After migration, roll back only to a version that reads and preserves v2. A
 format downgrade, if ever necessary, must serialize the latest validated data
 under the same lease/revision/ETag rules, rather than restoring an old root and
 discarding later observations.
+
+## Historical Finance provenance
+
+Finance coverage can explicitly register additional RPC source IDs. Readers
+validate every event against that allowlist and the public source registry;
+Network retains its single-source policy. Compact Finance rows keep their
+original nine columns when the source matches the coverage source, and append
+an optional tenth source-ID column for an alternate registered RPC. Sealed
+Finance partitions use the same optional column, so both archive and tail
+round-trip the original IDs and provenance.
+
+Deploy these compatible readers to both web and collector before publishing a
+historical range with an additional source. Once that history is present, a
+rollback must retain this optional-column support as well as the v2 format.
