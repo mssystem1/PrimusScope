@@ -42,9 +42,9 @@ export function AnalyticsNavigation({ children }: { children: ReactNode }) {
   </NavigationContext.Provider>;
 }
 
-export function AnalyticsPeriodLink({ href, label, active }: { href: string; label: string; active: boolean }) {
+export function AnalyticsPeriodLink({ href, label, active, compact = false }: { href: string; label: string; active: boolean; compact?: boolean }) {
   const { pending, navigate } = useAnalyticsNavigation();
   return <Link className="button button-secondary button-small" href={href} prefetch={false}
-    aria-current={active ? 'page' : undefined} aria-disabled={pending || undefined}
-    onNavigate={event => { event.preventDefault(); if (!active) navigate(href, label.replace(/^Compare /, '')); }}>{active&&<Check size={14} aria-hidden="true"/>}{label}</Link>;
+    aria-label={label} aria-current={active ? 'page' : undefined} aria-disabled={pending || undefined}
+    onNavigate={event => { event.preventDefault(); if (!active) navigate(href, label.replace(/^Compare /, '')); }}>{active&&<Check size={14} aria-hidden="true"/>}{compact ? label.replace(/^Compare /, '').replace(' hours', 'h').replace(' days', 'd') : label}</Link>;
 }

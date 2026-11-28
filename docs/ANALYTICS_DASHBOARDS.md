@@ -132,3 +132,9 @@ any overlapping event and preserves current IDs, source IDs, head checkpoints,
 Network observations, strategy samples and flows. Only the earlier Finance
 coverage boundary is extended. New archive events retain their registered RPC
 source; no Neon history is read or exported by this process.
+
+The Finance shared strategy comparison is presented as one compact panel with
+one period selector, date legend and export. Eight visual rows are grouped into
+Capital flows, Pool value and Yield. Mobile rows keep both period values and
+their change together. The single CSV includes a `metric_group` column while
+preserving each group's coverage, comparison basis and measurement timestamps.

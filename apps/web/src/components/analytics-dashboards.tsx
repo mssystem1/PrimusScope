@@ -3,6 +3,7 @@ import type { ObservationSet } from '@primusscope/api-schema';
 import { AnalyticsChart, type ChartRow } from './analytics-chart';
 import { AnalyticsControls } from './analytics-controls';
 import {PeriodComparison} from './period-comparison';
+import {StrategyComparison} from './strategy-comparison';
 import {AnalyticsNavigation} from './analytics-navigation';
 import { analyticsQueryString, analyticsViewTitle } from '../lib/analytics-query';
 
@@ -51,8 +52,7 @@ export function FinanceAnalyticsDashboard({snapshot,options,action}:{snapshot:Ob
       <SelectionCoverage title="Deposits / withdrawals / net flows" complete={strategy.flowHistoryComplete} from={strategy.flowSelection?.hasCoverage?strategy.flowSelection.from:null} to={strategy.flowSelection?.hasCoverage?strategy.flowSelection.to:null} requestedFrom={strategy.requestedFrom} requestedTo={strategy.requestedTo} empty={!strategy.flows.length}/>
       <SelectionCoverage title="Primus route operations" complete={ops.historyComplete} from={ops.coveredFrom} to={ops.coveredTo} requestedFrom={ops.requestedFrom} requestedTo={ops.requestedTo} empty={!ops.hasCoverage}/>
     </div>
-    <PeriodComparison title="Shared strategy · period comparison" data={comparison.strategyFlows} snapshotId={snapshot.snapshotId} description="See whether deposits or withdrawals are accelerating. Net flow shows capital entering or leaving the shared pool." periodLabels={comparisonLabels(options)} periodLinks={comparisonPeriods(action,options)} source="Public Unitas ERC-4626 flows · BSC · shared strategy, without Primus route attribution."/>
-    <PeriodComparison title="Shared strategy · value & yield comparison" data={comparison.strategyValue} snapshotId={snapshot.snapshotId} description="Compare assets, share supply, value per share and yield at each period’s end. The measurement dates show exactly which observations were used." periodLabels={comparisonLabels(options)} periodLinks={comparisonPeriods(action,options)} source="Public Unitas sUSDu stock observations · shared strategy on BSC. NAV is value per underlying share; APY describes annualized NAV growth."/>
+    <StrategyComparison flows={comparison.strategyFlows} stock={comparison.strategyValue} snapshotId={snapshot.snapshotId} periodLabels={comparisonLabels(options)} periodLinks={comparisonPeriods(action,options)}/>
     {strategy.sampleGaps.length>0&&<div className="notice"><p><strong>Stock history has observation gaps.</strong> Missing dates remain gaps in the charts; new measurements do not fill earlier missing days.</p></div>}<div className="analytics-section-heading"><h2>Public strategy · assets, shares & yield</h2><a className="text-link" href={`https://bscscan.com/address/${strategy.vaultAddress}#code`} target="_blank" rel="noopener noreferrer">StakedUSDu source ↗</a></div>
     <div className="analytics-kpis financial-kpis"><Kpi label="Strategy TVL / NAV" value={latest?amount(latest.assets)+' USDu':'—'} note="totalAssets · unvested rewards excluded"/><Kpi label="Vault share supply" value={latest?amount(latest.shares)+' sUSDu':'—'} note="Underlying shares · distinct from eU/eUSDT"/><Kpi label="NAV per vault share" value={latest?amount(latest.nav,6):'—'} note="USDu per sUSDu · on-chain exchange price"/><Kpi label="APY · 7D" value={percent(latest?.apy7d??null)} note="Annualized NAV growth · actual elapsed time"/><Kpi label="APY · 30D" value={percent(latest?.apy30d??null)} note="Annualized NAV growth · excludes route incentives"/></div>
     <div className="analytics-grid">

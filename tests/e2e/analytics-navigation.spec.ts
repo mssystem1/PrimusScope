@@ -25,7 +25,7 @@ async function holdAnalyticsResponse(page: Page, path: string, range: string) {
 test('comparison navigation shows progress while keeping the previous dashboard visible', async ({ page }) => {
   const response = await holdAnalyticsResponse(page, '/finance', '30d');
   const progress = page.getByRole('progressbar', { name: 'Updating analytics' });
-  const comparison = page.getByRole('region', { name: 'Shared strategy · period comparison' });
+  const comparison = page.getByRole('region', { name: 'Shared strategy comparison', exact: true });
   try {
     await page.goto('/finance?range=all&interval=hour');
     await expect(page.getByLabel('Period', { exact: true })).toBeEnabled();
@@ -58,8 +58,9 @@ test('comparison navigation shows progress while keeping the previous dashboard 
 
     const selectedUrl = /\/finance\?range=30d&interval=hour$/;
     await expect(page).toHaveURL(selectedUrl);
-    await expect(comparison.getByText(/^Last 30 days ·/)).toBeVisible();
-    await expect(comparison.getByText(/^Prior 30 days ·/)).toBeVisible();
+    const legend = comparison.locator('.strategy-period-strip');
+    await expect(legend.locator('[data-period=current]')).toContainText('Last 30 days');
+    await expect(legend.locator('[data-period=prior]')).toContainText('Prior 30 days');
     await expect(progress).toHaveCount(0);
     await expect(page.locator('html')).toHaveAttribute('data-analytics-navigation-test', 'retained');
     await expect(compare30).toHaveAttribute('aria-current', 'page');
