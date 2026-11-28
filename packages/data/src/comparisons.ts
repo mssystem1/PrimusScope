@@ -117,7 +117,7 @@ function stockAtPeriodEnd(samples: FinanceStrategy['samples'], bounds: Compariso
   };
 }
 
-function compareStrategyStock(samples: FinanceStrategy['samples'], from: string, to: string, fixed: boolean): ComparisonGroup {
+function compareStrategyStock(samples: FinanceStrategy['samples'], from: string, to: string, fixed: boolean, anchors: FinanceStrategy['samples'] = []): ComparisonGroup {
   const bounds = windows(from, to, null, to, false, false, fixed);
   const current = stockAtPeriodEnd(samples, bounds.current);
   const previous = stockAtPeriodEnd(samples, bounds.previous);
@@ -132,7 +132,7 @@ function compareStrategyStock(samples: FinanceStrategy['samples'], from: string,
 
   const apyDecimals = 6;
   function scaledApy(index: number, days: number) {
-    const value = index < 0 ? null : strategyApy(samples, index, days);
+    const value = index < 0 ? null : strategyApy(samples, index, days, anchors);
     if (value === null) return null;
     const scaled = Math.round(value * 10 ** apyDecimals);
     return Number.isFinite(scaled) ? BigInt(scaled) : null;
@@ -208,6 +208,6 @@ export function buildFinanceComparison(snapshot: ObservationSet, options: Analyt
   ];
   const strategyFlows = group(flowPair.current, flowPair.previous, flowMetrics, fixed,
     flowCoverage?.complete ?? false, strategyHasMissing);
-  const strategyValue = compareStrategyStock(strategy.samples, strategyAnalytics.requestedFrom, strategyAnalytics.requestedTo, fixed);
+  const strategyValue = compareStrategyStock(strategy.samples, strategyAnalytics.requestedFrom, strategyAnalytics.requestedTo, fixed, strategy.apyAnchors);
   return { routeOperations, strategyFlows, strategyValue };
 }

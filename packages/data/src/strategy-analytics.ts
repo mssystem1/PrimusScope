@@ -13,11 +13,12 @@ export function decimalUnits(raw:string,decimals=18){
 }
 const MS_DAY=86400000;
 export const MAX_STOCK_SAMPLE_GAP_MS=36*3600000;
-export function strategyApy(samples:FinanceStrategy['samples'],index:number,days:number):number|null{
+export function strategyApy(samples:FinanceStrategy['samples'],index:number,days:number,anchors:FinanceStrategy['samples']=[]):number|null{
   const current=samples[index]!,now=Date.parse(current.timestamp),target=now-days*MS_DAY;
   let nearest:FinanceStrategy['samples'][number]|undefined,difference=Infinity;
-  for(let i=0;i<index;i++){
-    const candidate=samples[i]!,delta=Math.abs(Date.parse(candidate.timestamp)-target);
+  for(const candidate of [...samples.slice(0,index),...anchors]){
+    if(Date.parse(candidate.timestamp)>=now||BigInt(candidate.exchangeRateRaw)===0n)continue;
+    const delta=Math.abs(Date.parse(candidate.timestamp)-target);
     if(delta<difference){difference=delta;nearest=candidate;}
   }
   if(!nearest||difference>2*3600000||BigInt(nearest.exchangeRateRaw)===0n)return null;
@@ -49,6 +50,7 @@ export function combinedStrategy(snapshot:ObservationSet):FinanceStrategy{
   const samples=new Map(BASE.samples.map(sample=>[sample.blockNumber,sample]));
   for(const sample of live.samples)samples.set(sample.blockNumber,sample);
   return FinanceStrategySchema.parse({...BASE,...live,samples:[...samples.values()].sort((a,b)=>Date.parse(a.timestamp)-Date.parse(b.timestamp)),
+    ...(BASE.apyAnchors||live.apyAnchors?{apyAnchors:[...new Map([...(BASE.apyAnchors??[]),...(live.apyAnchors??[])].map(s=>[s.blockNumber,s])).values()]}:{}),
     ...mergeStrategyFlowHistory(BASE,live)});
 }
 
@@ -63,7 +65,7 @@ export function buildStrategyAnalytics(snapshot:ObservationSet,options:Analytics
   const latestIndex=latest?samples.indexOf(latest):-1;
   const points=samples.map((sample,index)=>({label:sample.timestamp,blockNumber:sample.blockNumber,blockHash:sample.blockHash,
     assets:decimalUnits(sample.totalAssetsRaw),shares:decimalUnits(sample.totalSupplyRaw),nav:decimalUnits(sample.exchangeRateRaw),
-    apy7d:strategyApy(samples,index,7),apy30d:strategyApy(samples,index,30)})).filter(point=>Date.parse(point.label)>=from&&Date.parse(point.label)<=end);
+    apy7d:strategyApy(samples,index,7,strategy.apyAnchors),apy30d:strategyApy(samples,index,30,strategy.apyAnchors)})).filter(point=>Date.parse(point.label)>=from&&Date.parse(point.label)<=end);
   const sampleGaps=samples.slice(1).flatMap((sample,index)=>{const previous=samples[index]!,a=Date.parse(previous.timestamp),b=Date.parse(sample.timestamp);return b-a>MAX_STOCK_SAMPLE_GAP_MS&&a<=end&&b>=from?[{from:previous.timestamp,to:sample.timestamp}]:[];});
   const step=window.step,buckets=new Map<number,{deposits:bigint;withdrawals:bigint}>();
   const coverage=strategy.flowCoverage;
@@ -83,7 +85,7 @@ export function buildStrategyAnalytics(snapshot:ObservationSet,options:Analytics
     sourceUrl:latest?.sourceUrl??'https://bsc-mainnet.public.blastapi.io',vaultAddress:strategy.vaultAddress,proxyAddress:strategy.proxyAddress,
     sourceAsOf:latest?.timestamp??null,observedAt:latest?.observedAt??null,
     latest:latest?{assets:decimalUnits(latest.totalAssetsRaw),shares:decimalUnits(latest.totalSupplyRaw),nav:decimalUnits(latest.exchangeRateRaw),
-      apy7d:strategyApy(samples,latestIndex,7),apy30d:strategyApy(samples,latestIndex,30)}:null,
+      apy7d:strategyApy(samples,latestIndex,7,strategy.apyAnchors),apy30d:strategyApy(samples,latestIndex,30,strategy.apyAnchors)}:null,
     points,flows,flowCoverage:coverage,from:window.from,to:window.to,
     requestedFrom:window.requestedFrom,requestedTo:window.requestedTo,coveredFrom:window.coveredFrom,coveredTo:window.coveredTo,
     hasCoverage:window.hasCoverage,historyComplete:window.historyComplete,sampleHistoryComplete:window.historyComplete&&sampleGaps.length===0,sampleGaps,

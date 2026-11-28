@@ -192,6 +192,8 @@ export const FinanceStrategySchema = z.object({
   assetSymbol: z.literal('USDu'), shareSymbol: z.literal('sUSDu'),
   assetDecimals: z.literal(18), shareDecimals: z.literal(18),
   samples: z.array(StrategySampleSchema).max(5000), flows: z.array(StrategyFlowSchema).max(20000),
+  // Archive lookbacks are denominators, not additional chart observations.
+  apyAnchors: z.array(StrategySampleSchema).max(5000).optional(),
   flowCoverage: z.object({fromBlock:DecimalStringSchema,toBlock:DecimalStringSchema,
     toBlockHash:HashSchema.optional(),
     fromTime:IsoTimestampSchema,toTime:IsoTimestampSchema,observedAt:IsoTimestampSchema,

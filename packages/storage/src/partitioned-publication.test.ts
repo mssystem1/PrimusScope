@@ -52,6 +52,13 @@ function decodePlan(plan: ReturnType<typeof planPartitionedPublication>): Record
 }
 
 describe('partitioned publication codec', () => {
+  it('retains APY lookbacks beside immutable histories without turning them into stock samples', () => {
+    const seed=publication(),strategy=seed.snapshot.finance.strategy!;
+    strategy.apyAnchors=[{...strategy.samples[0]!,blockNumber:'100000000',timestamp:'2026-09-01T04:56:07.000Z'}];
+    const plan=planPartitionedPublication(seed),restored=restorePartitionedPublication(plan.tail,plan.references,decodePlan(plan));
+    expect(restored.snapshot.finance.strategy!.apyAnchors).toEqual(strategy.apyAnchors);
+    expect(restored.snapshot.finance.strategy!.samples).toEqual(strategy.samples);
+  });
   it('archives complete chunks and restores all three histories in exact order', () => {
     const seed = publication(), plan = planPartitionedPublication(seed);
     const expectedTail = compactPublication(seed);

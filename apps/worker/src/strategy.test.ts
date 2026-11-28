@@ -330,8 +330,8 @@ describe('public strategy collector', () => {
     expect(result.flowIssueCode).toBeUndefined();
     expect(result.strategy.samples.some(item => item.timestamp === currentTime)).toBe(true);
     expect(result.strategy.samples.some(item => item.timestamp === prior.samples.at(-1)!.timestamp)).toBe(true);
-    const anchor = result.strategy.samples.reduce((best, item) => Math.abs(Date.parse(item.timestamp) - targetTime)
-      < Math.abs(Date.parse(best.timestamp) - targetTime) ? item : best, result.strategy.samples[0]!);
+    const anchor = result.strategy.apyAnchors!.reduce((best, item) => Math.abs(Date.parse(item.timestamp) - targetTime)
+      < Math.abs(Date.parse(best.timestamp) - targetTime) ? item : best, result.strategy.apyAnchors![0]!);
     expect(Math.abs(Date.parse(anchor.timestamp) - targetTime)).toBeLessThanOrEqual(2 * 3600_000);
     expect(anchor.blockHash).toBe(selectedHeader?.hash);
     expect(flowRpc.requestsMade).toBeGreaterThan(3);
@@ -375,12 +375,15 @@ describe('public strategy collector', () => {
     const priorDay = strategy.samples.at(-3)!;
     const requested = strategyApyAnchorTargets(strategy.samples);
     expect(requested.some(target => target.endpoint.blockNumber === priorDay.blockNumber)).toBe(true);
-    expect(requested.some(target => target.endpoint.blockNumber === future.blockNumber)).toBe(false);
+    expect(requested.findIndex(target => target.endpoint.blockNumber === future.blockNumber)).toBeGreaterThan(requested.findIndex(target => target.endpoint.blockNumber === priorDay.blockNumber));
 
-    const result = await collectStrategyApyAnchors(strategy, {
+    let result = await collectStrategyApyAnchors(strategy, {
       stockRpc: stock.rpc, headerRpc: archiveHeaders(), maxAnchors: 8, now,
     });
+    result = await collectStrategyApyAnchors(result.strategy, {stockRpc: stock.rpc, headerRpc: archiveHeaders(), maxAnchors: 8, now});
     expect(result.anchorIssueCode).toBeUndefined();
+    expect(result.strategy.samples).toEqual(strategy.samples);
+    expect(strategyApyAnchorTargets(result.strategy.samples,result.strategy.apyAnchors)).toEqual([]);
     expect(result.strategy.samples.at(-1)).toEqual(strategy.samples.at(-1));
     const snapshot = ObservationSetSchema.parse(recorded);
     snapshot.finance.strategy = result.strategy;
@@ -403,13 +406,27 @@ describe('public strategy collector', () => {
       stockRpc: stock.rpc, headerRpc: archiveHeaders(true), now,
     });
     expect(result.anchorIssueCode).toBe('APY_ANCHORS_PENDING');
-    expect(result.strategy.samples).toHaveLength(strategy.samples.length + 4);
-    expect(strategyApyAnchorTargets(result.strategy.samples)).toContainEqual(
+    expect(result.strategy.samples).toEqual(strategy.samples);
+    expect(result.strategy.apyAnchors).toHaveLength(4);
+    expect(strategyApyAnchorTargets(result.strategy.samples,result.strategy.apyAnchors)).toContainEqual(
       expect.objectContaining({ endpoint: strategy.samples.at(-1), days: 30 }),
     );
     expect(result.strategy.samples.at(-1)).toEqual(strategy.samples.at(-1));
     expect(result.strategy.flows).toEqual(strategy.flows);
     expect(result.strategy.flowCoverage).toEqual(strategy.flowCoverage);
+  });
+
+  it('shares lookbacks across nearby non-preset chart points without recursively creating work', async () => {
+    const {strategy,now}=sparseApyHistory(),head=strategy.samples.at(-1)!;
+    const near={...head,blockNumber:String(BigInt(head.blockNumber)-3600n),timestamp:new Date(Date.parse(head.timestamp)-3600_000).toISOString()};
+    const samples=[strategy.samples[0]!,near,head];
+    const anchors=[7,30].map(days=>({...head,blockNumber:String(BigInt(head.blockNumber)-BigInt(days*86400)),timestamp:new Date(Date.parse(head.timestamp)-days*86400_000).toISOString()}));
+    expect(strategyApyAnchorTargets(samples)).toHaveLength(4);
+    expect(strategyApyAnchorTargets(samples,anchors)).toEqual([]);
+    expect(strategyApyAnchorTargets(samples,[{...anchors[0]!,exchangeRateRaw:'0'},anchors[1]!]).map(t=>t.days)).toEqual([7,7]);
+    const rpc=mockRpc(()=>{throw new Error('Covered anchors must not be requested again');});
+    const result=await collectStrategyApyAnchors({...strategy,samples,apyAnchors:anchors},{stockRpc:rpc,headerRpc:rpc,now});
+    expect(result.strategy.samples).toEqual(samples);expect(result.strategy.apyAnchors).toEqual(anchors);expect(rpc.requestsMade).toBe(0);
   });
 
   it('rejects a secondary union above the event cap before receipt reads or coverage advances', async () => {

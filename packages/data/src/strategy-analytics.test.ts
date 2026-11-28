@@ -2,10 +2,29 @@ import { describe,expect,it } from 'vitest';
 import { FinanceStrategySchema, ObservationSetSchema } from '@primusscope/api-schema';
 import source from '../../../data/strategy/unitas-history.json';
 import recorded from '../../../data/observations/current.json';
-import {buildStrategyAnalytics,decimalUnits} from './strategy-analytics';
+import {buildStrategyAnalytics,decimalUnits,strategyApy} from './strategy-analytics';
 
 const snapshot=ObservationSetSchema.parse(recorded),strategy=FinanceStrategySchema.parse(source);
 describe('public shared-strategy financial analytics',()=>{
+  it('uses verified anchor-only NAVs without adding chart points or changing stock coverage',()=>{
+    const input=structuredClone(snapshot),before=buildStrategyAnalytics(input,{range:'all'});
+    const endpoint=strategy.samples[2]!,time=Date.parse(endpoint.timestamp)-7*86400000;
+    const anchor={...endpoint,blockNumber:'100000000',timestamp:new Date(time).toISOString(),exchangeRateRaw:String(BigInt(endpoint.exchangeRateRaw)*99n/100n)};
+    input.finance.strategy={...strategy,apyAnchors:[anchor]};
+    const after=buildStrategyAnalytics(input,{range:'all'});
+    expect(before.points.find(p=>p.blockNumber===endpoint.blockNumber)?.apy7d).toBeNull();
+    expect(after.points.find(p=>p.blockNumber===endpoint.blockNumber)?.apy7d).not.toBeNull();
+    expect(after.points.map(p=>p.blockNumber)).toEqual(before.points.map(p=>p.blockNumber));
+    expect(after.coveredFrom).toBe(before.coveredFrom);expect(after.sampleGaps).toEqual(before.sampleGaps);
+  });
+  it('keeps the two-hour tolerance, ignores zero/future anchors, and annualizes actual elapsed seconds',()=>{
+    const endpoint={...strategy.samples.at(-1)!,timestamp:'2027-03-10T12:00:00.000Z',exchangeRateRaw:'1100000000000000000'};
+    const anchor={...endpoint,blockNumber:'100000000',timestamp:'2027-03-03T10:00:00.000Z',exchangeRateRaw:'1000000000000000000'};
+    const days=(Date.parse(endpoint.timestamp)-Date.parse(anchor.timestamp))/86400000;
+    expect(strategyApy([endpoint],0,7,[{...anchor,exchangeRateRaw:'0'},anchor,endpoint])).toBeCloseTo((1.1**(365/days)-1)*100,8);
+    expect(strategyApy([endpoint],0,7,[{...anchor,timestamp:'2027-03-03T09:59:59.000Z'}])).toBeNull();
+    expect(strategyApy([endpoint],0,30,[anchor])).toBeNull();
+  });
   it('preserves missing observation days as a coverage gap after collection resumes',()=>{
     const input=structuredClone(snapshot),last=strategy.samples.at(-1)!;
     input.finance.strategy={...strategy,samples:[...strategy.samples,{...last,blockNumber:String(BigInt(last.blockNumber)+1000000n),timestamp:new Date(Date.parse(last.timestamp)+7*86400000).toISOString(),observedAt:new Date(Date.parse(last.observedAt)+7*86400000).toISOString()}]};

@@ -139,10 +139,11 @@ Capital flows, Pool value and Yield. Mobile rows keep both period values and
 their change together. The single CSV includes a `metric_group` column while
 preserving each group's coverage, comparison basis and measurement timestamps.
 
-## Maintaining APY comparison lookbacks
+## Maintaining APY chart and comparison lookbacks
 
 The hourly collector maintains NAV lookbacks for both the current observation
-and the actual previous endpoint of the 24h, 7d and 30d presets. A previous
+and the actual previous endpoint of the 24h, 7d and 30d presets, then repairs
+missing lookbacks for historical chart observations, newest first. A previous
 endpoint is selected at or before the inclusive comparison boundary; its APYs
 use that observation's own 7D/30D lookbacks. The existing two-hour eligibility
 limit and actual-elapsed-time formula are unchanged. New archive searches aim
@@ -155,3 +156,18 @@ sample retains bytecode, implementation, accounting and cross-provider block
 checks. Accepted samples survive later archive failures; pending lookbacks are
 reported as `APY_ANCHORS_PENDING` without failing or starving live flow
 collection. The next scheduled invocation retries the missing lookbacks.
+
+Validated lookbacks live in `strategy.apyAnchors`, separate from stock
+`samples`. Repairing a denominator neither adds a chart point nor replaces
+the latest stock observation, and does not create another backfill obligation.
+The chart and period comparisons use the same anchor pool and eligibility
+rules. Lookbacks can be shared by nearby observations within the two-hour
+tolerance. Targets before searchable history remain unavailable.
+
+The APY chart spans the dashboard width, with padded, rounded percentage ticks,
+latest 7D/30D values, series toggles and measured-point counts. Null APYs and
+observation gaps remain breaks; isolated valid points have visible markers.
+Hover, touch and keyboard observation controls expose exact timestamps and
+values, with the unchanged raw table and CSV available below. Initial dates
+without enough prior NAV history are explicitly counted as unmeasured rather
+than assigned zero or interpolated.

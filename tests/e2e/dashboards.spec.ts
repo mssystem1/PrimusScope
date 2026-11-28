@@ -3,13 +3,18 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect,test } from '@playwright/test';
 import { parseCsv } from './csv';
 
-test('Finance charts preserve both Primus routes and expose measured NAV, yield and flows',async({page},testInfo)=>{
+test('Finance charts preserve both Primus routes and expose measured NAV, yield and flows',async({page,request},testInfo)=>{
   test.setTimeout(90000);
   await page.goto('/finance');
   await expect(page.getByRole('heading',{name:'U / eU',exact:true})).toBeVisible();
   await expect(page.getByRole('heading',{name:'USDT / eUSDT',exact:true})).toBeVisible();
   const apy=page.getByRole('region',{name:'APY · 7D and 30D',exact:true});
   await expect(apy).toBeVisible();
+  const response=await request.get('/api/v1/finance/analytics?range=30d&interval=day'),body=await response.json(),points=body.strategy.points;
+  const coverage=apy.getByLabel('APY measurement coverage',{exact:true});
+  for(const [label,key] of [['7D APY','apy7d'],['30D APY','apy30d']])await expect(coverage).toContainText(`${label}: ${points.filter((p:Record<string,unknown>)=>p[key!]!==null).length}/${points.length} measured`);
+  await expect(apy.locator('.analytics-y-axis')).toContainText('%');
+  if(page.viewportSize()!.width>1000){const apyBox=await apy.boundingBox(),tvlBox=await page.getByRole('region',{name:'TVL · underlying strategy',exact:true}).boundingBox();expect(apyBox!.width).toBeGreaterThan(tvlBox!.width*1.7);}
   for(const name of ['TVL · underlying strategy','Total supply · vault shares','NAV / exchange price','Net flows · underlying strategy','Deposits & withdrawals · underlying strategy']){
     await expect(page.getByRole('region',{name,exact:true}).getByRole('img')).toBeVisible();
   }

@@ -109,7 +109,7 @@ async function findStrategyAnchor(previous: StrategySample[], latest: StrategySa
   const prior = previous.filter(item => Date.parse(item.timestamp) < Date.parse(latest.timestamp));
   const alreadyClose = prior.reduce<StrategySample | null>((best, item) => !best
     || Math.abs(Date.parse(item.timestamp) - targetTime) < Math.abs(Date.parse(best.timestamp) - targetTime) ? item : best, null);
-  if (alreadyClose && Math.abs(Date.parse(alreadyClose.timestamp) - targetTime) <= STRATEGY_ANCHOR_TOLERANCE_MS) return null;
+  if (alreadyClose && BigInt(alreadyClose.exchangeRateRaw) > 0n && Math.abs(Date.parse(alreadyClose.timestamp) - targetTime) <= STRATEGY_ANCHOR_TOLERANCE_MS) return null;
 
   const ordered = [...prior, latest].sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp));
   let lowSample: StrategySample | undefined, highSample: StrategySample | undefined;
@@ -144,8 +144,8 @@ async function findStrategyAnchor(previous: StrategySample[], latest: StrategySa
 }
 
 
-/** APY lookbacks for the current and actual prior endpoint of each preset. */
-export function strategyApyAnchorTargets(samples: StrategySample[]) {
+/** Preset endpoints first, then chart observations; archive lookbacks never create new endpoints. */
+export function strategyApyAnchorTargets(samples: StrategySample[], anchors: StrategySample[] = []) {
   const latest = samples.at(-1);
   if (!latest) return [];
   const endpoints = [latest];
@@ -159,12 +159,26 @@ export function strategyApyAnchorTargets(samples: StrategySample[]) {
     });
     if (endpoint) endpoints.push(endpoint);
   }
+  endpoints.push(...samples.toReversed());
+  const facts = [...samples, ...anchors], earliest = Math.min(...facts.map(s => Date.parse(s.timestamp)));
+  const seen = new Set<string>();
   return endpoints.flatMap(endpoint => ([30, 7] as const).flatMap(days => {
     const endpointTime = Date.parse(endpoint.timestamp), targetTime = endpointTime - days * DAY_MS;
-    const covered = samples.some(sample => Date.parse(sample.timestamp) < endpointTime
+    const key = endpoint.blockNumber + ':' + days;
+    if (seen.has(key) || targetTime < earliest - STRATEGY_ANCHOR_TOLERANCE_MS) return [];
+    seen.add(key);
+    const covered = facts.some(sample => BigInt(sample.exchangeRateRaw) > 0n && Date.parse(sample.timestamp) < endpointTime
       && Math.abs(Date.parse(sample.timestamp) - targetTime) <= STRATEGY_ANCHOR_TOLERANCE_MS);
-    return covered ? [] : [{ key: endpoint.blockNumber + ':' + days, endpoint, days, targetTime }];
+    return covered ? [] : [{ key, endpoint, days, targetTime }];
   }));
+}
+
+export function mergeStrategyApyAnchors(strategy: FinanceStrategy, incoming: StrategySample[]): StrategySample[] {
+  const latest = Date.parse(strategy.samples.at(-1)!.timestamp), earliest = Date.parse(strategy.samples[0]!.timestamp) - 30 * DAY_MS - STRATEGY_ANCHOR_TOLERANCE_MS;
+  const plotted = new Set(strategy.samples.map(s => s.blockNumber));
+  return [...new Map([...(strategy.apyAnchors ?? []), ...incoming].filter(s => !plotted.has(s.blockNumber)
+    && Date.parse(s.timestamp) >= earliest && Date.parse(s.timestamp) < latest).map(s => [s.blockNumber, s])).values()]
+    .sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp)).slice(-5000);
 }
 
 /** Separate archive budgets keep missing APY lookbacks from starving live flows. */
@@ -174,7 +188,7 @@ export async function collectStrategyApyAnchors(previous: FinanceStrategy, optio
   const maxAnchors = options.maxAnchors ?? 4;
   if (!Number.isInteger(maxAnchors) || maxAnchors < 1 || maxAnchors > 8) throw new WorkerError('STRATEGY_INVALID_ANCHOR_LIMIT');
   let strategy = FinanceStrategySchema.parse(previous);
-  if (!strategyApyAnchorTargets(strategy.samples).length) return { strategy };
+  if (!strategyApyAnchorTargets(strategy.samples, strategy.apyAnchors).length) return { strategy };
   const now = options.now ?? (() => new Date());
   const headerRpc = options.headerRpc ?? new FetchRpc(SENTIO_BSC_RPC,
     { maxRequests: 80, maxSeconds: 60, timeoutSeconds: 5, maxResponseBytes: 1_000_000, minIntervalMs: 125 });
@@ -183,20 +197,20 @@ export async function collectStrategyApyAnchors(previous: FinanceStrategy, optio
   const skipped = new Set<string>();
   let added = 0;
   for (let attempt = 0; attempt < 16 && added < maxAnchors; attempt++) {
-    const target = strategyApyAnchorTargets(strategy.samples).find(item => !skipped.has(item.key));
+    const target = strategyApyAnchorTargets(strategy.samples, strategy.apyAnchors).find(item => !skipped.has(item.key));
     if (!target) break;
     try {
       const latest = strategy.samples.at(-1)!;
-      const anchor = await findStrategyAnchor(strategy.samples, latest, target.targetTime, headerRpc, stockRpc, now);
+      const anchor = await findStrategyAnchor([...strategy.samples, ...(strategy.apyAnchors ?? [])], latest, target.targetTime, headerRpc, stockRpc, now);
       if (!anchor) { skipped.add(target.key); continue; }
-      strategy = FinanceStrategySchema.parse({ ...strategy, samples: mergeStrategySamples(strategy.samples, [anchor, latest]) });
+      strategy = FinanceStrategySchema.parse({ ...strategy, apyAnchors: mergeStrategyApyAnchors(strategy, [anchor]) });
       added++;
     } catch {
       // Retain every accepted anchor, current stock and completed flow range.
       skipped.add(target.key);
     }
   }
-  return { strategy, ...(strategyApyAnchorTargets(strategy.samples).length ? { anchorIssueCode: 'APY_ANCHORS_PENDING' } : {}) };
+  return { strategy, ...(strategyApyAnchorTargets(strategy.samples, strategy.apyAnchors).length ? { anchorIssueCode: 'APY_ANCHORS_PENDING' } : {}) };
 }
 
 export function projectStrategyFlowLog(value: unknown, block: bigint): Omit<StrategyFlow, 'timestamp'> {
